@@ -21,29 +21,20 @@ mw "github.com/radonezhsklad/shared/middleware"
 
 func main() {
 _ = godotenv.Load()
-
 env := shcfg.GetString("ENV", "dev")
 logger.Init(env)
-
 cfg := config.Load()
 
-if env == "prod" {
-gin.SetMode(gin.ReleaseMode)
-}
+if env == "prod" { gin.SetMode(gin.ReleaseMode) }
 r := gin.New()
 r.Use(
-mw.RequestID(),
-mw.Recovery(),
-mw.AccessLog(),
-mw.CORS(cfg.CORSOrigins),
+mw.RequestID(), mw.Recovery(), mw.AccessLog(), mw.CORS(cfg.CORSOrigins),
 )
 
-// health самого gateway
 r.GET("/api/v1/health", func(c *gin.Context) {
 c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "gateway"})
 })
 
-// прокси-маршруты
 authProxy := proxy.New(cfg.AuthURL)
 productProxy := proxy.New(cfg.ProductURL)
 warehouseProxy := proxy.New(cfg.WarehouseURL)
@@ -51,10 +42,8 @@ orderProxy := proxy.New(cfg.OrderURL)
 
 api := r.Group("/api/v1")
 {
-// auth — как есть
 api.Any("/auth/*path", authProxy)
 
-// product
 api.Any("/units", productProxy)
 api.Any("/units/*path", productProxy)
 api.Any("/categories", productProxy)
@@ -62,30 +51,24 @@ api.Any("/categories/*path", productProxy)
 api.Any("/products", productProxy)
 api.Any("/products/*path", productProxy)
 
-// warehouse (сервис появится на Этапе 11)
-api.Any("/warehouse", warehouseProxy)
-api.Any("/warehouse/*path", warehouseProxy)
+api.Any("/warehouses", warehouseProxy)
+api.Any("/warehouses/*path", warehouseProxy)
+api.Any("/stock", warehouseProxy)
+api.Any("/stock/*path", warehouseProxy)
+api.Any("/documents", warehouseProxy)
+api.Any("/documents/*path", warehouseProxy)
 
-// order (сервис появится на Этапе 12)
 api.Any("/orders", orderProxy)
 api.Any("/orders/*path", orderProxy)
 }
 
-srv := &http.Server{
-Addr:              ":" + cfg.Port,
-Handler:           r,
-ReadHeaderTimeout: 10 * time.Second,
-}
-
+srv := &http.Server{Addr: ":" + cfg.Port, Handler: r, ReadHeaderTimeout: 10 * time.Second}
 go func() {
 slog.Info("gateway listening",
-"port", cfg.Port,
-"auth", cfg.AuthURL,
-"product", cfg.ProductURL,
+"port", cfg.Port, "auth", cfg.AuthURL, "product", cfg.ProductURL, "warehouse", cfg.WarehouseURL,
 )
 if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-slog.Error("listen", "error", err)
-os.Exit(1)
+slog.Error("listen", "error", err); os.Exit(1)
 }
 }()
 
@@ -95,8 +78,6 @@ signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 defer cancel()
-if err := srv.Shutdown(shutdownCtx); err != nil {
-slog.Error("shutdown", "error", err)
-}
+_ = srv.Shutdown(shutdownCtx)
 slog.Info("gateway stopped")
 }

@@ -1,0 +1,25 @@
+# Go
+*.exe
+*.test
+*.out
+vendor/
+bin/
+
+# Node
+node_modules/
+dist/
+.env
+.env.local
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

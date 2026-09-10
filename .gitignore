@@ -8,8 +8,11 @@ bin/
 # Node
 node_modules/
 dist/
+
+# Env
 .env
 .env.local
+**/.env
 
 # IDE
 .vscode/*

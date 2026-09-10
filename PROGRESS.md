@@ -1,54 +1,60 @@
 # RadonezhSklad — Прогресс разработки
 
 ## ✅ Завершено
-- [x] Этап 1. Установка окружения
-- [x] Этап 2. Структура проекта, docker-compose, .env.example, README
-- [x] Этап 3. Docker-инфраструктура запущена. 3 контейнера healthy. 4 БД созданы.
-- [x] Этап 4. Auth: миграция 0001_init применена
-- [x] Этап 5. Auth: Go-код написан, сервис работает на :8081
-- [x] Этап 6. Auth: edge-кейсы проверены (409/401/400), git-commit
+- [x] Этап 1. Окружение
+- [x] Этап 2. Структура, docker-compose
+- [x] Этап 3. Docker-инфра: postgres/redis/rabbitmq
+- [x] Этап 4. Auth: миграция 0001
+- [x] Этап 5. Auth: Go-код на :8081
+- [x] Этап 6. Auth: edge-кейсы
+- [x] Этап 7. Shared-пакет
+- [x] Этап 8. Product: CRUD на :8082
+- [x] Этап 9. Gateway на :8080: прокси на auth и product, X-Request-ID, 502 при падении upstream
 
 ## 🚧 В работе
-- [ ] Этап 7. Shared-пакет (logger, middleware, errors, http-client)
+- [ ] Этап 10. Frontend Vue 3
 
 ## ⏭️ Далее по плану
-- [ ] Этап 8. Product-сервис (товары, категории, единицы измерения, цены)
-- [ ] Этап 9. API Gateway (единая точка входа :8080)
-- [ ] Этап 10. Frontend Vue 3
-- [ ] Этап 11. Warehouse-сервис (склад, остатки, документы)
-- [ ] Этап 12. Order-сервис
+- [ ] Этап 11. Warehouse
+- [ ] Этап 12. Order
 
 ## ⚠️ Порты
-- Postgres: 5433 (внутри 5432)
-- Redis:    6380 (внутри 6379)
-- RabbitMQ: 5672, UI http://localhost:15672 (radonezh / radonezh_dev_pass)
+- Postgres 5433, Redis 6380, RabbitMQ 5672 (UI :15672)
+- auth :8081, product :8082, warehouse :8083, order :8084, gateway :8080, web :5173
 
 ## 📌 Контекст для продолжения
 Стек: Go 1.22 + Gin, PostgreSQL 16, Redis 7, RabbitMQ 3.13, Vue 3 + TS.
 Корень: D:\Radonezhsklad\projects\radonezhsklad
-ОС: Windows, PowerShell. Все команды — из корня проекта.
-Порты сервисов: auth 8081, product 8082, warehouse 8083, order 8084, gateway 8080, web 5173.
+ОС: Windows, PowerShell.
+Терминалы для работы:
+1) services\auth — auth :8081
+2) services\product — product :8082
+3) services\gateway — gateway :8080
+4) корень — тесты
 
-## 🔌 API auth-сервиса
-- GET  /api/v1/health               -> {status, service}
-- POST /api/v1/auth/register        -> 201 User | 400 (валидация) | 409 (email exists)
-- POST /api/v1/auth/login           -> 200 TokenPair | 401
-- GET  /api/v1/auth/me              -> 200 {user_id, role} | 401
+## 📦 Shared (github.com/radonezhsklad/shared)
+- errors: AppError, NotFound/Conflict/BadRequest/Unauthorized/Forbidden/Internal
+- logger: Init(env)
+- middleware: RequestID, Recovery, AccessLog, CORS, ErrorHandler, RequireJWT(secret), RequireRole, CurrentUserID, CurrentRole
+- httpx: OK, Created, NoContent, Error, Validation
+- config: GetString, GetInt, GetBool, GetStrings
 
-## 🗄️ Схема БД radonezh_auth
-- users (id, email UNIQUE, password_hash, full_name, role, is_active, created_at, updated_at)
-- refresh_tokens (id, user_id FK->users CASCADE, token_hash, expires_at, created_at)
-- триггер trg_users_updated_at
+## 🌐 Gateway (:8080)
+- /api/v1/auth/*        -> :8081
+- /api/v1/units*        -> :8082
+- /api/v1/categories*   -> :8082
+- /api/v1/products*     -> :8082
+- /api/v1/warehouse*    -> :8083 (сервис ещё не создан)
+- /api/v1/orders*       -> :8084 (сервис ещё не создан)
+- /api/v1/health        -> отвечает gateway
+Особенности: X-Request-ID прокидывается, клиентские X-Forwarded-* удаляются, 502 при недоступном upstream.
 
-## 🛠️ Структура auth-сервиса
-- cmd/api/main.go
-- internal/config/config.go
-- internal/db/db.go
-- internal/models/user.go, refresh_token.go
-- internal/repository/user_repo.go, token_repo.go
-- internal/service/auth_service.go
-- internal/handler/auth_handler.go
-- internal/middleware/auth.go
+## 🔌 API
+- POST /api/v1/auth/register | /api/v1/auth/login
+- GET  /api/v1/auth/me
+- GET  /api/v1/units
+- CRUD /api/v1/categories[/:id]
+- CRUD /api/v1/products[/:id] (+ ?include_archived=true&category_id=<uuid>)
 
 ## 🔑 Учётные данные dev
 - Postgres: radonezh / radonezh_dev_pass (localhost:5433)

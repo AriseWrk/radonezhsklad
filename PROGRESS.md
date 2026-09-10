@@ -1,27 +1,21 @@
 # RadonezhSklad — Прогресс разработки
 
 ## ✅ Завершено
-- [x] Этап 1. Окружение
-- [x] Этап 2. Структура, docker-compose
-- [x] Этап 3. Docker-инфра
-- [x] Этап 4. Auth: миграция
-- [x] Этап 5. Auth: Go-код :8081
-- [x] Этап 6. Auth: edge-кейсы
-- [x] Этап 7. Shared-пакет
-- [x] Этап 8. Product :8082
-- [x] Этап 9. Gateway :8080
-- [x] Этап 10. Frontend :5173 (логин/дашборд/товары/категории)
-- [x] Этап 11. Warehouse :8083 (склады, остатки, документы приёмки/отгрузки/перемещения/инвентаризации, проводка и отмена, audit)
+- [x] Этап 1-9. Окружение, инфра, shared, auth, product, gateway
+- [x] Этап 10. Frontend Vue 3 на :5173
+- [x] Этап 11. Warehouse :8083 (склады, остатки, документы, проводка)
+- [x] Этап 12. Order :8084 (покупатели, заказы, статусы, интеграция с warehouse при отгрузке)
 
 ## 🚧 В работе
-- [ ] Этап 12. Order (заказы)
+- [ ] Этап 13. Frontend-страницы для склада и заказов
 
 ## ⏭️ Далее
-- [ ] Frontend-страницы для склада
 - [ ] Роли и права (RequireRole)
+- [ ] Уведомления через RabbitMQ
+- [ ] Отчёты
 
 ## ⚠️ Порты
-- Postgres 5433, Redis 6380, RabbitMQ 5672 (UI :15672)
+- Postgres 5433, Redis 6380, RabbitMQ 5672
 - auth 8081, product 8082, warehouse 8083, order 8084, gateway 8080, web 5173
 
 ## 📌 Контекст для продолжения
@@ -32,28 +26,31 @@
 1) services\auth      — auth :8081
 2) services\product   — product :8082
 3) services\warehouse — warehouse :8083
-4) services\gateway   — gateway :8080
-5) web                — npm run dev :5173
-6) корень             — тесты
+4) services\order     — order :8084
+5) services\gateway   — gateway :8080
+6) web                — npm run dev :5173
+7) корень             — тесты
 
-## 🔌 Warehouse API (:8083, через gateway :8080)
-- GET|POST         /api/v1/warehouses
-- GET|PUT|DELETE   /api/v1/warehouses/:id
-- GET              /api/v1/stock?warehouse_id=&product_id=
-- GET|POST         /api/v1/documents
-- GET              /api/v1/documents/:id
-- POST             /api/v1/documents/:id/post    — проводка (двигает остатки)
-- POST             /api/v1/documents/:id/cancel  — отмена (откат)
+## 🔌 Order API (:8084, через gateway :8080)
+- GET|POST        /api/v1/customers
+- GET|DELETE      /api/v1/customers/:id
+- GET|POST        /api/v1/orders
+- GET             /api/v1/orders/:id
+- POST            /api/v1/orders/:id/confirm  — подтвердить
+- POST            /api/v1/orders/:id/ship     — отгрузить (создаёт shipment в warehouse)
+- POST            /api/v1/orders/:id/cancel   — отменить
 
-Типы документов: receipt / shipment / transfer / inventory
-Статусы: draft / posted / cancelled
+Статусы: draft / confirmed / shipped / cancelled
 
-## 🗄️ Схема radonezh_warehouse
-- warehouses (id, name, address, is_active, created_at, updated_at)
-- documents (id, type, number, status, warehouse_id, target_warehouse_id, comment, created_by, created_at, updated_at, posted_at, cancelled_at)
-- document_items (id, document_id FK CASCADE, product_id, quantity, price)
-- stock_balances (id, warehouse_id, product_id, quantity, updated_at) UNIQUE(warehouse_id, product_id)
-- stock_movements (id, warehouse_id, product_id, document_id, quantity_delta, created_at) — audit
+## 🗄️ Схема radonezh_order
+- customers (id, name, phone, email, address, created_at, updated_at)
+- orders (id, number UNIQUE, customer_id, warehouse_id, status, total, currency, comment, warehouse_doc_id, created_by, created_at, updated_at, confirmed_at, shipped_at, cancelled_at)
+- order_items (id, order_id FK CASCADE, product_id, quantity, price, created_at)
+
+## 🔗 Межсервисное взаимодействие
+Order -> Warehouse (HTTP, прямой вызов на :8083, минуя gateway):
+  POST /api/v1/documents (type=shipment) + POST /api/v1/documents/:id/post
+  JWT пробрасывается от клиента.
 
 ## 🔑 Учётные данные dev
 - Postgres: radonezh / radonezh_dev_pass (localhost:5433)

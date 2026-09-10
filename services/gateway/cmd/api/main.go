@@ -27,9 +27,7 @@ cfg := config.Load()
 
 if env == "prod" { gin.SetMode(gin.ReleaseMode) }
 r := gin.New()
-r.Use(
-mw.RequestID(), mw.Recovery(), mw.AccessLog(), mw.CORS(cfg.CORSOrigins),
-)
+r.Use(mw.RequestID(), mw.Recovery(), mw.AccessLog(), mw.CORS(cfg.CORSOrigins))
 
 r.GET("/api/v1/health", func(c *gin.Context) {
 c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "gateway"})
@@ -58,6 +56,8 @@ api.Any("/stock/*path", warehouseProxy)
 api.Any("/documents", warehouseProxy)
 api.Any("/documents/*path", warehouseProxy)
 
+api.Any("/customers", orderProxy)
+api.Any("/customers/*path", orderProxy)
 api.Any("/orders", orderProxy)
 api.Any("/orders/*path", orderProxy)
 }
@@ -65,7 +65,9 @@ api.Any("/orders/*path", orderProxy)
 srv := &http.Server{Addr: ":" + cfg.Port, Handler: r, ReadHeaderTimeout: 10 * time.Second}
 go func() {
 slog.Info("gateway listening",
-"port", cfg.Port, "auth", cfg.AuthURL, "product", cfg.ProductURL, "warehouse", cfg.WarehouseURL,
+"port", cfg.Port,
+"auth", cfg.AuthURL, "product", cfg.ProductURL,
+"warehouse", cfg.WarehouseURL, "order", cfg.OrderURL,
 )
 if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 slog.Error("listen", "error", err); os.Exit(1)

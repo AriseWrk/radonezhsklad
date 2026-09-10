@@ -3,9 +3,19 @@
     <aside class="sidebar">
       <div class="brand">RadonezhSklad</div>
       <nav>
+        <div class="nav-section">Справочники</div>
         <router-link to="/"           class="nav-item">Дашборд</router-link>
         <router-link to="/products"   class="nav-item">Товары</router-link>
         <router-link to="/categories" class="nav-item">Категории</router-link>
+        <router-link to="/customers"  class="nav-item">Покупатели</router-link>
+
+        <div class="nav-section">Склад</div>
+        <router-link to="/warehouses" class="nav-item">Склады</router-link>
+        <router-link to="/stock"      class="nav-item">Остатки</router-link>
+        <router-link to="/documents"  class="nav-item">Документы</router-link>
+
+        <div class="nav-section">Продажи</div>
+        <router-link to="/orders"     class="nav-item">Заказы</router-link>
       </nav>
     </aside>
     <main class="content">
@@ -31,10 +41,7 @@ import { useAuthStore } from '../stores/auth'
 const auth = useAuthStore()
 const router = useRouter()
 
-function shortId(id: string) {
-  return id.slice(0, 8)
-}
-
+function shortId(id: string) { return id.slice(0, 8) }
 function onLogout() {
   auth.logout()
   router.push({ name: 'login' })
@@ -42,10 +49,7 @@ function onLogout() {
 </script>
 
 <style scoped>
-.layout {
-  display: flex;
-  min-height: 100vh;
-}
+.layout { display: flex; min-height: 100vh; }
 .sidebar {
   width: 220px;
   background: #fff;
@@ -53,15 +57,18 @@ function onLogout() {
   padding: 16px 0;
   flex-shrink: 0;
 }
-.brand {
-  padding: 0 20px 20px;
-  font-weight: 700;
-  font-size: 18px;
-  color: var(--primary);
+.brand { padding: 0 20px 20px; font-weight: 700; font-size: 18px; color: var(--primary); }
+.nav-section {
+  padding: 12px 20px 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  font-weight: 600;
 }
 .nav-item {
   display: block;
-  padding: 10px 20px;
+  padding: 8px 20px;
   color: var(--text);
   font-size: 14px;
   text-decoration: none;
@@ -85,13 +92,6 @@ function onLogout() {
 }
 .user { display: flex; align-items: center; gap: 12px; }
 .muted { color: var(--muted); font-size: 13px; font-family: monospace; }
-.badge {
-  background: #eef4ff;
-  color: var(--primary);
-  padding: 3px 8px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 600;
-}
+.badge { background: #eef4ff; color: var(--primary); padding: 3px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
 .page { padding: 24px; }
 </style>

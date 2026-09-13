@@ -192,3 +192,12 @@ return nil, apperr.Internal("update status", err)
 }
 return s.GetDocument(ctx, id)
 }
+// ---------- product stock detail ----------
+
+func (s *Service) MovementsByProduct(ctx context.Context, productID uuid.UUID) ([]repository.MovementDetail, error) {
+return s.repo.MovementsByProduct(ctx, productID)
+}
+
+func (s *Service) BalancesByProduct(ctx context.Context, productID uuid.UUID) ([]repository.BalanceByWarehouse, error) {
+return s.repo.BalancesByProduct(ctx, productID)
+}

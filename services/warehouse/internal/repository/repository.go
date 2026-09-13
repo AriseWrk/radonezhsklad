@@ -372,6 +372,72 @@ out[id] = q
 return out, rows.Err()
 }
 
+
+// ---------- product stock detail ----------
+
+type MovementDetail struct {
+ID                uuid.UUID
+WarehouseID       uuid.UUID
+WarehouseName     string
+QuantityDelta     float64
+MovementAt        time.Time
+DocumentID        *uuid.UUID
+DocumentType      *string
+DocumentNumber    *string
+DocumentCreatedAt *time.Time
+}
+
+func (r *Repo) MovementsByProduct(ctx context.Context, productID uuid.UUID) ([]MovementDetail, error) {
+rows, err := r.db.Query(ctx, `
+SELECT sm.id, sm.warehouse_id, w.name AS warehouse_name,
+       sm.quantity_delta, sm.created_at AS movement_at,
+       d.id, d.type, d.number, d.created_at AS document_created_at
+FROM stock_movements sm
+JOIN warehouses w ON w.id = sm.warehouse_id
+LEFT JOIN documents d ON d.id = sm.document_id
+WHERE sm.product_id = $1
+ORDER BY sm.created_at DESC`, productID)
+if err != nil { return nil, err }
+defer rows.Close()
+
+out := []MovementDetail{}
+for rows.Next() {
+var m MovementDetail
+if err := rows.Scan(&m.ID, &m.WarehouseID, &m.WarehouseName,
+&m.QuantityDelta, &m.MovementAt,
+&m.DocumentID, &m.DocumentType, &m.DocumentNumber, &m.DocumentCreatedAt); err != nil {
+return nil, err
+}
+out = append(out, m)
+}
+return out, rows.Err()
+}
+
+type BalanceByWarehouse struct {
+WarehouseID   uuid.UUID
+WarehouseName string
+Quantity      float64
+}
+
+func (r *Repo) BalancesByProduct(ctx context.Context, productID uuid.UUID) ([]BalanceByWarehouse, error) {
+rows, err := r.db.Query(ctx, `
+SELECT sb.warehouse_id, w.name, sb.quantity
+FROM stock_balances sb
+JOIN warehouses w ON w.id = sb.warehouse_id
+WHERE sb.product_id = $1
+ORDER BY w.name`, productID)
+if err != nil { return nil, err }
+defer rows.Close()
+
+out := []BalanceByWarehouse{}
+for rows.Next() {
+var b BalanceByWarehouse
+if err := rows.Scan(&b.WarehouseID, &b.WarehouseName, &b.Quantity); err != nil { return nil, err }
+out = append(out, b)
+}
+return out, rows.Err()
+}
+
 func itoa(n int) string {
 if n == 0 { return "0" }
 var buf [20]byte

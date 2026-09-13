@@ -37,6 +37,8 @@ UpdatedAt         time.Time  `json:"updated_at"`
 PostedAt          *time.Time `json:"posted_at,omitempty"`
 CancelledAt       *time.Time `json:"cancelled_at,omitempty"`
 Items             []DocItem  `json:"items,omitempty"`
+ItemsCount        int        `json:"items_count"`
+Total             float64    `json:"total"`
 }
 
 type DocItem struct {

@@ -28,7 +28,6 @@ func main() {
 _ = godotenv.Load()
 env := shcfg.GetString("ENV", "dev")
 logger.Init(env)
-
 cfg := config.Load()
 ctx := context.Background()
 
@@ -52,20 +51,24 @@ api.GET("/health", func(c *gin.Context) {
 c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "order"})
 })
 
-auth := api.Group("")
-auth.Use(mw.RequireJWT(cfg.JWTSecret))
+read := api.Group("")
+read.Use(mw.RequireJWT(cfg.JWTSecret))
 {
-auth.GET("/customers", h.ListCustomers)
-auth.POST("/customers", h.CreateCustomer)
-auth.GET("/customers/:id", h.GetCustomer)
-auth.DELETE("/customers/:id", h.DeleteCustomer)
+read.GET("/customers", h.ListCustomers)
+read.GET("/customers/:id", h.GetCustomer)
+read.GET("/orders", h.ListOrders)
+read.GET("/orders/:id", h.GetOrder)
+}
 
-auth.GET("/orders", h.ListOrders)
-auth.POST("/orders", h.CreateOrder)
-auth.GET("/orders/:id", h.GetOrder)
-auth.POST("/orders/:id/confirm", h.ConfirmOrder)
-auth.POST("/orders/:id/ship", h.ShipOrder)
-auth.POST("/orders/:id/cancel", h.CancelOrder)
+write := api.Group("")
+write.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "manager"))
+{
+write.POST("/customers", h.CreateCustomer)
+write.DELETE("/customers/:id", h.DeleteCustomer)
+write.POST("/orders", h.CreateOrder)
+write.POST("/orders/:id/confirm", h.ConfirmOrder)
+write.POST("/orders/:id/ship", h.ShipOrder)
+write.POST("/orders/:id/cancel", h.CancelOrder)
 }
 }
 

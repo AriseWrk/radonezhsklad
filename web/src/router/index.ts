@@ -1,7 +1,14 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { useAuthStore, type Role } from '../stores/auth'
 
-const routes = [
+declare module 'vue-router' {
+  interface RouteMeta {
+    public?: boolean
+    roles?: Role[]
+  }
+}
+
+const routes: RouteRecordRaw[] = [
   {
     path: '/login',
     name: 'login',
@@ -13,13 +20,14 @@ const routes = [
     component: () => import('../layouts/MainLayout.vue'),
     children: [
       { path: '',           name: 'dashboard',  component: () => import('../views/DashboardView.vue') },
-      { path: 'products',   name: 'products',   component: () => import('../views/ProductsView.vue') },
-      { path: 'categories', name: 'categories', component: () => import('../views/CategoriesView.vue') },
-      { path: 'warehouses', name: 'warehouses', component: () => import('../views/WarehousesView.vue') },
-      { path: 'stock',      name: 'stock',      component: () => import('../views/StockView.vue') },
-      { path: 'documents',  name: 'documents',  component: () => import('../views/DocumentsView.vue') },
-      { path: 'customers',  name: 'customers',  component: () => import('../views/CustomersView.vue') },
-      { path: 'orders',     name: 'orders',     component: () => import('../views/OrdersView.vue') },
+      { path: 'products',   name: 'products',   component: () => import('../views/ProductsView.vue'),   meta: { roles: ['admin', 'manager', 'warehouse', 'user'] } },
+      { path: 'categories', name: 'categories', component: () => import('../views/CategoriesView.vue'), meta: { roles: ['admin', 'manager', 'warehouse', 'user'] } },
+      { path: 'warehouses', name: 'warehouses', component: () => import('../views/WarehousesView.vue'), meta: { roles: ['admin', 'warehouse'] } },
+      { path: 'stock',      name: 'stock',      component: () => import('../views/StockView.vue'),      meta: { roles: ['admin', 'manager', 'warehouse'] } },
+      { path: 'documents',  name: 'documents',  component: () => import('../views/DocumentsView.vue'),  meta: { roles: ['admin', 'manager', 'warehouse'] } },
+      { path: 'customers',  name: 'customers',  component: () => import('../views/CustomersView.vue'),  meta: { roles: ['admin', 'manager'] } },
+      { path: 'orders',     name: 'orders',     component: () => import('../views/OrdersView.vue'),     meta: { roles: ['admin', 'manager'] } },
+      { path: 'users',      name: 'users',      component: () => import('../views/UsersView.vue'),      meta: { roles: ['admin'] } },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },
@@ -36,6 +44,9 @@ router.beforeEach((to) => {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
   if (to.name === 'login' && auth.isAuthenticated) {
+    return { name: 'dashboard' }
+  }
+  if (to.meta.roles && auth.role && !to.meta.roles.includes(auth.role)) {
     return { name: 'dashboard' }
   }
 })

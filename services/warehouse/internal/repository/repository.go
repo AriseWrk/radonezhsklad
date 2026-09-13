@@ -1,14 +1,15 @@
 package repository
 
 import (
-"context"
-"errors"
+	"context"
+	"errors"
+	"time"
 
-"github.com/google/uuid"
-"github.com/jackc/pgx/v5"
-"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
-"github.com/radonezhsklad/warehouse/internal/models"
+	"github.com/radonezhsklad/warehouse/internal/models"
 )
 
 type Repo struct{ db *pgxpool.Pool }
@@ -178,11 +179,14 @@ return out, rows.Err()
 func (r *Repo) GetDocument(ctx context.Context, id uuid.UUID) (*models.Document, error) {
 d := &models.Document{}
 err := r.db.QueryRow(ctx,
-`SELECT id, type, number, status, warehouse_id, target_warehouse_id, comment, created_by,
-        created_at, updated_at, posted_at, cancelled_at
- FROM documents WHERE id = $1`, id,
+`SELECT d.id, d.type, d.number, d.status, d.warehouse_id, d.target_warehouse_id, d.comment, d.created_by,
+        d.created_at, d.updated_at, d.posted_at, d.cancelled_at,
+        (SELECT COUNT(*) FROM document_items di WHERE di.document_id = d.id) AS items_count,
+        (SELECT COALESCE(SUM(di.quantity * di.price), 0) FROM document_items di WHERE di.document_id = d.id) AS total
+ FROM documents d WHERE d.id = $1`, id,
 ).Scan(&d.ID, &d.Type, &d.Number, &d.Status, &d.WarehouseID, &d.TargetWarehouseID,
-&d.Comment, &d.CreatedBy, &d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt)
+&d.Comment, &d.CreatedBy, &d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt,
+&d.ItemsCount, &d.Total)
 if errors.Is(err, pgx.ErrNoRows) { return nil, nil }
 if err != nil { return nil, err }
 
@@ -211,21 +215,23 @@ return out, rows.Err()
 }
 
 func (r *Repo) ListDocuments(ctx context.Context, typeFilter, statusFilter *string, warehouseID *uuid.UUID) ([]models.Document, error) {
-q := `SELECT id, type, number, status, warehouse_id, target_warehouse_id, comment, created_by,
-             created_at, updated_at, posted_at, cancelled_at
-      FROM documents WHERE 1=1`
+q := `SELECT d.id, d.type, d.number, d.status, d.warehouse_id, d.target_warehouse_id, d.comment, d.created_by,
+             d.created_at, d.updated_at, d.posted_at, d.cancelled_at,
+             (SELECT COUNT(*) FROM document_items di WHERE di.document_id = d.id) AS items_count,
+             (SELECT COALESCE(SUM(di.quantity * di.price), 0) FROM document_items di WHERE di.document_id = d.id) AS total
+      FROM documents d WHERE 1=1`
 args := []any{}
 i := 1
 if typeFilter != nil {
-q += ` AND type = $` + itoa(i); args = append(args, *typeFilter); i++
+q += ` AND d.type = $` + itoa(i); args = append(args, *typeFilter); i++
 }
 if statusFilter != nil {
-q += ` AND status = $` + itoa(i); args = append(args, *statusFilter); i++
+q += ` AND d.status = $` + itoa(i); args = append(args, *statusFilter); i++
 }
 if warehouseID != nil {
-q += ` AND warehouse_id = $` + itoa(i); args = append(args, *warehouseID); i++
+q += ` AND d.warehouse_id = $` + itoa(i); args = append(args, *warehouseID); i++
 }
-q += ` ORDER BY created_at DESC LIMIT 200`
+q += ` ORDER BY d.created_at DESC LIMIT 200`
 
 rows, err := r.db.Query(ctx, q, args...)
 if err != nil { return nil, err }
@@ -235,7 +241,8 @@ out := []models.Document{}
 for rows.Next() {
 var d models.Document
 if err := rows.Scan(&d.ID, &d.Type, &d.Number, &d.Status, &d.WarehouseID, &d.TargetWarehouseID,
-&d.Comment, &d.CreatedBy, &d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt); err != nil {
+&d.Comment, &d.CreatedBy, &d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt,
+&d.ItemsCount, &d.Total); err != nil {
 return nil, err
 }
 out = append(out, d)
@@ -296,4 +303,59 @@ var buf [20]byte
 i := len(buf)
 for n > 0 { i--; buf[i] = byte('0' + n%10); n /= 10 }
 return string(buf[i:])
+}
+// ---------- extended stock ----------
+
+type ExtendedRow struct {
+ProductID    uuid.UUID
+WarehouseID  uuid.UUID
+Quantity     float64
+LastMovement *time.Time
+}
+
+func (r *Repo) StockExtended(ctx context.Context, warehouseID *uuid.UUID) ([]ExtendedRow, error) {
+q := `
+SELECT sb.product_id, sb.warehouse_id, sb.quantity,
+       (SELECT MAX(created_at) FROM stock_movements sm
+        WHERE sm.product_id = sb.product_id AND sm.warehouse_id = sb.warehouse_id) AS last_movement
+FROM stock_balances sb
+WHERE sb.quantity <> 0`
+args := []any{}
+if warehouseID != nil {
+q += ` AND sb.warehouse_id = $1`
+args = append(args, *warehouseID)
+}
+q += ` ORDER BY sb.product_id`
+
+rows, err := r.db.Query(ctx, q, args...)
+if err != nil { return nil, err }
+defer rows.Close()
+
+out := []ExtendedRow{}
+for rows.Next() {
+var e ExtendedRow
+if err := rows.Scan(&e.ProductID, &e.WarehouseID, &e.Quantity, &e.LastMovement); err != nil { return nil, err }
+out = append(out, e)
+}
+return out, rows.Err()
+}
+
+// IncomingByProduct — сумма количеств из черновиков приёмок.
+func (r *Repo) IncomingByProduct(ctx context.Context) (map[uuid.UUID]float64, error) {
+rows, err := r.db.Query(ctx, `
+SELECT di.product_id, COALESCE(SUM(di.quantity), 0)
+FROM document_items di
+JOIN documents d ON d.id = di.document_id
+WHERE d.type = 'receipt' AND d.status = 'draft'
+GROUP BY di.product_id`)
+if err != nil { return nil, err }
+defer rows.Close()
+out := map[uuid.UUID]float64{}
+for rows.Next() {
+var id uuid.UUID
+var q float64
+if err := rows.Scan(&id, &q); err != nil { return nil, err }
+out[id] = q
+}
+return out, rows.Err()
 }

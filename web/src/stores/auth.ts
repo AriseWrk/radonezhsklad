@@ -3,12 +3,20 @@ import { ref, computed } from 'vue'
 import * as authApi from '../api/auth'
 import { TOKEN_KEY } from '../api/client'
 
+export type Role = 'admin' | 'manager' | 'warehouse' | 'user'
+
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem(TOKEN_KEY))
   const userId = ref<string | null>(null)
-  const role = ref<string | null>(null)
+  const role = ref<Role | null>(null)
 
   const isAuthenticated = computed(() => !!token.value)
+
+  function can(...roles: Role[]): boolean {
+    if (!role.value) return false
+    if (role.value === 'admin') return true
+    return roles.includes(role.value)
+  }
 
   async function login(email: string, password: string) {
     const pair = await authApi.login(email, password)
@@ -22,7 +30,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const m = await authApi.me()
       userId.value = m.user_id
-      role.value = m.role
+      role.value = m.role as Role
     } catch {
       logout()
     }
@@ -35,5 +43,5 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(TOKEN_KEY)
   }
 
-  return { token, userId, role, isAuthenticated, login, fetchMe, logout }
+  return { token, userId, role, isAuthenticated, can, login, fetchMe, logout }
 })

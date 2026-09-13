@@ -31,6 +31,8 @@ CategoryID  *uuid.UUID `json:"category_id,omitempty"`
 UnitID      *uuid.UUID `json:"unit_id,omitempty"`
 Description *string    `json:"description,omitempty"`
 Price       float64    `json:"price"`
+CostPrice   float64    `json:"cost_price"`
+MinStock    float64    `json:"min_stock"`
 Currency    string     `json:"currency"`
 IsArchived  bool       `json:"is_archived"`
 CreatedAt   time.Time  `json:"created_at"`

@@ -1,47 +1,145 @@
 <template>
-  <div class="layout">
-    <aside class="sidebar">
-      <div class="brand">RadonezhSklad</div>
-      <nav>
-        <div class="nav-section">Справочники</div>
-        <router-link to="/"           class="nav-item">Дашборд</router-link>
-        <router-link to="/products"   class="nav-item">Товары</router-link>
-        <router-link to="/categories" class="nav-item">Категории</router-link>
-        <router-link to="/customers"  class="nav-item">Покупатели</router-link>
-
-        <div class="nav-section">Склад</div>
-        <router-link to="/warehouses" class="nav-item">Склады</router-link>
-        <router-link to="/stock"      class="nav-item">Остатки</router-link>
-        <router-link to="/documents"  class="nav-item">Документы</router-link>
-
-        <div class="nav-section">Продажи</div>
-        <router-link to="/orders"     class="nav-item">Заказы</router-link>
-      </nav>
-    </aside>
-    <main class="content">
-      <header class="topbar">
-        <div></div>
-        <div class="user">
-          <span v-if="auth.userId" class="muted">{{ shortId(auth.userId) }}</span>
-          <span v-if="auth.role" class="badge">{{ auth.role }}</span>
-          <button class="danger" @click="onLogout">Выйти</button>
-        </div>
-      </header>
-      <div class="page">
-        <router-view />
+  <div class="app">
+    <!-- Верхняя синяя навигация -->
+    <header class="topbar">
+      <div class="logo" @click="go('/')">
+        <span class="logo-icon">📦</span>
+        <span class="logo-text">RadonezhSklad</span>
       </div>
+
+      <nav class="top-nav">
+        <router-link
+          v-for="s in visibleSections"
+          :key="s.key"
+          :to="s.path"
+          class="top-nav-item"
+          :class="{ active: currentSection === s.key }"
+        >
+          <span class="top-nav-icon">{{ s.icon }}</span>
+          <span class="top-nav-label">{{ s.label }}</span>
+        </router-link>
+      </nav>
+
+      <div class="top-right">
+        <span class="top-icon" title="Чат">💬</span>
+        <span class="top-icon" title="Уведомления">🔔</span>
+        <span class="top-icon" title="Помощь">❓</span>
+        <div class="user-block">
+          <div class="user-name">{{ auth.userId ? shortId(auth.userId) : 'Пользователь' }}</div>
+          <div class="user-role" :class="'role-' + auth.role">{{ roleLabel(auth.role) }}</div>
+          <button class="logout-btn" @click="onLogout">Выйти</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Подтабы активного раздела -->
+    <div v-if="currentSubTabs.length" class="subtabs">
+      <router-link
+        v-for="t in currentSubTabs"
+        :key="t.name"
+        :to="t.path"
+        class="subtab"
+        :class="{ active: isTabActive(t) }"
+      >
+        {{ t.label }}
+      </router-link>
+    </div>
+
+    <!-- Содержимое -->
+    <main class="page-content">
+      <router-view />
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore, type Role } from '../stores/auth'
 
 const auth = useAuthStore()
+const route = useRoute()
 const router = useRouter()
 
+interface Section {
+  key: string
+  label: string
+  icon: string
+  path: string
+  roles?: Role[]
+}
+
+interface SubTab {
+  name: string
+  label: string
+  path: string
+  match: string
+  exact?: boolean
+  roles?: Role[]
+}
+
+const sections: Section[] = [
+  { key: 'company',   label: 'Компания', icon: '🏢', path: '/' },
+  { key: 'purchases', label: 'Закупки',  icon: '🛒', path: '/documents', roles: ['admin', 'manager', 'warehouse'] },
+  { key: 'sales',     label: 'Продажи',  icon: '💰', path: '/orders',    roles: ['admin', 'manager'] },
+  { key: 'products',  label: 'Товары',   icon: '📦', path: '/products' },
+  { key: 'stock',     label: 'Склад',    icon: '🏬', path: '/stock',     roles: ['admin', 'manager', 'warehouse'] },
+]
+
+const subTabsMap: Record<string, SubTab[]> = {
+  company: [
+    { name: 'dashboard', label: 'Показатели',  path: '/',        match: '/',      exact: true, roles: ['admin','manager','warehouse','user'] },
+    { name: 'users',     label: 'Сотрудники',  path: '/users',   match: '/users',              roles: ['admin'] },
+  ],
+  products: [
+    { name: 'products',   label: 'Товары',    path: '/products',   match: '/products',   roles: ['admin','manager','warehouse','user'] },
+    { name: 'categories', label: 'Категории', path: '/categories', match: '/categories', roles: ['admin','manager','warehouse','user'] },
+  ],
+  purchases: [
+    { name: 'documents',  label: 'Документы', path: '/documents',  match: '/documents',  roles: ['admin','manager','warehouse'] },
+    { name: 'warehouses', label: 'Склады',    path: '/warehouses', match: '/warehouses', roles: ['admin','warehouse'] },
+  ],
+  sales: [
+    { name: 'orders',    label: 'Заказы',     path: '/orders',    match: '/orders',    roles: ['admin','manager'] },
+    { name: 'customers', label: 'Покупатели', path: '/customers', match: '/customers', roles: ['admin','manager'] },
+  ],
+  stock: [
+    { name: 'stock',      label: 'Остатки',   path: '/stock',      match: '/stock',      roles: ['admin','manager','warehouse'] },
+    { name: 'documents',  label: 'Документы', path: '/documents',  match: '/documents',  roles: ['admin','manager','warehouse'] },
+    { name: 'warehouses', label: 'Склады',    path: '/warehouses', match: '/warehouses', roles: ['admin','warehouse'] },
+  ],
+}
+
+const visibleSections = computed(() =>
+  sections.filter((s) => !s.roles || auth.can(...s.roles))
+)
+
+const currentSection = computed(() => {
+  const p = route.path
+  if (p.startsWith('/products') || p.startsWith('/categories')) return 'products'
+  if (p.startsWith('/documents') || p.startsWith('/warehouses')) return 'purchases'
+  if (p.startsWith('/orders') || p.startsWith('/customers')) return 'sales'
+  if (p.startsWith('/stock')) return 'stock'
+  if (p.startsWith('/users')) return 'company'
+  return 'company'
+})
+
+const currentSubTabs = computed(() => {
+  const tabs = subTabsMap[currentSection.value] || []
+  return tabs.filter((t) => !t.roles || auth.can(...t.roles))
+})
+
+function isTabActive(t: SubTab): boolean {
+  if (t.exact) return route.path === t.path
+  return route.path === t.path || route.path.startsWith(t.match + '/') || route.path === t.match
+}
+
 function shortId(id: string) { return id.slice(0, 8) }
+function roleLabel(r: Role | null) {
+  if (!r) return ''
+  return { admin: 'Админ', manager: 'Менеджер', warehouse: 'Кладовщик', user: 'Пользователь' }[r]
+}
+function go(path: string) { router.push(path) }
 function onLogout() {
   auth.logout()
   router.push({ name: 'login' })
@@ -49,49 +147,107 @@ function onLogout() {
 </script>
 
 <style scoped>
-.layout { display: flex; min-height: 100vh; }
-.sidebar {
-  width: 220px;
-  background: #fff;
-  border-right: 1px solid var(--border);
-  padding: 16px 0;
-  flex-shrink: 0;
-}
-.brand { padding: 0 20px 20px; font-weight: 700; font-size: 18px; color: var(--primary); }
-.nav-section {
-  padding: 12px 20px 4px;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--muted);
-  font-weight: 600;
-}
-.nav-item {
-  display: block;
-  padding: 8px 20px;
-  color: var(--text);
-  font-size: 14px;
-  text-decoration: none;
-}
-.nav-item:hover { background: #f3f4f6; text-decoration: none; }
-.nav-item.router-link-exact-active {
-  background: #eef4ff;
-  color: var(--primary);
-  font-weight: 600;
-  border-right: 3px solid var(--primary);
-}
-.content { flex: 1; display: flex; flex-direction: column; }
+* { box-sizing: border-box; }
+.app { min-height: 100vh; display: flex; flex-direction: column; background: #f4f6f8; }
+
 .topbar {
-  height: 56px;
-  background: #fff;
-  border-bottom: 1px solid var(--border);
+  height: 52px;
+  background: #2c5d9c;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 12px 0 16px;
+  color: #fff;
+  flex-shrink: 0;
 }
-.user { display: flex; align-items: center; gap: 12px; }
-.muted { color: var(--muted); font-size: 13px; font-family: monospace; }
-.badge { background: #eef4ff; color: var(--primary); padding: 3px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
-.page { padding: 24px; }
+.logo {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 700; font-size: 15px;
+  margin-right: 20px;
+  cursor: pointer;
+}
+.logo-icon { font-size: 20px; }
+.logo-text { letter-spacing: 0.3px; }
+
+.top-nav {
+  display: flex;
+  height: 100%;
+  flex: 1;
+  overflow-x: auto;
+}
+.top-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  color: rgba(255,255,255,0.85);
+  font-size: 11px;
+  text-decoration: none;
+  gap: 2px;
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+.top-nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; text-decoration: none; }
+.top-nav-item.active { background: rgba(255,255,255,0.18); color: #fff; }
+.top-nav-icon { font-size: 18px; }
+.top-nav-label { font-size: 11px; }
+
+.top-right {
+  display: flex; align-items: center; gap: 12px;
+  margin-left: 12px;
+}
+.top-icon { font-size: 18px; cursor: pointer; opacity: 0.85; }
+.top-icon:hover { opacity: 1; }
+.user-block {
+  display: flex; align-items: center; gap: 8px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255,255,255,0.2);
+}
+.user-name { font-size: 13px; font-weight: 600; }
+.user-role { font-size: 11px; opacity: 0.85; }
+.logout-btn {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.logout-btn:hover { background: rgba(255,255,255,0.25); }
+
+.subtabs {
+  background: #fff;
+  border-bottom: 1px solid #e1e4e8;
+  display: flex;
+  padding: 0 16px;
+  gap: 4px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+.subtab {
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #57606a;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.subtab:hover { color: #2c5d9c; text-decoration: none; }
+.subtab.active {
+  color: #2c5d9c;
+  border-bottom-color: #2c5d9c;
+  font-weight: 600;
+}
+
+.page-content {
+  flex: 1;
+  padding: 16px 24px 32px;
+  overflow-y: auto;
+}
+
+.role-admin     { color: #ffcdd2; }
+.role-manager   { color: #bbdefb; }
+.role-warehouse { color: #ffe082; }
+.role-user      { color: #e0e0e0; }
 </style>

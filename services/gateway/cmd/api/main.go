@@ -41,6 +41,8 @@ orderProxy := proxy.New(cfg.OrderURL)
 api := r.Group("/api/v1")
 {
 api.Any("/auth/*path", authProxy)
+api.Any("/users", authProxy)
+api.Any("/users/*path", authProxy)
 
 api.Any("/units", productProxy)
 api.Any("/units/*path", productProxy)
@@ -64,11 +66,7 @@ api.Any("/orders/*path", orderProxy)
 
 srv := &http.Server{Addr: ":" + cfg.Port, Handler: r, ReadHeaderTimeout: 10 * time.Second}
 go func() {
-slog.Info("gateway listening",
-"port", cfg.Port,
-"auth", cfg.AuthURL, "product", cfg.ProductURL,
-"warehouse", cfg.WarehouseURL, "order", cfg.OrderURL,
-)
+slog.Info("gateway listening", "port", cfg.Port)
 if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 slog.Error("listen", "error", err); os.Exit(1)
 }

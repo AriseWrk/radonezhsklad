@@ -24,6 +24,8 @@ export interface Document {
   posted_at?: string
   cancelled_at?: string
   items?: DocItem[]
+  items_count?: number
+  total?: number
 }
 
 export interface DocumentInput {

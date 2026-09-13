@@ -12,9 +12,7 @@ import (
 "github.com/radonezhsklad/product/internal/models"
 )
 
-type Repo struct {
-db *pgxpool.Pool
-}
+type Repo struct{ db *pgxpool.Pool }
 
 func New(db *pgxpool.Pool) *Repo { return &Repo{db: db} }
 
@@ -37,19 +35,13 @@ return c, err
 
 func (r *Repo) ListCategories(ctx context.Context) ([]models.Category, error) {
 rows, err := r.db.Query(ctx,
-`SELECT id, name, parent_id, created_at, updated_at
- FROM categories ORDER BY name`)
-if err != nil {
-return nil, err
-}
+`SELECT id, name, parent_id, created_at, updated_at FROM categories ORDER BY name`)
+if err != nil { return nil, err }
 defer rows.Close()
-
 out := []models.Category{}
 for rows.Next() {
 var c models.Category
-if err := rows.Scan(&c.ID, &c.Name, &c.ParentID, &c.CreatedAt, &c.UpdatedAt); err != nil {
-return nil, err
-}
+if err := rows.Scan(&c.ID, &c.Name, &c.ParentID, &c.CreatedAt, &c.UpdatedAt); err != nil { return nil, err }
 out = append(out, c)
 }
 return out, rows.Err()
@@ -58,12 +50,9 @@ return out, rows.Err()
 func (r *Repo) GetCategory(ctx context.Context, id uuid.UUID) (*models.Category, error) {
 c := &models.Category{}
 err := r.db.QueryRow(ctx,
-`SELECT id, name, parent_id, created_at, updated_at FROM categories WHERE id = $1`,
-id,
+`SELECT id, name, parent_id, created_at, updated_at FROM categories WHERE id = $1`, id,
 ).Scan(&c.ID, &c.Name, &c.ParentID, &c.CreatedAt, &c.UpdatedAt)
-if errors.Is(err, pgx.ErrNoRows) {
-return nil, nil
-}
+if errors.Is(err, pgx.ErrNoRows) { return nil, nil }
 return c, err
 }
 
@@ -74,17 +63,13 @@ err := r.db.QueryRow(ctx,
  RETURNING id, name, parent_id, created_at, updated_at`,
 id, name, parentID,
 ).Scan(&c.ID, &c.Name, &c.ParentID, &c.CreatedAt, &c.UpdatedAt)
-if errors.Is(err, pgx.ErrNoRows) {
-return nil, nil
-}
+if errors.Is(err, pgx.ErrNoRows) { return nil, nil }
 return c, err
 }
 
 func (r *Repo) DeleteCategory(ctx context.Context, id uuid.UUID) (bool, error) {
 tag, err := r.db.Exec(ctx, `DELETE FROM categories WHERE id = $1`, id)
-if err != nil {
-return false, err
-}
+if err != nil { return false, err }
 return tag.RowsAffected() > 0, nil
 }
 
@@ -93,17 +78,12 @@ return tag.RowsAffected() > 0, nil
 func (r *Repo) ListUnits(ctx context.Context) ([]models.Unit, error) {
 rows, err := r.db.Query(ctx,
 `SELECT id, code, name, short_name, created_at FROM units ORDER BY name`)
-if err != nil {
-return nil, err
-}
+if err != nil { return nil, err }
 defer rows.Close()
-
 out := []models.Unit{}
 for rows.Next() {
 var u models.Unit
-if err := rows.Scan(&u.ID, &u.Code, &u.Name, &u.ShortName, &u.CreatedAt); err != nil {
-return nil, err
-}
+if err := rows.Scan(&u.ID, &u.Code, &u.Name, &u.ShortName, &u.CreatedAt); err != nil { return nil, err }
 out = append(out, u)
 }
 return out, rows.Err()
@@ -119,101 +99,101 @@ CategoryID  *uuid.UUID
 UnitID      *uuid.UUID
 Description *string
 Price       float64
+CostPrice   float64
+MinStock    float64
 Currency    string
 }
 
-func (r *Repo) CreateProduct(ctx context.Context, in ProductInput) (*models.Product, error) {
+const productSelect = `SELECT id, name, sku, barcode, category_id, unit_id, description,
+                              price, cost_price, min_stock, currency, is_archived, created_at, updated_at
+                       FROM products`
+
+func scanProduct(row pgx.Row) (*models.Product, error) {
 p := &models.Product{}
-err := r.db.QueryRow(ctx,
-`INSERT INTO products (name, sku, barcode, category_id, unit_id, description, price, currency)
- VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
- RETURNING id, name, sku, barcode, category_id, unit_id, description, price, currency, is_archived, created_at, updated_at`,
-in.Name, in.SKU, in.Barcode, in.CategoryID, in.UnitID, in.Description, in.Price, in.Currency,
-).Scan(&p.ID, &p.Name, &p.SKU, &p.Barcode, &p.CategoryID, &p.UnitID, &p.Description,
-&p.Price, &p.Currency, &p.IsArchived, &p.CreatedAt, &p.UpdatedAt)
+err := row.Scan(&p.ID, &p.Name, &p.SKU, &p.Barcode, &p.CategoryID, &p.UnitID, &p.Description,
+&p.Price, &p.CostPrice, &p.MinStock, &p.Currency, &p.IsArchived, &p.CreatedAt, &p.UpdatedAt)
+if errors.Is(err, pgx.ErrNoRows) { return nil, nil }
 return p, err
+}
+
+func (r *Repo) CreateProduct(ctx context.Context, in ProductInput) (*models.Product, error) {
+return scanProduct(r.db.QueryRow(ctx,
+`INSERT INTO products (name, sku, barcode, category_id, unit_id, description, price, cost_price, min_stock, currency)
+ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+ RETURNING id, name, sku, barcode, category_id, unit_id, description,
+           price, cost_price, min_stock, currency, is_archived, created_at, updated_at`,
+in.Name, in.SKU, in.Barcode, in.CategoryID, in.UnitID, in.Description,
+in.Price, in.CostPrice, in.MinStock, in.Currency,
+))
 }
 
 func (r *Repo) GetProduct(ctx context.Context, id uuid.UUID) (*models.Product, error) {
-p := &models.Product{}
-err := r.db.QueryRow(ctx,
-`SELECT id, name, sku, barcode, category_id, unit_id, description, price, currency, is_archived, created_at, updated_at
- FROM products WHERE id = $1`, id,
-).Scan(&p.ID, &p.Name, &p.SKU, &p.Barcode, &p.CategoryID, &p.UnitID, &p.Description,
-&p.Price, &p.Currency, &p.IsArchived, &p.CreatedAt, &p.UpdatedAt)
-if errors.Is(err, pgx.ErrNoRows) {
-return nil, nil
-}
-return p, err
+return scanProduct(r.db.QueryRow(ctx, productSelect+` WHERE id = $1`, id))
 }
 
 func (r *Repo) ListProducts(ctx context.Context, includeArchived bool, categoryID *uuid.UUID) ([]models.Product, error) {
-q := `SELECT id, name, sku, barcode, category_id, unit_id, description, price, currency, is_archived, created_at, updated_at
-      FROM products WHERE 1=1`
+q := productSelect + ` WHERE 1=1`
 args := []any{}
 i := 1
-if !includeArchived {
-q += ` AND is_archived = FALSE`
-}
-if categoryID != nil {
-q += ` AND category_id = $` + itoa(i)
-args = append(args, *categoryID)
-i++
-}
+if !includeArchived { q += ` AND is_archived = FALSE` }
+if categoryID != nil { q += ` AND category_id = $` + itoa(i); args = append(args, *categoryID); i++ }
 q += ` ORDER BY name`
 
 rows, err := r.db.Query(ctx, q, args...)
-if err != nil {
-return nil, err
-}
+if err != nil { return nil, err }
 defer rows.Close()
-
 out := []models.Product{}
 for rows.Next() {
-var p models.Product
-if err := rows.Scan(&p.ID, &p.Name, &p.SKU, &p.Barcode, &p.CategoryID, &p.UnitID,
-&p.Description, &p.Price, &p.Currency, &p.IsArchived, &p.CreatedAt, &p.UpdatedAt); err != nil {
+p := &models.Product{}
+if err := rows.Scan(&p.ID, &p.Name, &p.SKU, &p.Barcode, &p.CategoryID, &p.UnitID, &p.Description,
+&p.Price, &p.CostPrice, &p.MinStock, &p.Currency, &p.IsArchived, &p.CreatedAt, &p.UpdatedAt); err != nil {
 return nil, err
 }
-out = append(out, p)
+out = append(out, *p)
+}
+return out, rows.Err()
+}
+
+// ListByIDs — для внутреннего вызова из warehouse.
+func (r *Repo) ListByIDs(ctx context.Context, ids []uuid.UUID) ([]models.Product, error) {
+if len(ids) == 0 { return []models.Product{}, nil }
+rows, err := r.db.Query(ctx, productSelect+` WHERE id = ANY($1) ORDER BY name`, ids)
+if err != nil { return nil, err }
+defer rows.Close()
+out := []models.Product{}
+for rows.Next() {
+p := &models.Product{}
+if err := rows.Scan(&p.ID, &p.Name, &p.SKU, &p.Barcode, &p.CategoryID, &p.UnitID, &p.Description,
+&p.Price, &p.CostPrice, &p.MinStock, &p.Currency, &p.IsArchived, &p.CreatedAt, &p.UpdatedAt); err != nil {
+return nil, err
+}
+out = append(out, *p)
 }
 return out, rows.Err()
 }
 
 func (r *Repo) UpdateProduct(ctx context.Context, id uuid.UUID, in ProductInput) (*models.Product, error) {
-p := &models.Product{}
-err := r.db.QueryRow(ctx,
+return scanProduct(r.db.QueryRow(ctx,
 `UPDATE products SET name=$2, sku=$3, barcode=$4, category_id=$5, unit_id=$6,
-                     description=$7, price=$8, currency=$9
+                     description=$7, price=$8, cost_price=$9, min_stock=$10, currency=$11
  WHERE id=$1
- RETURNING id, name, sku, barcode, category_id, unit_id, description, price, currency, is_archived, created_at, updated_at`,
-id, in.Name, in.SKU, in.Barcode, in.CategoryID, in.UnitID, in.Description, in.Price, in.Currency,
-).Scan(&p.ID, &p.Name, &p.SKU, &p.Barcode, &p.CategoryID, &p.UnitID, &p.Description,
-&p.Price, &p.Currency, &p.IsArchived, &p.CreatedAt, &p.UpdatedAt)
-if errors.Is(err, pgx.ErrNoRows) {
-return nil, nil
-}
-return p, err
+ RETURNING id, name, sku, barcode, category_id, unit_id, description,
+           price, cost_price, min_stock, currency, is_archived, created_at, updated_at`,
+id, in.Name, in.SKU, in.Barcode, in.CategoryID, in.UnitID, in.Description,
+in.Price, in.CostPrice, in.MinStock, in.Currency,
+))
 }
 
 func (r *Repo) ArchiveProduct(ctx context.Context, id uuid.UUID) (bool, error) {
 tag, err := r.db.Exec(ctx, `UPDATE products SET is_archived = TRUE WHERE id = $1`, id)
-if err != nil {
-return false, err
-}
+if err != nil { return false, err }
 return tag.RowsAffected() > 0, nil
 }
 
 func itoa(n int) string {
-if n == 0 {
-return "0"
-}
+if n == 0 { return "0" }
 var buf [20]byte
 i := len(buf)
-for n > 0 {
-i--
-buf[i] = byte('0' + n%10)
-n /= 10
-}
+for n > 0 { i--; buf[i] = byte('0' + n%10); n /= 10 }
 return string(buf[i:])
 }

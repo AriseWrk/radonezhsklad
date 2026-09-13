@@ -6,6 +6,7 @@ import (
 "github.com/gin-gonic/gin"
 "github.com/google/uuid"
 
+"github.com/radonezhsklad/warehouse/internal/product"
 "github.com/radonezhsklad/warehouse/internal/repository"
 "github.com/radonezhsklad/warehouse/internal/service"
 apperr "github.com/radonezhsklad/shared/errors"
@@ -13,9 +14,14 @@ apperr "github.com/radonezhsklad/shared/errors"
 mw "github.com/radonezhsklad/shared/middleware"
 )
 
-type Handler struct{ svc *service.Service }
+type Handler struct {
+svc           *service.Service
+productClient *product.Client
+}
 
-func New(svc *service.Service) *Handler { return &Handler{svc: svc} }
+func New(svc *service.Service, pc *product.Client) *Handler {
+return &Handler{svc: svc, productClient: pc}
+}
 
 func parseUUIDOpt(s string) *uuid.UUID {
 if s == "" { return nil }

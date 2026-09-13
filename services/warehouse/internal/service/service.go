@@ -198,3 +198,12 @@ return nil, apperr.Internal("update status", err)
 }
 return s.GetDocument(ctx, id)
 }
+// ---------- extended stock ----------
+
+func (s *Service) StockExtended(ctx context.Context, warehouseID *uuid.UUID) ([]repository.ExtendedRow, error) {
+return s.repo.StockExtended(ctx, warehouseID)
+}
+
+func (s *Service) IncomingByProduct(ctx context.Context) (map[uuid.UUID]float64, error) {
+return s.repo.IncomingByProduct(ctx)
+}

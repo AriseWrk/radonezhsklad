@@ -32,3 +32,17 @@ c.Set(CtxRole, claims.Role)
 c.Next()
 }
 }
+
+func RequireRole(roles ...string) gin.HandlerFunc {
+allowed := map[string]bool{}
+for _, r := range roles { allowed[r] = true }
+return func(c *gin.Context) {
+role, _ := c.Get(CtxRole)
+r, _ := role.(string)
+if !allowed[r] {
+c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
+return
+}
+c.Next()
+}
+}

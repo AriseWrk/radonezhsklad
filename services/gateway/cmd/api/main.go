@@ -55,6 +55,8 @@ api.Any("/warehouses", warehouseProxy)
 api.Any("/warehouses/*path", warehouseProxy)
 api.Any("/stock", warehouseProxy)
 api.Any("/stock/*path", warehouseProxy)
+		api.Any("/inventory", warehouseProxy)
+		api.Any("/inventory/*path", warehouseProxy)
 api.Any("/documents", warehouseProxy)
 api.Any("/documents/*path", warehouseProxy)
 

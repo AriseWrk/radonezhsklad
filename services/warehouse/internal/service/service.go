@@ -207,3 +207,8 @@ return s.repo.StockExtended(ctx, warehouseID)
 func (s *Service) IncomingByProduct(ctx context.Context) (map[uuid.UUID]float64, error) {
 return s.repo.IncomingByProduct(ctx)
 }
+// ---------- inventory ----------
+
+func (s *Service) BookStockForInventory(ctx context.Context, warehouseID uuid.UUID) ([]repository.InventoryRow, error) {
+return s.repo.BookStockForInventory(ctx, warehouseID)
+}

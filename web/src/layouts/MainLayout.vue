@@ -96,8 +96,11 @@ const subTabsMap: Record<string, SubTab[]> = {
     { name: 'categories', label: 'Категории', path: '/categories', match: '/categories', roles: ['admin','manager','warehouse','user'] },
   ],
   purchases: [
-    { name: 'documents',  label: 'Документы', path: '/documents',  match: '/documents',  roles: ['admin','manager','warehouse'] },
-    { name: 'warehouses', label: 'Склады',    path: '/warehouses', match: '/warehouses', roles: ['admin','warehouse'] },
+    { name: 'receipt',   label: 'Оприходования', path: '/documents?type=receipt',   match: '/documents', roles: ['admin','manager','warehouse'] },
+    { name: 'shipment',  label: 'Списания',      path: '/documents?type=shipment',  match: '/documents', roles: ['admin','manager','warehouse'] },
+    { name: 'transfer',  label: 'Перемещения',   path: '/documents?type=transfer',  match: '/documents', roles: ['admin','manager','warehouse'] },
+    { name: 'inventory', label: 'Инвентаризации',path: '/inventory',                match: '/inventory', roles: ['admin','manager','warehouse'] },
+    { name: 'warehouses',label: 'Склады',        path: '/warehouses',               match: '/warehouses',roles: ['admin','warehouse'] },
   ],
   sales: [
     { name: 'orders',    label: 'Заказы',     path: '/orders',    match: '/orders',    roles: ['admin','manager'] },
@@ -119,7 +122,7 @@ const currentSection = computed(() => {
   if (p.startsWith('/products') || p.startsWith('/categories')) return 'products'
   if (p.startsWith('/documents') || p.startsWith('/warehouses')) return 'purchases'
   if (p.startsWith('/orders') || p.startsWith('/customers')) return 'sales'
-  if (p.startsWith('/stock')) return 'stock'
+  if (p.startsWith('/stock') || p.startsWith('/inventory')) return 'stock'
   if (p.startsWith('/users')) return 'company'
   return 'company'
 })

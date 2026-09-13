@@ -57,6 +57,7 @@ read.GET("/warehouses", h.ListWarehouses)
 read.GET("/warehouses/:id", h.GetWarehouse)
 read.GET("/stock", h.ListStock)
 read.GET("/stock/extended", h.StockExtended)
+			read.GET("/inventory/prepare", h.InventoryPrepare)
 read.GET("/documents", h.ListDocuments)
 read.GET("/documents/:id", h.GetDocument)
 }

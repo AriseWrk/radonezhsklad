@@ -297,6 +297,33 @@ if errors.Is(err, pgx.ErrNoRows) { return 0, nil }
 return q, err
 }
 
+
+// ---------- inventory ----------
+
+type InventoryRow struct {
+ProductID    uuid.UUID
+BookQuantity float64
+}
+
+// BookStockForInventory — товары, которые сейчас числятся на складе (book_quantity > 0 или были в движениях).
+func (r *Repo) BookStockForInventory(ctx context.Context, warehouseID uuid.UUID) ([]InventoryRow, error) {
+rows, err := r.db.Query(ctx, `
+SELECT product_id, quantity
+FROM stock_balances
+WHERE warehouse_id = $1
+ORDER BY product_id`, warehouseID)
+if err != nil { return nil, err }
+defer rows.Close()
+
+out := []InventoryRow{}
+for rows.Next() {
+var e InventoryRow
+if err := rows.Scan(&e.ProductID, &e.BookQuantity); err != nil { return nil, err }
+out = append(out, e)
+}
+return out, rows.Err()
+}
+
 func itoa(n int) string {
 if n == 0 { return "0" }
 var buf [20]byte

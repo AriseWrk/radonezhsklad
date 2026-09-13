@@ -237,6 +237,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   listDocuments, createDocument, postDocument, cancelDocument, getDocument,
   type Document, type DocType,
@@ -283,6 +284,7 @@ const form = reactive({
 })
 
 const detailDoc = ref<Document | null>(null)
+const route = useRoute()
 
 const tabs: Array<{ key: TabKey; label: string }> = [
   { key: 'all',       label: 'Все' },
@@ -472,6 +474,10 @@ async function showDetails(d: Document) {
 function print() { window.print() }
 
 onMounted(async () => {
+  const qtype = route.query.type as string | undefined
+  if (qtype && ['receipt','shipment','transfer','inventory'].includes(qtype)) {
+    activeTab.value = qtype as TabKey
+  }
   try {
     const [w, p] = await Promise.all([listWarehouses(), listProducts(true)])
     warehouses.value = w

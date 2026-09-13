@@ -244,3 +244,10 @@
       таблица ms-table с колонками №/Дата/Тип/Склад/Комментарий/Позиций/Сумма/Статус/Действия,
       пагинация, футер с итогами
 - [x] Стили `.doc-tabs`, `.doc-tab`, `.tab-count`, `.doc-info`, `.actions-col` добавлены в style.css
+## Этап 18. Инвентаризация и подтабы склада
+- [x] Backend: GET /api/v1/inventory/prepare?warehouse_id= — список товаров на складе с учётным остатком
+- [x] Backend: BookStockForInventory в repository/service, маршрут в warehouse и gateway
+- [x] Frontend: InventoryView.vue — выбор склада, таблица товаров, ввод фактов, подсветка расхождений, создание inventory-документа
+- [x] Frontend: маршрут /inventory с ролями admin/manager/warehouse
+- [x] Frontend: подтабы Склад и Закупки разбиты по типам документов (Оприходования/Списания/Перемещения/Инвентаризации/Остатки/Склады)
+- [x] Frontend: DocumentsView принимает ?type= из URL

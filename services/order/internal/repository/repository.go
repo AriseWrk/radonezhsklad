@@ -262,6 +262,39 @@ out = append(out, s)
 return out, rows.Err()
 }
 
+
+type SalesDailyRow struct {
+Day         time.Time
+SoldQty     float64
+SoldSum     float64
+OrdersCount int
+}
+
+func (r *Repo) SalesDaily(ctx context.Context, days int) ([]SalesDailyRow, error) {
+rows, err := r.db.Query(ctx, `
+SELECT DATE(o.shipped_at) AS day,
+       COALESCE(SUM(oi.quantity), 0)             AS sold_qty,
+       COALESCE(SUM(oi.quantity * oi.price), 0)  AS sold_sum,
+       COUNT(DISTINCT oi.order_id)               AS orders_count
+FROM order_items oi
+JOIN orders o ON o.id = oi.order_id
+WHERE o.status = 'shipped'
+  AND o.shipped_at IS NOT NULL
+  AND o.shipped_at >= NOW() - ($1::text || ' days')::interval
+GROUP BY DATE(o.shipped_at)
+ORDER BY day`, days)
+if err != nil { return nil, err }
+defer rows.Close()
+
+out := []SalesDailyRow{}
+for rows.Next() {
+var s SalesDailyRow
+if err := rows.Scan(&s.Day, &s.SoldQty, &s.SoldSum, &s.OrdersCount); err != nil { return nil, err }
+out = append(out, s)
+}
+return out, rows.Err()
+}
+
 func itoa(n int) string {
 if n == 0 { return "0" }
 var buf [20]byte

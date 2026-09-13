@@ -280,3 +280,10 @@
 - expectedDemand = avgDailySales × N
 - supply = available − expectedDemand
 - to_order = max(0, expectedDemand − available)
+## Этап 22. Продажи → Аналитика продаж
+- [x] Backend: /analytics/sales/daily?days=N — агрегация по дням (DATE(shipped_at))
+- [x] Frontend: analytics.ts — salesDaily()
+- [x] Frontend: SalesAnalyticsView.vue — KPI-карточки (сумма/чек/прибыль/топ),
+      bar-chart по дням, таблица по товарам с сортировкой, экспорт CSV,
+      селектор периода (7/14/30/90/180/365)
+- [x] Frontend: маршрут /sales/analytics, подтаб «Аналитика» в разделе Продажи

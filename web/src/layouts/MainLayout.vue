@@ -104,8 +104,9 @@ const subTabsMap: Record<string, SubTab[]> = {
     { name: 'warehouses',         label: 'Склады',               path: '/warehouses',         match: '/warehouses',         roles: ['admin','warehouse'] },
   ],
   sales: [
-    { name: 'orders',    label: 'Заказы',     path: '/orders',    match: '/orders',    roles: ['admin','manager'] },
-    { name: 'customers', label: 'Покупатели', path: '/customers', match: '/customers', roles: ['admin','manager'] },
+    { name: 'orders',           label: 'Заказы',    path: '/orders',           match: '/orders',           roles: ['admin','manager'] },
+    { name: 'customers',        label: 'Покупатели',path: '/customers',        match: '/customers',        roles: ['admin','manager'] },
+    { name: 'sales-analytics',  label: 'Аналитика', path: '/sales/analytics',  match: '/sales/analytics',  roles: ['admin','manager'] },
   ],
   stock: [
     { name: 'stock',      label: 'Остатки',   path: '/stock',      match: '/stock',      roles: ['admin','manager','warehouse'] },
@@ -122,7 +123,7 @@ const currentSection = computed(() => {
   const p = route.path
   if (p.startsWith('/products') || p.startsWith('/categories')) return 'products'
   if (p.startsWith('/documents') || p.startsWith('/warehouses') || p.startsWith('/purchases') || p.startsWith('/suppliers') || p.startsWith('/inventory')) return 'purchases'
-  if (p.startsWith('/orders') || p.startsWith('/customers')) return 'sales'
+  if (p.startsWith('/orders') || p.startsWith('/customers') || p.startsWith('/sales')) return 'sales'
   if (p.startsWith('/stock')) return 'stock'
   if (p.startsWith('/users')) return 'company'
   return 'company'

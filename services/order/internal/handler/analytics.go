@@ -48,3 +48,29 @@ httpx.OK(c, gin.H{
 "count": len(out),
 })
 }
+type dailyRow struct {
+Date        string  `json:"date"`
+SoldQty     float64 `json:"sold_qty"`
+SoldSum     float64 `json:"sold_sum"`
+OrdersCount int     `json:"orders_count"`
+}
+
+func (h *Handler) SalesDaily(c *gin.Context) {
+days := 14
+if s := c.Query("days"); s != "" {
+if n, err := strconv.Atoi(s); err == nil && n > 0 && n <= 365 { days = n }
+}
+rows, err := h.svc.SalesDaily(c.Request.Context(), days)
+if err != nil { c.Error(apperr.Internal("sales daily", err)); return }
+
+out := make([]dailyRow, 0, len(rows))
+for _, r := range rows {
+out = append(out, dailyRow{
+Date:        r.Day.Format("2006-01-02"),
+SoldQty:     r.SoldQty,
+SoldSum:     r.SoldSum,
+OrdersCount: r.OrdersCount,
+})
+}
+httpx.OK(c, gin.H{ "days": days, "items": out })
+}

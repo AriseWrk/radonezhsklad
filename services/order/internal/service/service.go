@@ -144,3 +144,8 @@ if days <= 0 { days = 14 }
 if days > 365 { days = 365 }
 return s.repo.SalesAnalytics(ctx, days)
 }
+func (s *Service) SalesDaily(ctx context.Context, days int) ([]repository.SalesDailyRow, error) {
+if days <= 0 { days = 14 }
+if days > 365 { days = 365 }
+return s.repo.SalesDaily(ctx, days)
+}

@@ -58,6 +58,7 @@ read.GET("/customers", h.ListCustomers)
 read.GET("/customers/:id", h.GetCustomer)
 read.GET("/orders", h.ListOrders)
 			read.GET("/analytics/sales", h.SalesAnalytics)
+			read.GET("/analytics/sales/daily", h.SalesDaily)
 read.GET("/orders/:id", h.GetOrder)
 }
 

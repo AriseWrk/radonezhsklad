@@ -37,14 +37,17 @@ slog.Info("db connected")
 
 repo := repository.New(pool)
 supRepo := repository.NewSupplierRepo(pool)
+	intOrderRepo := repository.NewInternalOrderRepo(pool)
 orgRepo := repository.NewOrganizationRepo(pool)
 
 svc := service.New(repo)
 supSvc := service.NewSupplierService(supRepo, orgRepo)
+	intOrderSvc := service.NewInternalOrderService(intOrderRepo)
 pc := product.New(cfg.ProductURL)
 
 h := handler.New(svc, pc)
 supH := handler.NewSupplierHandler(supSvc)
+	intOrderH := handler.NewInternalOrderHandler(intOrderSvc, svc, supSvc, pc)
 
 if env == "prod" { gin.SetMode(gin.ReleaseMode) }
 r := gin.New()
@@ -70,6 +73,10 @@ read.GET("/documents/:id", h.GetDocument)
 
 read.GET("/suppliers", supH.List)
 read.GET("/suppliers/:id", supH.Get)
+			read.GET("/internal-orders", intOrderH.List)
+			read.GET("/internal-orders/:id", intOrderH.Get)
+			read.GET("/internal-orders/next-number", intOrderH.NextNumber)
+			read.GET("/internal-orders/:id/export", intOrderH.Export)
 read.GET("/organizations", supH.ListOrganizations)
 }
 
@@ -87,6 +94,13 @@ supWrite.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "manager", "w
 supWrite.POST("/suppliers", supH.Create)
 supWrite.PUT("/suppliers/:id", supH.Update)
 supWrite.DELETE("/suppliers/:id", supH.Delete)
+			supWrite.POST("/internal-orders", intOrderH.Create)
+			supWrite.PUT("/internal-orders/:id", intOrderH.Update)
+			supWrite.POST("/internal-orders/:id/post", intOrderH.Post)
+			supWrite.POST("/internal-orders/:id/cancel", intOrderH.Cancel)
+			supWrite.DELETE("/internal-orders/:id", intOrderH.Delete)
+			supWrite.POST("/internal-orders/:id/print", intOrderH.Print)
+			supWrite.POST("/internal-orders/:id/send", intOrderH.Send)
 }
 
 docWrite := api.Group("")

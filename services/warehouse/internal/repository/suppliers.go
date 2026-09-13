@@ -94,3 +94,11 @@ err := r.db.QueryRow(ctx,
 if errors.Is(err, pgx.ErrNoRows) { return nil, nil }
 return o, err
 }
+func (r *OrganizationRepo) Get(ctx context.Context, id uuid.UUID) (*models.Organization, error) {
+o := &models.Organization{}
+err := r.db.QueryRow(ctx,
+`SELECT id, name, inn, is_default, created_at FROM organizations WHERE id = $1`, id,
+).Scan(&o.ID, &o.Name, &o.INN, &o.IsDefault, &o.CreatedAt)
+if errors.Is(err, pgx.ErrNoRows) { return nil, nil }
+return o, err
+}

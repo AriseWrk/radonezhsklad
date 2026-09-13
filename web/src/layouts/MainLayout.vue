@@ -1,6 +1,5 @@
 <template>
   <div class="app">
-    <!-- Верхняя синяя навигация -->
     <header class="topbar">
       <div class="logo" @click="go('/')">
         <span class="logo-icon">📦</span>
@@ -32,7 +31,6 @@
       </div>
     </header>
 
-    <!-- Подтабы активного раздела -->
     <div v-if="currentSubTabs.length" class="subtabs">
       <router-link
         v-for="t in currentSubTabs"
@@ -45,7 +43,6 @@
       </router-link>
     </div>
 
-    <!-- Содержимое -->
     <main class="page-content">
       <router-view />
     </main>
@@ -80,10 +77,10 @@ interface SubTab {
 
 const sections: Section[] = [
   { key: 'company',   label: 'Компания', icon: '🏢', path: '/' },
-  { key: 'purchases', label: 'Закупки',  icon: '🛒', path: '/documents', roles: ['admin', 'manager', 'warehouse'] },
-  { key: 'sales',     label: 'Продажи',  icon: '💰', path: '/orders',    roles: ['admin', 'manager'] },
+  { key: 'purchases', label: 'Закупки',  icon: '🛒', path: '/purchases/planning', roles: ['admin', 'manager', 'warehouse'] },
+  { key: 'sales',     label: 'Продажи',  icon: '💰', path: '/orders',             roles: ['admin', 'manager'] },
   { key: 'products',  label: 'Товары',   icon: '📦', path: '/products' },
-  { key: 'stock',     label: 'Склад',    icon: '🏬', path: '/stock',     roles: ['admin', 'manager', 'warehouse'] },
+  { key: 'stock',     label: 'Склад',    icon: '🏬', path: '/stock',              roles: ['admin', 'manager', 'warehouse'] },
 ]
 
 const subTabsMap: Record<string, SubTab[]> = {
@@ -104,14 +101,16 @@ const subTabsMap: Record<string, SubTab[]> = {
     { name: 'warehouses',         label: 'Склады',               path: '/warehouses',         match: '/warehouses',         roles: ['admin','warehouse'] },
   ],
   sales: [
-    { name: 'orders',           label: 'Заказы',    path: '/orders',           match: '/orders',           roles: ['admin','manager'] },
-    { name: 'customers',        label: 'Покупатели',path: '/customers',        match: '/customers',        roles: ['admin','manager'] },
-    { name: 'sales-analytics',  label: 'Аналитика', path: '/sales/analytics',  match: '/sales/analytics',  roles: ['admin','manager'] },
+    { name: 'orders',          label: 'Заказы',     path: '/orders',          match: '/orders',          roles: ['admin','manager'] },
+    { name: 'customers',       label: 'Покупатели', path: '/customers',       match: '/customers',       roles: ['admin','manager'] },
+    { name: 'sales-analytics', label: 'Аналитика',  path: '/sales/analytics', match: '/sales/analytics', roles: ['admin','manager'] },
   ],
   stock: [
-    { name: 'stock',      label: 'Остатки',   path: '/stock',      match: '/stock',      roles: ['admin','manager','warehouse'] },
-    { name: 'documents',  label: 'Документы', path: '/documents',  match: '/documents',  roles: ['admin','manager','warehouse'] },
-    { name: 'warehouses', label: 'Склады',    path: '/warehouses', match: '/warehouses', roles: ['admin','warehouse'] },
+    { name: 'stock',           label: 'Остатки',           path: '/stock',           match: '/stock',           roles: ['admin','manager','warehouse'] },
+    { name: 'internal-orders', label: 'Внутренние заказы', path: '/internal-orders', match: '/internal-orders', roles: ['admin','manager','warehouse'] },
+    { name: 'documents',       label: 'Документы',         path: '/documents',       match: '/documents',       roles: ['admin','manager','warehouse'] },
+    { name: 'inventory',       label: 'Инвентаризации',    path: '/inventory',       match: '/inventory',       roles: ['admin','manager','warehouse'] },
+    { name: 'warehouses',      label: 'Склады',            path: '/warehouses',      match: '/warehouses',      roles: ['admin','warehouse'] },
   ],
 }
 
@@ -122,10 +121,11 @@ const visibleSections = computed(() =>
 const currentSection = computed(() => {
   const p = route.path
   if (p.startsWith('/products') || p.startsWith('/categories')) return 'products'
-  if (p.startsWith('/documents') || p.startsWith('/warehouses') || p.startsWith('/purchases') || p.startsWith('/suppliers') || p.startsWith('/inventory')) return 'purchases'
+  if (p.startsWith('/purchases') || p.startsWith('/suppliers') || p === '/inventory') return 'purchases'
   if (p.startsWith('/orders') || p.startsWith('/customers') || p.startsWith('/sales')) return 'sales'
-  if (p.startsWith('/stock')) return 'stock'
-  if (p.startsWith('/users')) return 'company'
+  if (p.startsWith('/stock') || p.startsWith('/internal-orders')) return 'stock'
+  if (p === '/inventory') return 'purchases'
+  if (p.startsWith('/users') || p.startsWith('/audit')) return 'company'
   return 'company'
 })
 

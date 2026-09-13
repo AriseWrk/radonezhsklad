@@ -1,0 +1,6 @@
+ALTER TABLE internal_orders
+    ADD COLUMN IF NOT EXISTS shipped_amount NUMERIC(15,2) NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS sent_at        TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS printed_at     TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS owner_id       UUID,
+    ADD COLUMN IF NOT EXISTS owner_dept     VARCHAR(100);

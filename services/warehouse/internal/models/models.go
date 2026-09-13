@@ -84,3 +84,40 @@ DocumentID    *uuid.UUID `json:"document_id,omitempty"`
 QuantityDelta float64    `json:"quantity_delta"`
 CreatedAt     time.Time  `json:"created_at"`
 }
+type InternalOrder struct {
+ID             uuid.UUID           `json:"id"`
+Number         string              `json:"number"`
+DocDate        time.Time           `json:"doc_date"`
+Status         string              `json:"status"`
+OrganizationID *uuid.UUID          `json:"organization_id,omitempty"`
+WarehouseID    *uuid.UUID          `json:"warehouse_id,omitempty"`
+PlanDate       *time.Time          `json:"plan_date,omitempty"`
+Project        *string             `json:"project,omitempty"`
+Comment        *string             `json:"comment,omitempty"`
+Total          float64             `json:"total"`
+ShippedAmount  float64             `json:"shipped_amount"`
+SentAt         *time.Time          `json:"sent_at,omitempty"`
+PrintedAt      *time.Time          `json:"printed_at,omitempty"`
+OwnerID        *uuid.UUID          `json:"owner_id,omitempty"`
+OwnerDept      *string             `json:"owner_dept,omitempty"`
+VatEnabled     bool                `json:"vat_enabled"`
+VatIncluded    bool                `json:"vat_included"`
+PostedAt       *time.Time          `json:"posted_at,omitempty"`
+CancelledAt    *time.Time          `json:"cancelled_at,omitempty"`
+CreatedBy      *uuid.UUID          `json:"created_by,omitempty"`
+CreatedAt      time.Time           `json:"created_at"`
+UpdatedAt      time.Time           `json:"updated_at"`
+Items          []InternalOrderItem `json:"items,omitempty"`
+ItemsCount     int                 `json:"items_count"`
+}
+
+type InternalOrderItem struct {
+ID        uuid.UUID `json:"id"`
+OrderID   uuid.UUID `json:"order_id"`
+ProductID uuid.UUID `json:"product_id"`
+Quantity  float64   `json:"quantity"`
+Price     float64   `json:"price"`
+VatRate   float64   `json:"vat_rate"`
+Sum       float64   `json:"sum"`
+CreatedAt time.Time `json:"created_at"`
+}

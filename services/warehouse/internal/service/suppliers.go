@@ -87,3 +87,6 @@ org, err := s.orgs.Default(ctx)
 if err != nil { return nil, apperr.Internal("default org", err) }
 return org, nil
 }
+func (s *SupplierService) GetOrganization(ctx context.Context, id uuid.UUID) (*models.Organization, error) {
+return s.orgs.Get(ctx, id)
+}

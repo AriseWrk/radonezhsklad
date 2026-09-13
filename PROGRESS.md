@@ -297,3 +297,26 @@
       название, код/артикул, 10 метрик, таблица «Себестоимость» с разбивкой
       по складам и движениям (тип, номер, даты, кол-во, дней, себест., сумма)
 - [x] Анимация выезда, кнопка закрытия, подсветка выбранной строки
+## Этап 25. Внутренние заказы — редизайн 1:1 с МойСклад
+- [x] Миграция 0004: shipped_amount, sent_at, printed_at, owner_id, owner_dept
+- [x] Backend: модель обновлена, select и scan, методы MarkPrinted/MarkSent
+- [x] API: POST /internal-orders/:id/print, POST /internal-orders/:id/send
+- [x] Frontend: полностью переделан InternalOrdersView.vue:
+      toolbar (Заказ, Фильтр, поиск, счётчик выбранных, Изменить, Статус,
+      Создать, Печать, настройки),
+      расширенная фильтр-панель в 3 ряда (Период, Товар/группа, Склад, Проект,
+      Организация, Статус, Проведено, Напечатано, Отправлено, Владелец,
+      Общий доступ, Когда изменен, Кто изменил),
+      таблица с колонками № / Время / Организация / Сумма / Отгружено / Отправлено / Напечатано / Комментарий,
+      чекбоксы, бейджи Напечатан/Отправлен, футер с «Показать итоги»
+## Этап 26. Печать внутреннего заказа в Excel
+- [x] Backend: exporter.InternalOrderXLSX через github.com/xuri/excelize/v2
+      — лист «Заявка», заголовок, склад, объект, шапка таблицы,
+      позиции, ИТОГО, три строки подписей
+- [x] Backend: GET /api/v1/internal-orders/:id/export — генерирует xls
+      (xlsx-контент), отдаёт файл с именем intorder1-{номер}.xls,
+      попутно ставит printed_at
+- [x] Backend: OrganizationRepo.Get, SupplierService.GetOrganization
+- [x] Backend: InternalOrderHandler получил зависимости warehouseSvc, supplierSvc, productCli
+- [x] Frontend: exportInternalOrder() с responseType: 'blob', парсинг Content-Disposition
+- [x] Frontend: кнопка «Печать» в карточке заказа скачивает файл

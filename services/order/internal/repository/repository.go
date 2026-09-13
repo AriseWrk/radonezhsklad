@@ -24,41 +24,73 @@ if err := fn(tx); err != nil { return err }
 return tx.Commit(ctx)
 }
 
-// ---------- customers ----------
+// ---------- customers / counterparties ----------
 
-func (r *Repo) CreateCustomer(ctx context.Context, name string, phone, email, address *string) (*models.Customer, error) {
+const custCols = `id, name, full_name, last_name, first_name, middle_name,
+                  phone, fax, email, address, legal_address, actual_address,
+                  inn, kpp, ogrn, okpo, external_code, counterparty_type,
+                  status, group_name, comment, archived, created_at, updated_at`
+
+func scanCustomer(row pgx.Row) (*models.Customer, error) {
 c := &models.Customer{}
-err := r.db.QueryRow(ctx,
-`INSERT INTO customers (name, phone, email, address) VALUES ($1,$2,$3,$4)
- RETURNING id, name, phone, email, address, created_at, updated_at`,
-name, phone, email, address,
-).Scan(&c.ID, &c.Name, &c.Phone, &c.Email, &c.Address, &c.CreatedAt, &c.UpdatedAt)
+err := row.Scan(&c.ID, &c.Name, &c.FullName, &c.LastName, &c.FirstName, &c.MiddleName,
+&c.Phone, &c.Fax, &c.Email, &c.Address, &c.LegalAddress, &c.ActualAddress,
+&c.INN, &c.KPP, &c.OGRN, &c.OKPO, &c.ExternalCode, &c.CounterpartyType,
+&c.Status, &c.GroupName, &c.Comment, &c.Archived, &c.CreatedAt, &c.UpdatedAt)
+if errors.Is(err, pgx.ErrNoRows) { return nil, nil }
 return c, err
 }
 
-func (r *Repo) ListCustomers(ctx context.Context) ([]models.Customer, error) {
-rows, err := r.db.Query(ctx,
-`SELECT id, name, phone, email, address, created_at, updated_at FROM customers ORDER BY name`)
+func (r *Repo) CreateCustomer(ctx context.Context, c *models.Customer) error {
+if c.Status == "" { c.Status = "Новый" }
+return r.db.QueryRow(ctx,
+`INSERT INTO customers
+ (name, full_name, last_name, first_name, middle_name,
+  phone, fax, email, address, legal_address, actual_address,
+  inn, kpp, ogrn, okpo, external_code, counterparty_type,
+  status, group_name, comment, archived)
+ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+ RETURNING id, created_at, updated_at`,
+c.Name, c.FullName, c.LastName, c.FirstName, c.MiddleName,
+c.Phone, c.Fax, c.Email, c.Address, c.LegalAddress, c.ActualAddress,
+c.INN, c.KPP, c.OGRN, c.OKPO, c.ExternalCode, c.CounterpartyType,
+c.Status, c.GroupName, c.Comment, c.Archived,
+).Scan(&c.ID, &c.CreatedAt, &c.UpdatedAt)
+}
+
+func (r *Repo) ListCustomers(ctx context.Context, includeArchived bool) ([]models.Customer, error) {
+q := `SELECT ` + custCols + ` FROM customers`
+if !includeArchived { q += ` WHERE archived = FALSE` }
+q += ` ORDER BY name LIMIT 2000`
+rows, err := r.db.Query(ctx, q)
 if err != nil { return nil, err }
 defer rows.Close()
 out := []models.Customer{}
 for rows.Next() {
-var c models.Customer
-if err := rows.Scan(&c.ID, &c.Name, &c.Phone, &c.Email, &c.Address, &c.CreatedAt, &c.UpdatedAt); err != nil {
-return nil, err
-}
-out = append(out, c)
+c, err := scanCustomer(rows)
+if err != nil { return nil, err }
+out = append(out, *c)
 }
 return out, rows.Err()
 }
 
 func (r *Repo) GetCustomer(ctx context.Context, id uuid.UUID) (*models.Customer, error) {
-c := &models.Customer{}
-err := r.db.QueryRow(ctx,
-`SELECT id, name, phone, email, address, created_at, updated_at FROM customers WHERE id = $1`, id,
-).Scan(&c.ID, &c.Name, &c.Phone, &c.Email, &c.Address, &c.CreatedAt, &c.UpdatedAt)
-if errors.Is(err, pgx.ErrNoRows) { return nil, nil }
-return c, err
+return scanCustomer(r.db.QueryRow(ctx, `SELECT `+custCols+` FROM customers WHERE id = $1`, id))
+}
+
+func (r *Repo) UpdateCustomer(ctx context.Context, c *models.Customer) error {
+_, err := r.db.Exec(ctx,
+`UPDATE customers SET
+ name=$2, full_name=$3, last_name=$4, first_name=$5, middle_name=$6,
+ phone=$7, fax=$8, email=$9, address=$10, legal_address=$11, actual_address=$12,
+ inn=$13, kpp=$14, ogrn=$15, okpo=$16, external_code=$17, counterparty_type=$18,
+ status=$19, group_name=$20, comment=$21, archived=$22
+ WHERE id=$1`,
+c.ID, c.Name, c.FullName, c.LastName, c.FirstName, c.MiddleName,
+c.Phone, c.Fax, c.Email, c.Address, c.LegalAddress, c.ActualAddress,
+c.INN, c.KPP, c.OGRN, c.OKPO, c.ExternalCode, c.CounterpartyType,
+c.Status, c.GroupName, c.Comment, c.Archived)
+return err
 }
 
 func (r *Repo) DeleteCustomer(ctx context.Context, id uuid.UUID) (bool, error) {

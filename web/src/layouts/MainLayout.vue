@@ -2,7 +2,7 @@
   <div class="app">
     <header class="topbar">
       <div class="logo" @click="go('/')">
-        <span class="logo-icon">📦</span>
+        <img src="/logo.png" alt="Радонеж" class="logo-image" />
         <span class="logo-text">RadonezhSklad</span>
       </div>
 
@@ -79,6 +79,7 @@ const sections: Section[] = [
   { key: 'company',   label: 'Компания', icon: '🏢', path: '/' },
   { key: 'purchases', label: 'Закупки',  icon: '🛒', path: '/purchases/planning', roles: ['admin', 'manager', 'warehouse'] },
   { key: 'sales',     label: 'Продажи',  icon: '💰', path: '/orders',             roles: ['admin', 'manager'] },
+  { key: 'crm',       label: 'CRM',      icon: '👥', path: '/counterparties' },
   { key: 'products',  label: 'Товары',   icon: '📦', path: '/products' },
   { key: 'stock',     label: 'Склад',    icon: '🏬', path: '/stock',              roles: ['admin', 'manager', 'warehouse'] },
 ]
@@ -88,6 +89,10 @@ const subTabsMap: Record<string, SubTab[]> = {
     { name: 'dashboard', label: 'Показатели',  path: '/',        match: '/',      exact: true, roles: ['admin','manager','warehouse','user'] },
     { name: 'users',     label: 'Сотрудники',  path: '/users',   match: '/users',              roles: ['admin'] },
     { name: 'audit',     label: 'Аудит',       path: '/audit',   match: '/audit',              roles: ['admin'] },
+  ],
+  crm: [
+    { name: 'counterparties', label: 'Контрагенты', path: '/counterparties', match: '/counterparties', roles: ['admin','manager','warehouse','user'] },
+    { name: 'contracts',      label: 'Договоры',    path: '/contracts',      match: '/contracts',      roles: ['admin','manager'] },
   ],
   products: [
     { name: 'products',   label: 'Товары',    path: '/products',   match: '/products',   roles: ['admin','manager','warehouse','user'] },
@@ -121,6 +126,7 @@ const visibleSections = computed(() =>
 const currentSection = computed(() => {
   const p = route.path
   if (p.startsWith('/products') || p.startsWith('/categories')) return 'products'
+  if (p.startsWith('/counterparties') || p.startsWith('/customers')) return 'crm'
   if (p.startsWith('/purchases') || p.startsWith('/suppliers') || p === '/inventory') return 'purchases'
   if (p.startsWith('/orders') || p.startsWith('/customers') || p.startsWith('/sales')) return 'sales'
   if (p.startsWith('/stock') || p.startsWith('/internal-orders')) return 'stock'
@@ -170,7 +176,12 @@ function onLogout() {
   margin-right: 20px;
   cursor: pointer;
 }
-.logo-icon { font-size: 20px; }
+.logo-image {
+  height: 34px;
+  width: auto;
+  display: block;
+  filter: brightness(0) invert(1);
+}
 .logo-text { letter-spacing: 0.3px; }
 
 .top-nav {

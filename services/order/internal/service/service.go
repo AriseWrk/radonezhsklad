@@ -22,15 +22,18 @@ func New(repo *repository.Repo, wh *warehouse.Client) *Service {
 return &Service{repo: repo, warehouse: wh}
 }
 
-// ---------- customers ----------
+// ---------- customers / counterparties ----------
 
-func (s *Service) CreateCustomer(ctx context.Context, name string, phone, email, address *string) (*models.Customer, error) {
-if name == "" { return nil, apperr.BadRequest("name is required") }
-return s.repo.CreateCustomer(ctx, name, phone, email, address)
+func (s *Service) CreateCustomer(ctx context.Context, c *models.Customer) (*models.Customer, error) {
+if c.Name == "" { return nil, apperr.BadRequest("name is required") }
+if err := s.repo.CreateCustomer(ctx, c); err != nil {
+return nil, apperr.Internal("create customer", err)
+}
+return c, nil
 }
 
-func (s *Service) ListCustomers(ctx context.Context) ([]models.Customer, error) {
-return s.repo.ListCustomers(ctx)
+func (s *Service) ListCustomers(ctx context.Context, includeArchived bool) ([]models.Customer, error) {
+return s.repo.ListCustomers(ctx, includeArchived)
 }
 
 func (s *Service) GetCustomer(ctx context.Context, id uuid.UUID) (*models.Customer, error) {
@@ -38,6 +41,18 @@ c, err := s.repo.GetCustomer(ctx, id)
 if err != nil { return nil, apperr.Internal("get customer", err) }
 if c == nil { return nil, apperr.NotFound("customer not found") }
 return c, nil
+}
+
+func (s *Service) UpdateCustomer(ctx context.Context, id uuid.UUID, c *models.Customer) (*models.Customer, error) {
+existing, err := s.repo.GetCustomer(ctx, id)
+if err != nil { return nil, apperr.Internal("get customer", err) }
+if existing == nil { return nil, apperr.NotFound("customer not found") }
+c.ID = id
+if c.Status == "" { c.Status = existing.Status }
+if err := s.repo.UpdateCustomer(ctx, c); err != nil {
+return nil, apperr.Internal("update customer", err)
+}
+return s.repo.GetCustomer(ctx, id)
 }
 
 func (s *Service) DeleteCustomer(ctx context.Context, id uuid.UUID) error {

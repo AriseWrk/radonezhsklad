@@ -78,6 +78,8 @@ api.Any("/inventory/*path", warehouseProxy)
 
 api.Any("/customers", orderProxy)
 api.Any("/customers/*path", orderProxy)
+		api.Any("/contracts", orderProxy)
+		api.Any("/contracts/*path", orderProxy)
 api.Any("/orders", orderProxy)
 api.Any("/orders/*path", orderProxy)
 		api.Any("/analytics", orderProxy)

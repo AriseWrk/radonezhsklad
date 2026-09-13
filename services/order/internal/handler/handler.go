@@ -7,6 +7,7 @@ import (
 "github.com/gin-gonic/gin"
 "github.com/google/uuid"
 
+"github.com/radonezhsklad/order/internal/models"
 "github.com/radonezhsklad/order/internal/repository"
 "github.com/radonezhsklad/order/internal/service"
 apperr "github.com/radonezhsklad/shared/errors"
@@ -14,9 +15,14 @@ apperr "github.com/radonezhsklad/shared/errors"
 mw "github.com/radonezhsklad/shared/middleware"
 )
 
-type Handler struct{ svc *service.Service }
+type Handler struct {
+svc         *service.Service
+contractSvc *service.ContractService
+}
 
-func New(svc *service.Service) *Handler { return &Handler{svc: svc} }
+func New(svc *service.Service, contractSvc *service.ContractService) *Handler {
+return &Handler{svc: svc, contractSvc: contractSvc}
+}
 
 func parseUUIDOpt(s string) *uuid.UUID {
 if s == "" { return nil }
@@ -30,25 +36,56 @@ if s == "" { return nil }
 return &s
 }
 
-// ---------- customers ----------
+// ---------- customers / counterparties ----------
 
 type customerReq struct {
-Name    string `json:"name" binding:"required"`
-Phone   string `json:"phone"`
-Email   string `json:"email"`
-Address string `json:"address"`
+Name             string `json:"name" binding:"required"`
+FullName         string `json:"full_name"`
+LastName         string `json:"last_name"`
+FirstName        string `json:"first_name"`
+MiddleName       string `json:"middle_name"`
+Phone            string `json:"phone"`
+Fax              string `json:"fax"`
+Email            string `json:"email"`
+Address          string `json:"address"`
+LegalAddress     string `json:"legal_address"`
+ActualAddress    string `json:"actual_address"`
+INN              string `json:"inn"`
+KPP              string `json:"kpp"`
+OGRN             string `json:"ogrn"`
+OKPO             string `json:"okpo"`
+ExternalCode     string `json:"external_code"`
+CounterpartyType string `json:"counterparty_type"`
+Status           string `json:"status"`
+GroupName        string `json:"group_name"`
+Comment          string `json:"comment"`
+Archived         bool   `json:"archived"`
+}
+
+func (r customerReq) toModel() *models.Customer {
+return &models.Customer{
+Name: r.Name, FullName: strPtr(r.FullName),
+LastName: strPtr(r.LastName), FirstName: strPtr(r.FirstName), MiddleName: strPtr(r.MiddleName),
+Phone: strPtr(r.Phone), Fax: strPtr(r.Fax), Email: strPtr(r.Email),
+Address: strPtr(r.Address), LegalAddress: strPtr(r.LegalAddress), ActualAddress: strPtr(r.ActualAddress),
+INN: strPtr(r.INN), KPP: strPtr(r.KPP), OGRN: strPtr(r.OGRN), OKPO: strPtr(r.OKPO),
+ExternalCode: strPtr(r.ExternalCode), CounterpartyType: strPtr(r.CounterpartyType),
+Status: r.Status, GroupName: strPtr(r.GroupName), Comment: strPtr(r.Comment),
+Archived: r.Archived,
+}
 }
 
 func (h *Handler) CreateCustomer(c *gin.Context) {
 var req customerReq
 if err := c.ShouldBindJSON(&req); err != nil { c.Error(apperr.BadRequest(err.Error())); return }
-item, err := h.svc.CreateCustomer(c.Request.Context(), req.Name, strPtr(req.Phone), strPtr(req.Email), strPtr(req.Address))
+item, err := h.svc.CreateCustomer(c.Request.Context(), req.toModel())
 if err != nil { c.Error(err); return }
 httpx.Created(c, item)
 }
 
 func (h *Handler) ListCustomers(c *gin.Context) {
-items, err := h.svc.ListCustomers(c.Request.Context())
+includeArchived := c.Query("include_archived") == "true"
+items, err := h.svc.ListCustomers(c.Request.Context(), includeArchived)
 if err != nil { c.Error(err); return }
 httpx.OK(c, gin.H{"items": items})
 }
@@ -57,6 +94,16 @@ func (h *Handler) GetCustomer(c *gin.Context) {
 id, err := uuid.Parse(c.Param("id"))
 if err != nil { c.Error(apperr.BadRequest("invalid id")); return }
 item, err := h.svc.GetCustomer(c.Request.Context(), id)
+if err != nil { c.Error(err); return }
+httpx.OK(c, item)
+}
+
+func (h *Handler) UpdateCustomer(c *gin.Context) {
+id, err := uuid.Parse(c.Param("id"))
+if err != nil { c.Error(apperr.BadRequest("invalid id")); return }
+var req customerReq
+if err := c.ShouldBindJSON(&req); err != nil { c.Error(apperr.BadRequest(err.Error())); return }
+item, err := h.svc.UpdateCustomer(c.Request.Context(), id, req.toModel())
 if err != nil { c.Error(err); return }
 httpx.OK(c, item)
 }

@@ -355,3 +355,11 @@ Backend/API/браузер работают корректно — пробле�
 - [x] Фильтры: период, сотрудник, поиск по описанию события
 - [x] Пагинация с 4 кнопками и «1–100 из N»
 - [x] Иконка ⓘ возле заголовка, ↻ обновление
+## Этап 31. CRM → Договоры + импорт из Excel
+- [x] Миграция 0003_contracts: таблица contracts (number, code, doc_date, customer_id, organization_id, amount, currency, paid, fulfilled, comment, printed_at, sent_at, archived)
+- [x] Backend order: models.Contract, ContractRepo, ContractService, ContractHandler
+- [x] API: GET/POST /contracts, GET/PUT/DELETE /contracts/:id
+- [x] Gateway: проксирует /contracts
+- [x] Frontend: api/contracts.ts, ContractsView.vue (тулбар, чекбоксы, сортировка, фильтры, жёлтая подсветка неоплаченных, экспорт)
+- [x] Router: /contracts, подтаб Договоры в разделе CRM
+- [x] Import-Contracts.ps1 — импорт из XLS, матчит контрагентов по имени

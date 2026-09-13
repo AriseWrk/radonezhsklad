@@ -29,6 +29,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'customers',  name: 'customers',  component: () => import('../views/CustomersView.vue'),  meta: { roles: ['admin', 'manager'] } },
       { path: 'orders',     name: 'orders',     component: () => import('../views/OrdersView.vue'),     meta: { roles: ['admin', 'manager'] } },
       { path: 'users',      name: 'users',      component: () => import('../views/UsersView.vue'),      meta: { roles: ['admin'] } },
+      { path: 'audit',      name: 'audit',      component: () => import('../views/AuditView.vue'),      meta: { roles: ['admin'] } },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },

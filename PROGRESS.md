@@ -251,3 +251,10 @@
 - [x] Frontend: маршрут /inventory с ролями admin/manager/warehouse
 - [x] Frontend: подтабы Склад и Закупки разбиты по типам документов (Оприходования/Списания/Перемещения/Инвентаризации/Остатки/Склады)
 - [x] Frontend: DocumentsView принимает ?type= из URL
+## Этап 19. Аудит действий
+- [x] Отдельный сервис audit :8085, БД radonezh_audit, таблица audit_logs
+- [x] API: POST /internal/audit (внутренний приём с X-Internal-Token), GET /audit (только admin)
+- [x] Gateway middleware: логирует все POST/PUT/PATCH/DELETE с кодом 2xx, асинхронно шлёт в audit
+- [x] Gateway: UserContext парсит JWT и кладёт user_id в контекст (для аудита)
+- [x] Frontend: AuditView.vue — таблица событий, фильтры (метод/ресурс/период), пагинация, модалка деталей с JSON
+- [x] Подтаб «Аудит» в разделе «Компания» (только admin)

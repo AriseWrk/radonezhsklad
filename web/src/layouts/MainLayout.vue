@@ -90,6 +90,7 @@ const subTabsMap: Record<string, SubTab[]> = {
   company: [
     { name: 'dashboard', label: 'Показатели',  path: '/',        match: '/',      exact: true, roles: ['admin','manager','warehouse','user'] },
     { name: 'users',     label: 'Сотрудники',  path: '/users',   match: '/users',              roles: ['admin'] },
+    { name: 'audit',     label: 'Аудит',       path: '/audit',   match: '/audit',              roles: ['admin'] },
   ],
   products: [
     { name: 'products',   label: 'Товары',    path: '/products',   match: '/products',   roles: ['admin','manager','warehouse','user'] },

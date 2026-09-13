@@ -266,3 +266,17 @@
 - [x] Frontend: suppliers.ts, обновлён documents.ts (новые поля)
 - [x] Frontend: ReceiptsView.vue со всеми колонками как в МойСклад (№ / Время / Склад / Контрагент / Организация / Сумма / Оплачено / Входящая дата / Входящий номер / Отправлено / Напечатано / Комментарий)
 - [x] Frontend: маршрут /purchases/receipts, подтабы раздела Закупки
+## Этап 21. Управление закупками (планирование)
+- [x] Backend: SalesAnalytics в order — агрегация проданного за N дней по shipped-заказам
+- [x] API: GET /analytics/sales?days=N через gateway (order-сервис)
+- [x] Frontend: analytics.ts
+- [x] Frontend: PurchasesPlanningView.vue — 18 колонок (продажи + остатки + рекомендации),
+      прогноз на N дней, сортировка, фильтры, футер с итогами
+- [x] Frontend: маршрут /purchases/planning, подтаб «Управление закупками» в разделе Закупки
+
+Формулы:
+- avgDailySales = sold_qty / N
+- days_of_stock = available / avgDailySales
+- expectedDemand = avgDailySales × N
+- supply = available − expectedDemand
+- to_order = max(0, expectedDemand − available)

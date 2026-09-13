@@ -57,6 +57,7 @@ read.Use(mw.RequireJWT(cfg.JWTSecret))
 read.GET("/customers", h.ListCustomers)
 read.GET("/customers/:id", h.GetCustomer)
 read.GET("/orders", h.ListOrders)
+			read.GET("/analytics/sales", h.SalesAnalytics)
 read.GET("/orders/:id", h.GetOrder)
 }
 

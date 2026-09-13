@@ -97,10 +97,11 @@ const subTabsMap: Record<string, SubTab[]> = {
     { name: 'categories', label: 'Категории', path: '/categories', match: '/categories', roles: ['admin','manager','warehouse','user'] },
   ],
   purchases: [
-    { name: 'purchases-receipts', label: 'Приёмки',           path: '/purchases/receipts', match: '/purchases/receipts', roles: ['admin','manager','warehouse'] },
-    { name: 'purchases-suppliers',label: 'Поставщики',        path: '/suppliers',          match: '/suppliers',          roles: ['admin','manager','warehouse'] },
-    { name: 'inventory',          label: 'Инвентаризации',    path: '/inventory',          match: '/inventory',          roles: ['admin','manager','warehouse'] },
-    { name: 'warehouses',         label: 'Склады',            path: '/warehouses',         match: '/warehouses',         roles: ['admin','warehouse'] },
+    { name: 'purchases-planning', label: 'Управление закупками', path: '/purchases/planning', match: '/purchases/planning', roles: ['admin','manager','warehouse'] },
+    { name: 'purchases-receipts', label: 'Приёмки',              path: '/purchases/receipts', match: '/purchases/receipts', roles: ['admin','manager','warehouse'] },
+    { name: 'purchases-suppliers',label: 'Поставщики',           path: '/suppliers',          match: '/suppliers',          roles: ['admin','manager','warehouse'] },
+    { name: 'inventory',          label: 'Инвентаризации',       path: '/inventory',          match: '/inventory',          roles: ['admin','manager','warehouse'] },
+    { name: 'warehouses',         label: 'Склады',               path: '/warehouses',         match: '/warehouses',         roles: ['admin','warehouse'] },
   ],
   sales: [
     { name: 'orders',    label: 'Заказы',     path: '/orders',    match: '/orders',    roles: ['admin','manager'] },
@@ -122,7 +123,7 @@ const currentSection = computed(() => {
   if (p.startsWith('/products') || p.startsWith('/categories')) return 'products'
   if (p.startsWith('/documents') || p.startsWith('/warehouses') || p.startsWith('/purchases') || p.startsWith('/suppliers') || p.startsWith('/inventory')) return 'purchases'
   if (p.startsWith('/orders') || p.startsWith('/customers')) return 'sales'
-  if (p.startsWith('/stock') || p.startsWith('/inventory')) return 'stock'
+  if (p.startsWith('/stock')) return 'stock'
   if (p.startsWith('/users')) return 'company'
   return 'company'
 })

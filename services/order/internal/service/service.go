@@ -137,3 +137,10 @@ return nil, apperr.Internal("cancel order", err)
 }
 return s.GetOrder(ctx, id)
 }
+// ---------- analytics ----------
+
+func (s *Service) SalesAnalytics(ctx context.Context, days int) ([]repository.SalesRow, error) {
+if days <= 0 { days = 14 }
+if days > 365 { days = 365 }
+return s.repo.SalesAnalytics(ctx, days)
+}

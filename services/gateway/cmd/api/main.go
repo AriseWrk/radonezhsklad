@@ -78,6 +78,8 @@ api.Any("/customers", orderProxy)
 api.Any("/customers/*path", orderProxy)
 api.Any("/orders", orderProxy)
 api.Any("/orders/*path", orderProxy)
+		api.Any("/analytics", orderProxy)
+		api.Any("/analytics/*path", orderProxy)
 
 // audit list
 api.Any("/audit", auditProxy)

@@ -2,6 +2,7 @@ package repository
 
 import (
 "context"
+	"time"
 "errors"
 
 "github.com/google/uuid"
@@ -216,6 +217,49 @@ return err
 }
 _, err := r.db.Exec(ctx, q, id, status)
 return err
+}
+
+
+// ---------- analytics ----------
+
+type SalesRow struct {
+ProductID    uuid.UUID
+SoldQty      float64
+SoldSum      float64
+OrdersCount  int
+FirstSoldAt  *time.Time
+LastSoldAt   *time.Time
+}
+
+// SalesAnalytics — агрегация проданного за N дней по shipped-заказам.
+func (r *Repo) SalesAnalytics(ctx context.Context, days int) ([]SalesRow, error) {
+rows, err := r.db.Query(ctx, `
+SELECT oi.product_id,
+       COALESCE(SUM(oi.quantity), 0)               AS sold_qty,
+       COALESCE(SUM(oi.quantity * oi.price), 0)    AS sold_sum,
+       COUNT(DISTINCT oi.order_id)                 AS orders_count,
+       MIN(o.shipped_at)                           AS first_sold_at,
+       MAX(o.shipped_at)                           AS last_sold_at
+FROM order_items oi
+JOIN orders o ON o.id = oi.order_id
+WHERE o.status = 'shipped'
+  AND o.shipped_at IS NOT NULL
+  AND o.shipped_at >= NOW() - ($1::text || ' days')::interval
+GROUP BY oi.product_id
+ORDER BY sold_sum DESC`, days)
+if err != nil { return nil, err }
+defer rows.Close()
+
+out := []SalesRow{}
+for rows.Next() {
+var s SalesRow
+if err := rows.Scan(&s.ProductID, &s.SoldQty, &s.SoldSum, &s.OrdersCount,
+&s.FirstSoldAt, &s.LastSoldAt); err != nil {
+return nil, err
+}
+out = append(out, s)
+}
+return out, rows.Err()
 }
 
 func itoa(n int) string {

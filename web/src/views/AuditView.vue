@@ -1,7 +1,9 @@
 <template>
   <div>
+    <!-- Заголовок -->
     <div class="page-title-bar">
       <div class="page-title">
+        <span class="info-icon" title="История действий пользователей">ⓘ</span>
         <span>Аудит</span>
         <span class="refresh" @click="load" title="Обновить">↻</span>
       </div>
@@ -10,154 +12,366 @@
       </div>
     </div>
 
+    <!-- Панель фильтров -->
     <div v-if="showFilter" class="filter-panel">
       <div class="filter-row">
         <div class="filter-actions">
-          <button class="btn-find" @click="load">Найти</button>
+          <button class="btn-find" @click="applyFilters">Найти</button>
           <button class="btn-clear" @click="clearFilters">Очистить</button>
         </div>
         <div class="filter-field">
-          <label>Метод</label>
-          <select v-model="filters.method">
-            <option value="">Все</option>
-            <option value="POST">POST</option>
-            <option value="PUT">PUT</option>
-            <option value="PATCH">PATCH</option>
-            <option value="DELETE">DELETE</option>
-          </select>
-        </div>
-        <div class="filter-field">
-          <label>Ресурс</label>
-          <input v-model="filters.resource" placeholder="products, orders, warehouses..." />
-        </div>
-        <div class="filter-field">
           <label>Период с</label>
-          <input v-model="filters.dateFrom" type="date" />
+          <input v-model="filterDateFrom" type="date" />
         </div>
         <div class="filter-field">
           <label>Период по</label>
-          <input v-model="filters.dateTo" type="date" />
+          <input v-model="filterDateTo" type="date" />
+        </div>
+        <div class="filter-field">
+          <label>Сотрудник</label>
+          <select v-model="filterUserId">
+            <option value="">Все</option>
+            <option v-for="u in users" :key="u.id" :value="u.id">{{ fullName(u) }}</option>
+          </select>
+        </div>
+        <div class="filter-field">
+          <label>Событие</label>
+          <input v-model="filterSearch" placeholder="Например: заказ, товар" />
         </div>
       </div>
     </div>
 
     <div v-if="error" class="error-box">{{ error }}</div>
 
-    <table class="ms-table">
+    <!-- Таблица -->
+    <table class="ms-table audit-table">
       <thead>
         <tr>
-          <th style="width:160px">Время</th>
-          <th style="width:80px">Метод</th>
-          <th>Путь</th>
-          <th style="width:120px">Пользователь</th>
-          <th style="width:80px">Статус</th>
-          <th style="width:140px">IP</th>
-          <th></th>
+          <th style="width:150px" @click="sortBy('created_at')">
+            Время
+            <span v-if="sortKey === 'created_at'" class="sort-arrow">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
+          </th>
+          <th style="width:230px" @click="sortBy('user')">
+            Сотрудник
+            <span v-if="sortKey === 'user'" class="sort-arrow">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
+          </th>
+          <th>Событие</th>
         </tr>
       </thead>
       <tbody>
         <tr v-if="loading">
-          <td colspan="7" class="muted" style="text-align:center;padding:24px">Загрузка...</td>
+          <td colspan="3" class="muted" style="text-align:center;padding:24px">Загрузка...</td>
         </tr>
-        <tr v-else-if="items.length === 0">
-          <td colspan="7" class="muted" style="text-align:center;padding:24px">Нет событий</td>
+        <tr v-else-if="filtered.length === 0">
+          <td colspan="3" class="muted" style="text-align:center;padding:24px">Нет событий</td>
         </tr>
-        <tr v-else v-for="l in items" :key="l.id">
+        <tr v-else v-for="l in paginated" :key="l.id">
           <td class="muted">{{ formatDate(l.created_at) }}</td>
-          <td><span :class="['method-badge', 'method-' + l.method.toLowerCase()]">{{ l.method }}</span></td>
-          <td class="mono">{{ l.path }}</td>
-          <td class="mono muted">{{ (l.user_id || '—').slice(0, 8) }}</td>
           <td>
-            <span :class="['status-badge', l.status < 300 ? 'ok' : 'err']">{{ l.status }}</span>
+            <div class="user-cell">
+              <div class="avatar">{{ initials(userById(l.user_id)) }}</div>
+              <span>{{ userLabel(userById(l.user_id)) }}</span>
+            </div>
           </td>
-          <td class="muted mono">{{ l.client_ip || '—' }}</td>
-          <td class="actions-col">
-            <button class="btn-link" @click="showDetail(l)">Детали</button>
+          <td>
+            <span v-if="describeParts(l).prefix" class="event-prefix">{{ describeParts(l).prefix }}</span>
+            <a
+              v-if="describeParts(l).link"
+              class="event-link"
+              href="#"
+              @click.prevent
+            >{{ describeParts(l).link }}</a>
+            <span v-if="describeParts(l).suffix" class="event-suffix"> {{ describeParts(l).suffix }}</span>
           </td>
         </tr>
       </tbody>
     </table>
 
+    <!-- Футер -->
     <div class="ms-footer">
       <div class="ms-pager">
-        <button :disabled="filters.offset === 0" @click="prevPage">◀</button>
-        <span>{{ rangeFrom }}–{{ rangeTo }} из {{ total }}</span>
-        <button :disabled="rangeTo >= total" @click="nextPage">▶</button>
-      </div>
-    </div>
-
-    <!-- Модалка деталей -->
-    <div v-if="detail" class="modal-backdrop" @click.self="detail = null">
-      <div class="card modal big">
-        <h2>Событие аудита</h2>
-        <div class="doc-info">
-          <div><span class="lbl">Время:</span> {{ formatDate(detail.created_at) }}</div>
-          <div><span class="lbl">Метод:</span> {{ detail.method }}</div>
-          <div><span class="lbl">Путь:</span> {{ detail.path }}</div>
-          <div><span class="lbl">Статус:</span> {{ detail.status }}</div>
-          <div><span class="lbl">Пользователь:</span> {{ detail.user_id || '—' }}</div>
-          <div><span class="lbl">IP:</span> {{ detail.client_ip || '—' }}</div>
-          <div><span class="lbl">Request ID:</span> {{ detail.request_id || '—' }}</div>
-        </div>
-        <div v-if="detail.request_body">
-          <div class="lbl" style="margin-bottom:6px">Тело запроса:</div>
-          <pre class="code-block">{{ prettyBody(detail.request_body) }}</pre>
-        </div>
-        <div class="modal-actions">
-          <button @click="detail = null">Закрыть</button>
-        </div>
+        <button :disabled="page === 1" @click="page--">◀</button>
+        <button :disabled="page === 1" @click="page = 1">↤</button>
+        <span>{{ rangeFrom }}–{{ rangeTo }} из {{ filtered.length }}</span>
+        <button :disabled="rangeTo >= filtered.length" @click="page = Math.ceil(filtered.length / perPage)">↦</button>
+        <button :disabled="rangeTo >= filtered.length" @click="page++">▶</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { listAudit, type AuditLog } from '../api/audit'
+import { listUsers, type User } from '../api/users'
 import { apiErrorMessage } from '../api/client'
 
 const items = ref<AuditLog[]>([])
-const total = ref(0)
+const users = ref<User[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const showFilter = ref(false)
-const detail = ref<AuditLog | null>(null)
+const page = ref(1)
+const perPage = 100
 
-const filters = reactive({
-  method: '',
-  resource: '',
-  dateFrom: '',
-  dateTo: '',
-  offset: 0,
-  limit: 100,
+const filterDateFrom = ref('')
+const filterDateTo = ref('')
+const filterUserId = ref('')
+const filterSearch = ref('')
+
+const sortKey = ref<'created_at' | 'user'>('created_at')
+const sortDir = ref<'asc' | 'desc'>('desc')
+
+const userMap = computed(() => {
+  const m = new Map<string, User>()
+  for (const u of users.value) m.set(u.id, u)
+  return m
 })
+
+function userById(id?: string): User | null {
+  if (!id) return null
+  return userMap.value.get(id) ?? null
+}
+
+function fullName(u: User): string {
+  const parts = [u.last_name, u.first_name, u.middle_name].filter(Boolean)
+  return parts.length > 0 ? parts.join(' ') : u.email
+}
+
+function userLabel(u: User | null): string {
+  if (!u) return 'Система'
+  const ln = (u.last_name ?? '').trim()
+  const fn = (u.first_name ?? '').trim()
+  const mn = (u.middle_name ?? '').trim()
+  if (ln || fn) {
+    // МойСклад-стиль: «Фамилия И. О.»
+    const initials = [fn.charAt(0), mn.charAt(0)].filter(Boolean).map((c) => c + '.').join(' ')
+    return (ln + ' ' + initials).trim()
+  }
+  return u.email || 'Сотрудник'
+}
+
+function initials(u: User | null): string {
+  if (!u) return '·'
+  const ln = (u.last_name ?? '').trim()
+  const fn = (u.first_name ?? '').trim()
+  const a = ln ? ln.charAt(0) : ''
+  const b = fn ? fn.charAt(0) : ''
+  const s = (a + b).toUpperCase()
+  return s || (u.email ? u.email.charAt(0).toUpperCase() : '·')
+}
 
 function formatDate(s: string) {
   const d = new Date(s)
-  return d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU')
+  const day = String(d.getDate()).padStart(2, '0')
+  const mon = String(d.getMonth() + 1).padStart(2, '0')
+  const yr = d.getFullYear()
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `${day}.${mon}.${yr} ${hh}:${mm}`
 }
 
-function prettyBody(s: string) {
-  try { return JSON.stringify(JSON.parse(s), null, 2) } catch { return s }
+// ---------- Человекочитаемое описание события ----------
+
+interface EventParts { prefix: string; link: string; suffix: string }
+
+function describeParts(l: AuditLog): EventParts {
+  const path = l.path || ''
+  const method = (l.method || '').toUpperCase()
+  const body = parseBody(l.request_body)
+
+  const numFromBody = firstOf(body, ['number', 'incoming_number', 'name', 'id'])
+
+  // Особые маршруты — сначала
+  const special = matchSpecial(path, method, numFromBody)
+  if (special) return special
+
+  // Общие
+  const resource = detectResource(path)
+  if (resource) {
+    const verb = verbFor(method)
+    const obj = numFromBody ? `${resource.genderRu} ${numFromBody}` : ''
+    const name = body && (body.name || body.title) ? `«${body.name || body.title}»` : ''
+
+    const base = `${verb} ${resource.ru}${obj ? ' ' + obj : ''}`
+    return {
+      prefix: base + (name ? ' ' : ''),
+      link: name ? name : '',
+      suffix: '',
+    }
+  }
+
+  // Непонятный путь
+  return {
+    prefix: `${method} ${path}`,
+    link: '',
+    suffix: '',
+  }
 }
 
-const rangeFrom = computed(() => total.value === 0 ? 0 : filters.offset + 1)
-const rangeTo = computed(() => Math.min(filters.offset + filters.limit, total.value))
+function matchSpecial(path: string, method: string, num: string): EventParts | null {
+  const lower = path.toLowerCase()
+
+  // Внутренние заказы
+  if (lower.includes('/internal-orders')) {
+    if (lower.endsWith('/print') || lower.endsWith('/export')) {
+      return { prefix: 'Распечатан внутренний заказ', link: num, suffix: '' }
+    }
+    if (lower.endsWith('/post')) {
+      return { prefix: 'Проведён внутренний заказ', link: num, suffix: '' }
+    }
+    if (lower.endsWith('/cancel')) {
+      return { prefix: 'Отменён внутренний заказ', link: num, suffix: '' }
+    }
+    if (method === 'POST' && /\/internal-orders\/?$/.test(lower)) {
+      return { prefix: 'Создан внутренний заказ', link: num, suffix: '' }
+    }
+    if (method === 'PUT' || method === 'PATCH') {
+      return { prefix: 'Изменён внутренний заказ', link: num, suffix: '' }
+    }
+    if (method === 'DELETE') {
+      return { prefix: 'Удалён внутренний заказ', link: num, suffix: '' }
+    }
+  }
+
+  // Документы
+  if (lower.includes('/documents')) {
+    if (lower.endsWith('/post')) {
+      return { prefix: 'Проведён документ', link: num, suffix: '' }
+    }
+    if (lower.endsWith('/cancel')) {
+      return { prefix: 'Отменён документ', link: num, suffix: '' }
+    }
+    if (method === 'POST' && /\/documents\/?$/.test(lower)) {
+      return { prefix: 'Создан документ', link: num, suffix: '' }
+    }
+    if (method === 'DELETE') {
+      return { prefix: 'Удалён документ', link: num, suffix: '' }
+    }
+  }
+
+  // Заказы покупателей
+  if (lower.includes('/orders/')) {
+    if (lower.endsWith('/confirm')) return { prefix: 'Подтверждён заказ', link: num, suffix: '' }
+    if (lower.endsWith('/ship'))    return { prefix: 'Отгружен заказ',    link: num, suffix: '' }
+    if (lower.endsWith('/cancel'))  return { prefix: 'Отменён заказ',     link: num, suffix: '' }
+  }
+
+  // Экспорт
+  if (lower.endsWith('/export')) {
+    return { prefix: 'Экспорт выполнен', link: num, suffix: '' }
+  }
+
+  return null
+}
+
+interface Resource { ru: string; genderRu: string }
+function detectResource(path: string): Resource | null {
+  const lower = path.toLowerCase()
+  if (lower.includes('/products'))       return { ru: 'товар',              genderRu: '' }
+  if (lower.includes('/categories'))     return { ru: 'категорию',          genderRu: '' }
+  if (lower.includes('/units'))          return { ru: 'единицу измерения',  genderRu: '' }
+  if (lower.includes('/warehouses'))     return { ru: 'склад',              genderRu: '' }
+  if (lower.includes('/suppliers'))      return { ru: 'поставщика',         genderRu: '' }
+  if (lower.includes('/organizations'))  return { ru: 'организацию',        genderRu: '' }
+  if (lower.includes('/customers'))      return { ru: 'покупателя',         genderRu: '' }
+  if (lower.includes('/orders'))         return { ru: 'заказ',              genderRu: '' }
+  if (lower.includes('/internal-orders'))return { ru: 'внутренний заказ',   genderRu: '' }
+  if (lower.includes('/users'))          return { ru: 'сотрудника',         genderRu: '' }
+  return null
+}
+
+function verbFor(method: string): string {
+  switch (method) {
+    case 'POST':   return 'Создан'
+    case 'PUT':
+    case 'PATCH':  return 'Изменён'
+    case 'DELETE': return 'Удалён'
+    default:       return method
+  }
+}
+
+function parseBody(raw?: string): any {
+  if (!raw) return null
+  try { return JSON.parse(raw) } catch { return null }
+}
+function firstOf(obj: any, keys: string[]): string {
+  if (!obj) return ''
+  for (const k of keys) {
+    if (obj[k] != null && obj[k] !== '') return String(obj[k])
+  }
+  return ''
+}
+
+// ---------- Фильтрация/сортировка/пагинация ----------
+
+const filtered = computed(() => {
+  let rows = items.value
+
+  if (filterUserId.value) rows = rows.filter((r) => r.user_id === filterUserId.value)
+
+  if (filterDateFrom.value) {
+    const t = new Date(filterDateFrom.value).getTime()
+    rows = rows.filter((r) => new Date(r.created_at).getTime() >= t)
+  }
+  if (filterDateTo.value) {
+    const t = new Date(filterDateTo.value).getTime() + 86400000 - 1
+    rows = rows.filter((r) => new Date(r.created_at).getTime() <= t)
+  }
+  if (filterSearch.value) {
+    const q = filterSearch.value.toLowerCase()
+    rows = rows.filter((r) => {
+      const desc = describeParts(r).prefix.toLowerCase()
+      return desc.includes(q)
+    })
+  }
+
+  return [...rows].sort((a, b) => {
+    if (sortKey.value === 'created_at') {
+      const av = new Date(a.created_at).getTime()
+      const bv = new Date(b.created_at).getTime()
+      return sortDir.value === 'asc' ? av - bv : bv - av
+    }
+    // user
+    const ua = userLabel(userById(a.user_id))
+    const ub = userLabel(userById(b.user_id))
+    return sortDir.value === 'asc' ? ua.localeCompare(ub, 'ru') : ub.localeCompare(ua, 'ru')
+  })
+})
+
+const paginated = computed(() => {
+  const from = (page.value - 1) * perPage
+  return filtered.value.slice(from, from + perPage)
+})
+const rangeFrom = computed(() => filtered.value.length === 0 ? 0 : (page.value - 1) * perPage + 1)
+const rangeTo = computed(() => Math.min(page.value * perPage, filtered.value.length))
+
+function sortBy(k: typeof sortKey.value) {
+  if (sortKey.value === k) sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  else { sortKey.value = k; sortDir.value = 'desc' }
+  page.value = 1
+}
+
+function applyFilters() { page.value = 1 }
+
+function clearFilters() {
+  filterDateFrom.value = ''
+  filterDateTo.value = ''
+  filterUserId.value = ''
+  filterSearch.value = ''
+  page.value = 1
+}
 
 async function load() {
   loading.value = true
   error.value = null
   try {
-    const resp = await listAudit({
-      method: filters.method || undefined,
-      resource: filters.resource || undefined,
-      date_from: filters.dateFrom || undefined,
-      date_to: filters.dateTo || undefined,
-      limit: filters.limit,
-      offset: filters.offset,
-    })
+    const [resp, us] = await Promise.all([
+      listAudit({ limit: 500, offset: 0 }),
+      listUsers().catch(() => [] as User[]),
+    ])
     items.value = resp.items
-    total.value = resp.total
+    users.value = us
   } catch (e) {
     error.value = apiErrorMessage(e)
   } finally {
@@ -165,67 +379,52 @@ async function load() {
   }
 }
 
-function clearFilters() {
-  filters.method = ''
-  filters.resource = ''
-  filters.dateFrom = ''
-  filters.dateTo = ''
-  filters.offset = 0
-  load()
-}
-
-function prevPage() {
-  if (filters.offset === 0) return
-  filters.offset = Math.max(0, filters.offset - filters.limit)
-  load()
-}
-
-function nextPage() {
-  if (rangeTo.value >= total.value) return
-  filters.offset += filters.limit
-  load()
-}
-
-function showDetail(l: AuditLog) { detail.value = l }
-
 onMounted(load)
 </script>
 
 <style scoped>
-.mono { font-family: monospace; font-size: 12px; }
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px; height: 22px;
+  border: 1.5px solid #2c5d9c;
+  border-radius: 50%;
+  color: #2c5d9c;
+  font-size: 14px;
+  font-weight: 700;
+  margin-right: 6px;
+}
 
-.method-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 3px;
+.audit-table tbody td { vertical-align: middle; }
+.audit-table tbody tr { cursor: default; }
+
+.user-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: #e6ebf2;
+  color: #6a7a8c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 11px;
   font-weight: 600;
-  font-family: monospace;
+  flex-shrink: 0;
 }
-.method-post   { background: #e8f5e9; color: #1a7f37; }
-.method-put    { background: #fff8e1; color: #9a6a00; }
-.method-patch  { background: #f3e5f5; color: #6a1b9a; }
-.method-delete { background: #ffebee; color: #cf222e; }
 
-.status-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 600;
+.event-prefix { color: #1f2328; }
+.event-link {
+  color: #2c5d9c;
+  cursor: pointer;
+  text-decoration: none;
 }
-.status-badge.ok  { background: #e8f5e9; color: #1a7f37; }
-.status-badge.err { background: #ffebee; color: #cf222e; }
+.event-link:hover { text-decoration: underline; }
+.event-suffix { color: #1f2328; }
 
-.code-block {
-  background: #f6f8fa;
-  border: 1px solid #d8dee4;
-  border-radius: 4px;
-  padding: 10px;
-  font-size: 12px;
-  font-family: monospace;
-  max-height: 300px;
-  overflow: auto;
-  margin: 0;
-}
+.sort-arrow { color: #2c5d9c; font-size: 11px; margin-left: 4px; }
 </style>

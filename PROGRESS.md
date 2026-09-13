@@ -320,3 +320,21 @@
 - [x] Backend: InternalOrderHandler получил зависимости warehouseSvc, supplierSvc, productCli
 - [x] Frontend: exportInternalOrder() с responseType: 'blob', парсинг Content-Disposition
 - [x] Frontend: кнопка «Печать» в карточке заказа скачивает файл
+## ⚠️ КРИТИЧНО: Docker Desktop на Windows ломает UTF-8 в pipe
+
+**Симптом:** `docker exec -i rs_postgres psql -c "SELECT name..."` выводит `?????`, и **запись через pipe тоже искажается** — в БД попадают байты 0x3F вместо UTF-8.
+
+**Доказательство:** `encode(name::bytea, 'hex')` возвращает `3f3f3f...` вместо `d0a8d182d183d0bad0b0` (Штука).
+
+**Причина:** pipe `docker exec` на Windows конвертирует stdin/stdout через кодовую страницу консоли (CP866/CP1251), теряя не-ASCII байты.
+
+**Единственный надёжный способ — через docker cp:**
+1. Записать SQL в локальный файл (UTF-8 без BOM)
+2. `docker cp file.sql rs_postgres:/tmp/file.sql`
+3. `docker exec rs_postgres psql -f /tmp/file.sql > /tmp/out.txt`
+4. `docker cp rs_postgres:/tmp/out.txt out.txt`
+5. Прочитать локально как UTF-8
+
+**Реализовано в devtools.ps1** функциями `Invoke-SqlQuery` и `Invoke-SqlFile`. **Никогда** не использовать `Get-Content file | docker exec -i psql` и не использовать `docker exec -i psql -c "..."` для русских строк.
+
+Backend/API/браузер работают корректно — проблема только на входе/выходе контейнера через pipe.

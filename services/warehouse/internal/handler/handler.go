@@ -2,6 +2,7 @@ package handler
 
 import (
 "net/http"
+"time"
 
 "github.com/gin-gonic/gin"
 "github.com/google/uuid"
@@ -109,8 +110,19 @@ Type              string       `json:"type"       binding:"required"`
 Number            string       `json:"number"`
 WarehouseID       string       `json:"warehouse_id" binding:"required"`
 TargetWarehouseID string       `json:"target_warehouse_id"`
+SupplierID        string       `json:"supplier_id"`
+OrganizationID    string       `json:"organization_id"`
+IncomingNumber    string       `json:"incoming_number"`
+IncomingDate      string       `json:"incoming_date"`
 Comment           string       `json:"comment"`
 Items             []docItemReq `json:"items"      binding:"required,min=1,dive"`
+}
+
+func parseDate(s string) *time.Time {
+if s == "" { return nil }
+t, err := time.Parse("2006-01-02", s)
+if err != nil { return nil }
+return &t
 }
 
 func (h *Handler) CreateDocument(c *gin.Context) {
@@ -121,9 +133,7 @@ whID, err := uuid.Parse(req.WarehouseID)
 if err != nil { c.Error(apperr.BadRequest("invalid warehouse_id")); return }
 
 var createdBy *uuid.UUID
-if uid := mw.CurrentUserID(c); uid != uuid.Nil {
-createdBy = &uid
-}
+if uid := mw.CurrentUserID(c); uid != uuid.Nil { createdBy = &uid }
 
 items := make([]repository.DocItemInput, 0, len(req.Items))
 for _, it := range req.Items {
@@ -138,6 +148,10 @@ Type:              req.Type,
 Number:            req.Number,
 WarehouseID:       whID,
 TargetWarehouseID: parseUUIDOpt(req.TargetWarehouseID),
+SupplierID:        parseUUIDOpt(req.SupplierID),
+OrganizationID:    parseUUIDOpt(req.OrganizationID),
+IncomingNumber:    strPtr(req.IncomingNumber),
+IncomingDate:      parseDate(req.IncomingDate),
 Comment:           strPtr(req.Comment),
 CreatedBy:         createdBy,
 Items:             items,
@@ -147,11 +161,12 @@ httpx.Created(c, d)
 }
 
 func (h *Handler) ListDocuments(c *gin.Context) {
-var typeF, statusF *string
-if v := c.Query("type"); v != "" { typeF = &v }
-if v := c.Query("status"); v != "" { statusF = &v }
-whID := parseUUIDOpt(c.Query("warehouse_id"))
-items, err := h.svc.ListDocuments(c.Request.Context(), typeF, statusF, whID)
+f := repository.DocumentFilters{}
+if v := c.Query("type"); v != "" { f.Type = &v }
+if v := c.Query("status"); v != "" { f.Status = &v }
+f.WarehouseID = parseUUIDOpt(c.Query("warehouse_id"))
+f.SupplierID = parseUUIDOpt(c.Query("supplier_id"))
+items, err := h.svc.ListDocuments(c.Request.Context(), f)
 if err != nil { c.Error(err); return }
 httpx.OK(c, gin.H{"items": items})
 }

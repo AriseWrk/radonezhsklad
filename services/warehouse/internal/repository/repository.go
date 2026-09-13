@@ -1,15 +1,15 @@
 package repository
 
 import (
-	"context"
-	"errors"
-	"time"
+"context"
+"errors"
+"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+"github.com/google/uuid"
+"github.com/jackc/pgx/v5"
+"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/radonezhsklad/warehouse/internal/models"
+"github.com/radonezhsklad/warehouse/internal/models"
 )
 
 type Repo struct{ db *pgxpool.Pool }
@@ -38,17 +38,13 @@ return w, err
 
 func (r *Repo) ListWarehouses(ctx context.Context) ([]models.Warehouse, error) {
 rows, err := r.db.Query(ctx,
-`SELECT id, name, address, is_active, created_at, updated_at
- FROM warehouses ORDER BY name`)
+`SELECT id, name, address, is_active, created_at, updated_at FROM warehouses ORDER BY name`)
 if err != nil { return nil, err }
 defer rows.Close()
-
 out := []models.Warehouse{}
 for rows.Next() {
 var w models.Warehouse
-if err := rows.Scan(&w.ID, &w.Name, &w.Address, &w.IsActive, &w.CreatedAt, &w.UpdatedAt); err != nil {
-return nil, err
-}
+if err := rows.Scan(&w.ID, &w.Name, &w.Address, &w.IsActive, &w.CreatedAt, &w.UpdatedAt); err != nil { return nil, err }
 out = append(out, w)
 }
 return out, rows.Err()
@@ -57,8 +53,7 @@ return out, rows.Err()
 func (r *Repo) GetWarehouse(ctx context.Context, id uuid.UUID) (*models.Warehouse, error) {
 w := &models.Warehouse{}
 err := r.db.QueryRow(ctx,
-`SELECT id, name, address, is_active, created_at, updated_at FROM warehouses WHERE id = $1`,
-id,
+`SELECT id, name, address, is_active, created_at, updated_at FROM warehouses WHERE id = $1`, id,
 ).Scan(&w.ID, &w.Name, &w.Address, &w.IsActive, &w.CreatedAt, &w.UpdatedAt)
 if errors.Is(err, pgx.ErrNoRows) { return nil, nil }
 return w, err
@@ -87,24 +82,17 @@ func (r *Repo) ListStock(ctx context.Context, warehouseID, productID *uuid.UUID)
 q := `SELECT id, warehouse_id, product_id, quantity, updated_at FROM stock_balances WHERE 1=1`
 args := []any{}
 i := 1
-if warehouseID != nil {
-q += ` AND warehouse_id = $` + itoa(i); args = append(args, *warehouseID); i++
-}
-if productID != nil {
-q += ` AND product_id = $` + itoa(i); args = append(args, *productID); i++
-}
+if warehouseID != nil { q += ` AND warehouse_id = $` + itoa(i); args = append(args, *warehouseID); i++ }
+if productID != nil   { q += ` AND product_id = $` + itoa(i);   args = append(args, *productID);   i++ }
 q += ` ORDER BY updated_at DESC`
 
 rows, err := r.db.Query(ctx, q, args...)
 if err != nil { return nil, err }
 defer rows.Close()
-
 out := []models.StockBalance{}
 for rows.Next() {
 var b models.StockBalance
-if err := rows.Scan(&b.ID, &b.WarehouseID, &b.ProductID, &b.Quantity, &b.UpdatedAt); err != nil {
-return nil, err
-}
+if err := rows.Scan(&b.ID, &b.WarehouseID, &b.ProductID, &b.Quantity, &b.UpdatedAt); err != nil { return nil, err }
 out = append(out, b)
 }
 return out, rows.Err()
@@ -117,6 +105,10 @@ Type              string
 Number            string
 WarehouseID       uuid.UUID
 TargetWarehouseID *uuid.UUID
+SupplierID        *uuid.UUID
+OrganizationID    *uuid.UUID
+IncomingNumber    *string
+IncomingDate      *time.Time
 Comment           *string
 CreatedBy         *uuid.UUID
 Items             []DocItemInput
@@ -128,28 +120,53 @@ Quantity  float64
 Price     float64
 }
 
+const documentSelect = `
+SELECT d.id, d.type, d.number, d.status, d.warehouse_id, d.target_warehouse_id,
+       d.supplier_id, d.organization_id, d.incoming_number, d.incoming_date, d.paid_amount,
+       d.printed_at, d.sent_at, d.comment, d.created_by,
+       d.created_at, d.updated_at, d.posted_at, d.cancelled_at,
+       (SELECT COUNT(*) FROM document_items di WHERE di.document_id = d.id) AS items_count,
+       (SELECT COALESCE(SUM(di.quantity * di.price), 0) FROM document_items di WHERE di.document_id = d.id) AS total
+FROM documents d`
+
+func scanDocument(row pgx.Row) (*models.Document, error) {
+d := &models.Document{}
+err := row.Scan(&d.ID, &d.Type, &d.Number, &d.Status, &d.WarehouseID, &d.TargetWarehouseID,
+&d.SupplierID, &d.OrganizationID, &d.IncomingNumber, &d.IncomingDate, &d.PaidAmount,
+&d.PrintedAt, &d.SentAt, &d.Comment, &d.CreatedBy,
+&d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt,
+&d.ItemsCount, &d.Total)
+if errors.Is(err, pgx.ErrNoRows) { return nil, nil }
+return d, err
+}
+
 func (r *Repo) CreateDocument(ctx context.Context, in DocumentInput) (*models.Document, error) {
 var out *models.Document
 err := r.WithTx(ctx, func(tx pgx.Tx) error {
-d := &models.Document{}
+var id uuid.UUID
 err := tx.QueryRow(ctx,
-`INSERT INTO documents (type, number, warehouse_id, target_warehouse_id, comment, created_by)
- VALUES ($1, $2, $3, $4, $5, $6)
- RETURNING id, type, number, status, warehouse_id, target_warehouse_id, comment, created_by, created_at, updated_at`,
-in.Type, in.Number, in.WarehouseID, in.TargetWarehouseID, in.Comment, in.CreatedBy,
-).Scan(&d.ID, &d.Type, &d.Number, &d.Status, &d.WarehouseID, &d.TargetWarehouseID,
-&d.Comment, &d.CreatedBy, &d.CreatedAt, &d.UpdatedAt)
+`INSERT INTO documents (type, number, warehouse_id, target_warehouse_id,
+                        supplier_id, organization_id, incoming_number, incoming_date,
+                        comment, created_by)
+ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+ RETURNING id`,
+in.Type, in.Number, in.WarehouseID, in.TargetWarehouseID,
+in.SupplierID, in.OrganizationID, in.IncomingNumber, in.IncomingDate,
+in.Comment, in.CreatedBy,
+).Scan(&id)
 if err != nil { return err }
 
 for _, it := range in.Items {
 if _, err := tx.Exec(ctx,
 `INSERT INTO document_items (document_id, product_id, quantity, price)
  VALUES ($1, $2, $3, $4)`,
-d.ID, it.ProductID, it.Quantity, it.Price,
+id, it.ProductID, it.Quantity, it.Price,
 ); err != nil { return err }
 }
 
-items, err := loadItemsTx(ctx, tx, d.ID)
+d, err := scanDocument(tx.QueryRow(ctx, documentSelect+` WHERE d.id = $1`, id))
+if err != nil { return err }
+items, err := loadItemsTx(ctx, tx, id)
 if err != nil { return err }
 d.Items = items
 out = d
@@ -164,7 +181,6 @@ rows, err := tx.Query(ctx,
  FROM document_items WHERE document_id = $1`, docID)
 if err != nil { return nil, err }
 defer rows.Close()
-
 out := []models.DocItem{}
 for rows.Next() {
 var it models.DocItem
@@ -177,19 +193,8 @@ return out, rows.Err()
 }
 
 func (r *Repo) GetDocument(ctx context.Context, id uuid.UUID) (*models.Document, error) {
-d := &models.Document{}
-err := r.db.QueryRow(ctx,
-`SELECT d.id, d.type, d.number, d.status, d.warehouse_id, d.target_warehouse_id, d.comment, d.created_by,
-        d.created_at, d.updated_at, d.posted_at, d.cancelled_at,
-        (SELECT COUNT(*) FROM document_items di WHERE di.document_id = d.id) AS items_count,
-        (SELECT COALESCE(SUM(di.quantity * di.price), 0) FROM document_items di WHERE di.document_id = d.id) AS total
- FROM documents d WHERE d.id = $1`, id,
-).Scan(&d.ID, &d.Type, &d.Number, &d.Status, &d.WarehouseID, &d.TargetWarehouseID,
-&d.Comment, &d.CreatedBy, &d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt,
-&d.ItemsCount, &d.Total)
-if errors.Is(err, pgx.ErrNoRows) { return nil, nil }
-if err != nil { return nil, err }
-
+d, err := scanDocument(r.db.QueryRow(ctx, documentSelect+` WHERE d.id = $1`, id))
+if err != nil || d == nil { return d, err }
 items, err := r.itemsByDoc(ctx, id)
 if err != nil { return nil, err }
 d.Items = items
@@ -202,7 +207,6 @@ rows, err := r.db.Query(ctx,
  FROM document_items WHERE document_id = $1`, docID)
 if err != nil { return nil, err }
 defer rows.Close()
-
 out := []models.DocItem{}
 for rows.Next() {
 var it models.DocItem
@@ -214,38 +218,37 @@ out = append(out, it)
 return out, rows.Err()
 }
 
-func (r *Repo) ListDocuments(ctx context.Context, typeFilter, statusFilter *string, warehouseID *uuid.UUID) ([]models.Document, error) {
-q := `SELECT d.id, d.type, d.number, d.status, d.warehouse_id, d.target_warehouse_id, d.comment, d.created_by,
-             d.created_at, d.updated_at, d.posted_at, d.cancelled_at,
-             (SELECT COUNT(*) FROM document_items di WHERE di.document_id = d.id) AS items_count,
-             (SELECT COALESCE(SUM(di.quantity * di.price), 0) FROM document_items di WHERE di.document_id = d.id) AS total
-      FROM documents d WHERE 1=1`
+type DocumentFilters struct {
+Type         *string
+Status       *string
+WarehouseID  *uuid.UUID
+SupplierID   *uuid.UUID
+}
+
+func (r *Repo) ListDocuments(ctx context.Context, f DocumentFilters) ([]models.Document, error) {
+q := documentSelect + ` WHERE 1=1`
 args := []any{}
 i := 1
-if typeFilter != nil {
-q += ` AND d.type = $` + itoa(i); args = append(args, *typeFilter); i++
-}
-if statusFilter != nil {
-q += ` AND d.status = $` + itoa(i); args = append(args, *statusFilter); i++
-}
-if warehouseID != nil {
-q += ` AND d.warehouse_id = $` + itoa(i); args = append(args, *warehouseID); i++
-}
-q += ` ORDER BY d.created_at DESC LIMIT 200`
+if f.Type != nil        { q += ` AND d.type = $` + itoa(i);        args = append(args, *f.Type); i++ }
+if f.Status != nil      { q += ` AND d.status = $` + itoa(i);      args = append(args, *f.Status); i++ }
+if f.WarehouseID != nil { q += ` AND d.warehouse_id = $` + itoa(i);args = append(args, *f.WarehouseID); i++ }
+if f.SupplierID != nil  { q += ` AND d.supplier_id = $` + itoa(i); args = append(args, *f.SupplierID); i++ }
+q += ` ORDER BY d.created_at DESC LIMIT 500`
 
 rows, err := r.db.Query(ctx, q, args...)
 if err != nil { return nil, err }
 defer rows.Close()
-
 out := []models.Document{}
 for rows.Next() {
-var d models.Document
+d := &models.Document{}
 if err := rows.Scan(&d.ID, &d.Type, &d.Number, &d.Status, &d.WarehouseID, &d.TargetWarehouseID,
-&d.Comment, &d.CreatedBy, &d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt,
+&d.SupplierID, &d.OrganizationID, &d.IncomingNumber, &d.IncomingDate, &d.PaidAmount,
+&d.PrintedAt, &d.SentAt, &d.Comment, &d.CreatedBy,
+&d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt,
 &d.ItemsCount, &d.Total); err != nil {
 return nil, err
 }
-out = append(out, d)
+out = append(out, *d)
 }
 return out, rows.Err()
 }
@@ -264,9 +267,7 @@ _, err := r.db.Exec(ctx, q, id, status)
 return err
 }
 
-// ---------- stock movements / apply ----------
-
-// ApplyMovementUPSERT — атомарно изменяет остаток на складе.
+// ApplyMovement — атомарное изменение остатка + audit-запись.
 func (r *Repo) ApplyMovement(ctx context.Context, tx pgx.Tx, warehouseID, productID uuid.UUID, delta float64, docID uuid.UUID) error {
 _, err := tx.Exec(ctx,
 `INSERT INTO stock_balances (warehouse_id, product_id, quantity)
@@ -286,7 +287,6 @@ warehouseID, productID, docID, delta,
 return err
 }
 
-// GetBalanceForUpdate — получить текущий остаток для проверки.
 func (r *Repo) GetBalance(ctx context.Context, tx pgx.Tx, warehouseID, productID uuid.UUID) (float64, error) {
 var q float64
 err := tx.QueryRow(ctx,
@@ -297,7 +297,6 @@ if errors.Is(err, pgx.ErrNoRows) { return 0, nil }
 return q, err
 }
 
-
 // ---------- inventory ----------
 
 type InventoryRow struct {
@@ -305,7 +304,6 @@ ProductID    uuid.UUID
 BookQuantity float64
 }
 
-// BookStockForInventory — товары, которые сейчас числятся на складе (book_quantity > 0 или были в движениях).
 func (r *Repo) BookStockForInventory(ctx context.Context, warehouseID uuid.UUID) ([]InventoryRow, error) {
 rows, err := r.db.Query(ctx, `
 SELECT product_id, quantity
@@ -314,7 +312,6 @@ WHERE warehouse_id = $1
 ORDER BY product_id`, warehouseID)
 if err != nil { return nil, err }
 defer rows.Close()
-
 out := []InventoryRow{}
 for rows.Next() {
 var e InventoryRow
@@ -324,13 +321,6 @@ out = append(out, e)
 return out, rows.Err()
 }
 
-func itoa(n int) string {
-if n == 0 { return "0" }
-var buf [20]byte
-i := len(buf)
-for n > 0 { i--; buf[i] = byte('0' + n%10); n /= 10 }
-return string(buf[i:])
-}
 // ---------- extended stock ----------
 
 type ExtendedRow struct {
@@ -348,16 +338,12 @@ SELECT sb.product_id, sb.warehouse_id, sb.quantity,
 FROM stock_balances sb
 WHERE sb.quantity <> 0`
 args := []any{}
-if warehouseID != nil {
-q += ` AND sb.warehouse_id = $1`
-args = append(args, *warehouseID)
-}
+if warehouseID != nil { q += ` AND sb.warehouse_id = $1`; args = append(args, *warehouseID) }
 q += ` ORDER BY sb.product_id`
 
 rows, err := r.db.Query(ctx, q, args...)
 if err != nil { return nil, err }
 defer rows.Close()
-
 out := []ExtendedRow{}
 for rows.Next() {
 var e ExtendedRow
@@ -367,7 +353,6 @@ out = append(out, e)
 return out, rows.Err()
 }
 
-// IncomingByProduct — сумма количеств из черновиков приёмок.
 func (r *Repo) IncomingByProduct(ctx context.Context) (map[uuid.UUID]float64, error) {
 rows, err := r.db.Query(ctx, `
 SELECT di.product_id, COALESCE(SUM(di.quantity), 0)
@@ -385,4 +370,12 @@ if err := rows.Scan(&id, &q); err != nil { return nil, err }
 out[id] = q
 }
 return out, rows.Err()
+}
+
+func itoa(n int) string {
+if n == 0 { return "0" }
+var buf [20]byte
+i := len(buf)
+for n > 0 { i--; buf[i] = byte('0' + n%10); n /= 10 }
+return string(buf[i:])
 }

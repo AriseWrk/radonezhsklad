@@ -258,3 +258,11 @@
 - [x] Gateway: UserContext парсит JWT и кладёт user_id в контекст (для аудита)
 - [x] Frontend: AuditView.vue — таблица событий, фильтры (метод/ресурс/период), пагинация, модалка деталей с JSON
 - [x] Подтаб «Аудит» в разделе «Компания» (только admin)
+## Этап 20. Закупки → Приёмки
+- [x] Миграция 0002: таблицы suppliers, organizations, + 6 полей в documents (supplier_id, organization_id, incoming_number, incoming_date, paid_amount, printed_at, sent_at)
+- [x] Backend: SupplierRepo, OrganizationRepo, SupplierService, SupplierHandler
+- [x] Backend: обновлены DocumentInput, documentSelect, ListDocuments (DocumentFilters), CreateDocument
+- [x] API: GET/POST/PUT/DELETE /suppliers[/:id], GET /organizations, через gateway
+- [x] Frontend: suppliers.ts, обновлён documents.ts (новые поля)
+- [x] Frontend: ReceiptsView.vue со всеми колонками как в МойСклад (№ / Время / Склад / Контрагент / Организация / Сумма / Оплачено / Входящая дата / Входящий номер / Отправлено / Напечатано / Комментарий)
+- [x] Frontend: маршрут /purchases/receipts, подтабы раздела Закупки

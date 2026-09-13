@@ -56,24 +56,28 @@ func (s *Service) ListStock(ctx context.Context, warehouseID, productID *uuid.UU
 return s.repo.ListStock(ctx, warehouseID, productID)
 }
 
+func (s *Service) StockExtended(ctx context.Context, warehouseID *uuid.UUID) ([]repository.ExtendedRow, error) {
+return s.repo.StockExtended(ctx, warehouseID)
+}
+
+func (s *Service) IncomingByProduct(ctx context.Context) (map[uuid.UUID]float64, error) {
+return s.repo.IncomingByProduct(ctx)
+}
+
+func (s *Service) BookStockForInventory(ctx context.Context, warehouseID uuid.UUID) ([]repository.InventoryRow, error) {
+return s.repo.BookStockForInventory(ctx, warehouseID)
+}
+
 // ---------- documents ----------
 
 var validTypes = map[string]bool{"receipt": true, "shipment": true, "transfer": true, "inventory": true}
 
 func (s *Service) CreateDocument(ctx context.Context, in repository.DocumentInput) (*models.Document, error) {
-if !validTypes[in.Type] {
-return nil, apperr.BadRequest("invalid document type")
-}
-if len(in.Items) == 0 {
-return nil, apperr.BadRequest("document must have at least one item")
-}
+if !validTypes[in.Type] { return nil, apperr.BadRequest("invalid document type") }
+if len(in.Items) == 0 { return nil, apperr.BadRequest("document must have at least one item") }
 if in.Type == "transfer" {
-if in.TargetWarehouseID == nil {
-return nil, apperr.BadRequest("transfer requires target_warehouse_id")
-}
-if *in.TargetWarehouseID == in.WarehouseID {
-return nil, apperr.BadRequest("source and target warehouses must differ")
-}
+if in.TargetWarehouseID == nil { return nil, apperr.BadRequest("transfer requires target_warehouse_id") }
+if *in.TargetWarehouseID == in.WarehouseID { return nil, apperr.BadRequest("source and target warehouses must differ") }
 }
 if in.Number == "" {
 in.Number = fmt.Sprintf("%s-%d", in.Type[:3], time.Now().Unix())
@@ -90,21 +94,16 @@ if d == nil { return nil, apperr.NotFound("document not found") }
 return d, nil
 }
 
-func (s *Service) ListDocuments(ctx context.Context, typeFilter, statusFilter *string, warehouseID *uuid.UUID) ([]models.Document, error) {
-return s.repo.ListDocuments(ctx, typeFilter, statusFilter, warehouseID)
+func (s *Service) ListDocuments(ctx context.Context, f repository.DocumentFilters) ([]models.Document, error) {
+return s.repo.ListDocuments(ctx, f)
 }
 
 func (s *Service) PostDocument(ctx context.Context, id uuid.UUID) (*models.Document, error) {
 d, err := s.GetDocument(ctx, id)
 if err != nil { return nil, err }
-if d.Status != "draft" {
-return nil, apperr.Conflict("only draft documents can be posted")
-}
-if len(d.Items) == 0 {
-return nil, apperr.BadRequest("document has no items")
-}
+if d.Status != "draft" { return nil, apperr.Conflict("only draft documents can be posted") }
+if len(d.Items) == 0 { return nil, apperr.BadRequest("document has no items") }
 
-// Проверка остатков для отгрузки/перемещения
 if d.Type == "shipment" || d.Type == "transfer" {
 err := s.repo.WithTx(ctx, func(tx pgx.Tx) error {
 for _, it := range d.Items {
@@ -120,7 +119,6 @@ return nil
 if err != nil { return nil, err }
 }
 
-// Движения
 err = s.repo.WithTx(ctx, func(tx pgx.Tx) error {
 for _, it := range d.Items {
 switch d.Type {
@@ -140,7 +138,6 @@ if err := s.repo.ApplyMovement(ctx, tx, *d.TargetWarehouseID, it.ProductID, it.Q
 return apperr.Internal("apply transfer in", err)
 }
 case "inventory":
-// inventory: set to exact value
 cur, err := s.repo.GetBalance(ctx, tx, d.WarehouseID, it.ProductID)
 if err != nil { return apperr.Internal("inventory balance", err) }
 delta := it.Quantity - cur
@@ -162,9 +159,7 @@ return s.GetDocument(ctx, id)
 func (s *Service) CancelDocument(ctx context.Context, id uuid.UUID) (*models.Document, error) {
 d, err := s.GetDocument(ctx, id)
 if err != nil { return nil, err }
-if d.Status != "posted" {
-return nil, apperr.Conflict("only posted documents can be cancelled")
-}
+if d.Status != "posted" { return nil, apperr.Conflict("only posted documents can be cancelled") }
 
 err = s.repo.WithTx(ctx, func(tx pgx.Tx) error {
 for _, it := range d.Items {
@@ -185,7 +180,6 @@ if err := s.repo.ApplyMovement(ctx, tx, *d.TargetWarehouseID, it.ProductID, -it.
 return apperr.Internal("revert transfer in", err)
 }
 case "inventory":
-// Упрощение: для inventory cancel не поддерживаем (нужен отдельный лог предыдущих значений)
 return apperr.Conflict("inventory documents cannot be cancelled")
 }
 }
@@ -197,18 +191,4 @@ if err := s.repo.UpdateDocStatus(ctx, id, "cancelled", false, true); err != nil 
 return nil, apperr.Internal("update status", err)
 }
 return s.GetDocument(ctx, id)
-}
-// ---------- extended stock ----------
-
-func (s *Service) StockExtended(ctx context.Context, warehouseID *uuid.UUID) ([]repository.ExtendedRow, error) {
-return s.repo.StockExtended(ctx, warehouseID)
-}
-
-func (s *Service) IncomingByProduct(ctx context.Context) (map[uuid.UUID]float64, error) {
-return s.repo.IncomingByProduct(ctx)
-}
-// ---------- inventory ----------
-
-func (s *Service) BookStockForInventory(ctx context.Context, warehouseID uuid.UUID) ([]repository.InventoryRow, error) {
-return s.repo.BookStockForInventory(ctx, warehouseID)
 }

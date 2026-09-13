@@ -36,9 +36,15 @@ defer pool.Close()
 slog.Info("db connected")
 
 repo := repository.New(pool)
+supRepo := repository.NewSupplierRepo(pool)
+orgRepo := repository.NewOrganizationRepo(pool)
+
 svc := service.New(repo)
+supSvc := service.NewSupplierService(supRepo, orgRepo)
 pc := product.New(cfg.ProductURL)
+
 h := handler.New(svc, pc)
+supH := handler.NewSupplierHandler(supSvc)
 
 if env == "prod" { gin.SetMode(gin.ReleaseMode) }
 r := gin.New()
@@ -57,9 +63,13 @@ read.GET("/warehouses", h.ListWarehouses)
 read.GET("/warehouses/:id", h.GetWarehouse)
 read.GET("/stock", h.ListStock)
 read.GET("/stock/extended", h.StockExtended)
-			read.GET("/inventory/prepare", h.InventoryPrepare)
+read.GET("/inventory/prepare", h.InventoryPrepare)
 read.GET("/documents", h.ListDocuments)
 read.GET("/documents/:id", h.GetDocument)
+
+read.GET("/suppliers", supH.List)
+read.GET("/suppliers/:id", supH.Get)
+read.GET("/organizations", supH.ListOrganizations)
 }
 
 whWrite := api.Group("")
@@ -68,6 +78,14 @@ whWrite.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "warehouse"))
 whWrite.POST("/warehouses", h.CreateWarehouse)
 whWrite.PUT("/warehouses/:id", h.UpdateWarehouse)
 whWrite.DELETE("/warehouses/:id", h.DeleteWarehouse)
+}
+
+supWrite := api.Group("")
+supWrite.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "manager", "warehouse"))
+{
+supWrite.POST("/suppliers", supH.Create)
+supWrite.PUT("/suppliers/:id", supH.Update)
+supWrite.DELETE("/suppliers/:id", supH.Delete)
 }
 
 docWrite := api.Group("")

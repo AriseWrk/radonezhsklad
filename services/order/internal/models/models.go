@@ -33,6 +33,26 @@ CreatedAt        time.Time `json:"created_at"`
 UpdatedAt        time.Time `json:"updated_at"`
 }
 
+type Contract struct {
+ID             uuid.UUID  `json:"id"`
+Number         string     `json:"number"`
+ContractType   string     `json:"contract_type"`
+Code           *string    `json:"code,omitempty"`
+DocDate        time.Time  `json:"doc_date"`
+CustomerID     *uuid.UUID `json:"customer_id,omitempty"`
+OrganizationID *uuid.UUID `json:"organization_id,omitempty"`
+Amount         float64    `json:"amount"`
+Currency       string     `json:"currency"`
+Paid           float64    `json:"paid"`
+Fulfilled      float64    `json:"fulfilled"`
+Comment        *string    `json:"comment,omitempty"`
+PrintedAt      *time.Time `json:"printed_at,omitempty"`
+SentAt         *time.Time `json:"sent_at,omitempty"`
+Archived       bool       `json:"archived"`
+CreatedAt      time.Time  `json:"created_at"`
+UpdatedAt      time.Time  `json:"updated_at"`
+}
+
 type Order struct {
 ID             uuid.UUID   `json:"id"`
 Number         string      `json:"number"`
@@ -59,22 +79,4 @@ ProductID uuid.UUID `json:"product_id"`
 Quantity  float64   `json:"quantity"`
 Price     float64   `json:"price"`
 CreatedAt time.Time `json:"created_at"`
-}
-type Contract struct {
-ID             uuid.UUID  `json:"id"`
-Number         string     `json:"number"`
-Code           *string    `json:"code,omitempty"`
-DocDate        time.Time  `json:"doc_date"`
-CustomerID     *uuid.UUID `json:"customer_id,omitempty"`
-OrganizationID *uuid.UUID `json:"organization_id,omitempty"`
-Amount         float64    `json:"amount"`
-Currency       string     `json:"currency"`
-Paid           float64    `json:"paid"`
-Fulfilled      float64    `json:"fulfilled"`
-Comment        *string    `json:"comment,omitempty"`
-PrintedAt      *time.Time `json:"printed_at,omitempty"`
-SentAt         *time.Time `json:"sent_at,omitempty"`
-Archived       bool       `json:"archived"`
-CreatedAt      time.Time  `json:"created_at"`
-UpdatedAt      time.Time  `json:"updated_at"`
 }

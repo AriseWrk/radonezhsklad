@@ -7,16 +7,12 @@
         <span class="refresh" @click="load" title="Обновить">↻</span>
       </div>
       <div class="page-actions">
-        <button class="btn primary icon-btn" @click="openCreate">
+        <button class="btn primary icon-btn" @click="create">
           <span class="plus">+</span> Договор
         </button>
         <button class="btn" @click="showFilter = !showFilter">Фильтр</button>
         <input v-model="search" class="search-input" placeholder="Номер или комментарий" />
         <div class="counter" :class="{ active: selected.size > 0 }">{{ selected.size }}</div>
-        <select class="mini-select" :disabled="selected.size === 0">
-          <option>Изменить</option>
-          <option>Удалить</option>
-        </select>
         <select class="mini-select" v-model="filterStatus">
           <option value="">Статус</option>
           <option value="unpaid">Не оплачен</option>
@@ -65,12 +61,12 @@
       <thead>
         <tr>
           <th class="chk-col"><input type="checkbox" :checked="allChecked" @change="toggleAll" /></th>
-          <th style="width:160px" @click="sortBy('number')">
+          <th style="width:180px" @click="sortBy('number')">
             Номер
             <span v-if="sortKey === 'number'" class="sort-arrow">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
           </th>
           <th style="width:80px">Код</th>
-          <th style="width:130px" @click="sortBy('doc_date')">
+          <th style="width:140px" @click="sortBy('doc_date')">
             Время
             <span v-if="sortKey === 'doc_date'" class="sort-arrow">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
           </th>
@@ -82,8 +78,8 @@
           </th>
           <th class="num" style="width:110px">Оплачено</th>
           <th class="num" style="width:120px">Выполнено</th>
-          <th style="width:110px">Отправлено</th>
-          <th style="width:110px">Напечатано</th>
+          <th style="width:100px">Отправлено</th>
+          <th style="width:100px">Напечатано</th>
           <th>Комментарий</th>
         </tr>
       </thead>
@@ -96,12 +92,12 @@
           :key="c.id"
           class="clickable"
           :class="{ selected: selected.has(c.id), 'row-warning': isWarning(c) }"
-          @click="openEdit(c)"
+          @click="openCard(c)"
         >
           <td class="chk-col" @click.stop>
             <input type="checkbox" :checked="selected.has(c.id)" @change="toggleSelect(c.id)" />
           </td>
-          <td>{{ c.number }}</td>
+          <td class="link">{{ c.number }}</td>
           <td class="muted mono">{{ c.code || shortId(c.id) }}</td>
           <td class="muted">{{ formatDate(c.doc_date) }}</td>
           <td>{{ customerName(c.customer_id) }}</td>
@@ -130,90 +126,13 @@
         <span>Выполнено: {{ formatMoney(totalFulfilled) }}</span>
       </div>
     </div>
-
-    <!-- Модалка -->
-    <div v-if="modal.open" class="modal-backdrop" @click.self="closeModal">
-      <form class="card modal big" @submit.prevent="onSubmit">
-        <h2>{{ modal.isEdit ? 'Карточка договора' : 'Новый договор' }}</h2>
-        <div v-if="modal.error" class="error-box">{{ modal.error }}</div>
-
-        <div class="grid2">
-          <label>Номер*
-            <input v-model="form.number" required />
-          </label>
-          <label>Код (внешний)
-            <input v-model="form.code" />
-          </label>
-        </div>
-
-        <div class="grid2">
-          <label>Дата
-            <input v-model="form.doc_date" type="date" />
-          </label>
-          <label>Контрагент
-            <select v-model="form.customer_id">
-              <option value="">— не выбран —</option>
-              <option v-for="c in customers" :key="c.id" :value="c.id">{{ c.name }}</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="grid2">
-          <label>Организация
-            <select v-model="form.organization_id">
-              <option value="">— не выбрана —</option>
-              <option v-for="o in organizations" :key="o.id" :value="o.id">{{ o.name }}</option>
-            </select>
-          </label>
-          <label>Валюта
-            <input v-model="form.currency" maxlength="3" />
-          </label>
-        </div>
-
-        <div class="grid3">
-          <label>Сумма
-            <input v-model.number="form.amount" type="number" step="0.01" min="0" />
-          </label>
-          <label>Оплачено
-            <input v-model.number="form.paid" type="number" step="0.01" min="0" />
-          </label>
-          <label>Выполнено
-            <input v-model.number="form.fulfilled" type="number" step="0.01" min="0" />
-          </label>
-        </div>
-
-        <label>Комментарий
-          <textarea v-model="form.comment" rows="2"></textarea>
-        </label>
-
-        <label class="chk">
-          <input type="checkbox" v-model="form.archived" /> Архивный
-        </label>
-
-        <div class="modal-actions">
-          <button
-            v-if="modal.isEdit"
-            type="button"
-            class="danger"
-            @click="onDelete"
-          >Удалить</button>
-          <div style="flex:1"></div>
-          <button type="button" @click="closeModal">Отмена</button>
-          <button class="primary" type="submit" :disabled="modal.saving">
-            {{ modal.saving ? 'Сохранение...' : 'Сохранить' }}
-          </button>
-        </div>
-      </form>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import {
-  listContracts, createContract, updateContract, deleteContract,
-  type Contract,
-} from '../api/contracts'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { listContracts, type Contract } from '../api/contracts'
 import { listCustomers, type Customer } from '../api/customers'
 import { listOrganizations, type Organization } from '../api/suppliers'
 import { apiErrorMessage } from '../api/client'
@@ -238,17 +157,7 @@ const sortKey = ref<'number' | 'doc_date' | 'amount'>('doc_date')
 const sortDir = ref<'asc' | 'desc'>('desc')
 const selected = ref<Set<string>>(new Set())
 
-const modal = reactive({
-  open: false, isEdit: false, saving: false,
-  error: null as string | null, editingId: '' as string,
-})
-
-const form = reactive({
-  number: '', code: '', doc_date: '',
-  customer_id: '', organization_id: '',
-  amount: 0, currency: 'RUB', paid: 0, fulfilled: 0,
-  comment: '', archived: false,
-})
+const router = useRouter()
 
 function shortId(id: string) { return id.slice(0, 6) }
 function formatDate(s: string) {
@@ -350,60 +259,8 @@ async function load() {
   }
 }
 
-function openCreate() {
-  Object.assign(form, {
-    number: 'ДГ-' + new Date().getTime().toString().slice(-6),
-    code: '', doc_date: new Date().toISOString().slice(0, 10),
-    customer_id: '', organization_id: '',
-    amount: 0, currency: 'RUB', paid: 0, fulfilled: 0,
-    comment: '', archived: false,
-  })
-  modal.open = true; modal.isEdit = false; modal.error = null; modal.editingId = ''
-}
-
-function openEdit(c: Contract) {
-  Object.assign(form, {
-    number: c.number,
-    code: c.code ?? '',
-    doc_date: c.doc_date.slice(0, 10),
-    customer_id: c.customer_id ?? '',
-    organization_id: c.organization_id ?? '',
-    amount: c.amount, currency: c.currency,
-    paid: c.paid, fulfilled: c.fulfilled,
-    comment: c.comment ?? '', archived: c.archived,
-  })
-  modal.open = true; modal.isEdit = true; modal.error = null; modal.editingId = c.id
-}
-
-function closeModal() { modal.open = false }
-
-async function onSubmit() {
-  modal.error = null
-  modal.saving = true
-  try {
-    const payload = { ...form }
-    if (modal.isEdit) {
-      await updateContract(modal.editingId, payload)
-    } else {
-      await createContract(payload)
-    }
-    closeModal()
-    await load()
-  } catch (e) {
-    modal.error = apiErrorMessage(e)
-  } finally {
-    modal.saving = false
-  }
-}
-
-async function onDelete() {
-  if (!confirm(`Удалить «${form.number}»?`)) return
-  try {
-    await deleteContract(modal.editingId)
-    closeModal()
-    await load()
-  } catch (e) { modal.error = apiErrorMessage(e) }
-}
+function openCard(c: Contract) { router.push(`/contracts/${c.id}`) }
+function create() { router.push('/contracts/new') }
 
 function clearFilters() {
   search.value = ''
@@ -445,15 +302,14 @@ onMounted(load)
   border: 1px solid #d0d7de; border-radius: 4px;
   background: #fff; color: #1f2328; max-width: 150px;
 }
-.mini-select:disabled { color: #8c959f; background: #f6f8fa; }
 .btn.icon-only { padding: 6px 10px; font-size: 15px; }
 tr.clickable { cursor: pointer; }
 tr.clickable.selected { background: #eef4ff; }
 tr.clickable.row-warning { background: #fff8e1; }
 tr.clickable.row-warning.selected { background: #fceec9; }
+tr.clickable:hover { background: #f6f8fa; }
+tr.clickable.row-warning:hover { background: #fceec9; }
 .mono { font-family: monospace; font-size: 12px; }
+.link { color: #2c5d9c; }
 .sort-arrow { color: #2c5d9c; font-size: 11px; margin-left: 4px; }
-.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-label.chk { flex-direction: row; align-items: center; gap: 8px; color: #1f2328; }
-label.chk input { width: auto; }
 </style>

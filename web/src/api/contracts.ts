@@ -3,6 +3,7 @@ import { http } from './client'
 export interface Contract {
   id: string
   number: string
+  contract_type: string
   code?: string
   doc_date: string
   customer_id?: string
@@ -21,6 +22,7 @@ export interface Contract {
 
 export interface ContractInput {
   number: string
+  contract_type?: string
   code?: string
   doc_date?: string
   customer_id?: string
@@ -33,10 +35,27 @@ export interface ContractInput {
   archived?: boolean
 }
 
+export interface ContractNeighbors {
+  index: number
+  total: number
+  next_id: string
+  prev_id: string
+}
+
 export async function listContracts(includeArchived = false): Promise<Contract[]> {
   const url = includeArchived ? '/contracts?include_archived=true' : '/contracts'
   const { data } = await http.get<{ items: Contract[] }>(url)
   return data.items
+}
+
+export async function getContract(id: string): Promise<Contract> {
+  const { data } = await http.get<Contract>(`/contracts/${id}`)
+  return data
+}
+
+export async function getContractNeighbors(id: string): Promise<ContractNeighbors> {
+  const { data } = await http.get<ContractNeighbors>(`/contracts/${id}/neighbors`)
+  return data
 }
 
 export async function createContract(input: ContractInput): Promise<Contract> {

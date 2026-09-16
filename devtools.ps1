@@ -2,19 +2,22 @@
 # ВАЖНО: обход бага Docker Desktop на Windows — все SQL идут через docker cp,
 # НЕ через pipe `docker exec -i`. Pipe теряет не-ASCII байты.
 
-$script:Utf8NoBom = New-Object System.Text.UTF8Encoding $false
+function Get-Utf8NoBom {
+    return New-Object System.Text.UTF8Encoding $false
+}
 
 function Write-Utf8File {
     param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Content)
-    [IO.File]::WriteAllText($Path, $Content, $script:Utf8NoBom)
-}
-function Read-Utf8File {
-    param([Parameter(Mandatory)][string]$Path)
-    [IO.File]::ReadAllText($Path, $script:Utf8NoBom)
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    [IO.File]::WriteAllText($Path, $Content, $utf8)
 }
 
-# Универсальный вызов psql с произвольным SQL через docker cp.
-# Возвращает stdout.
+function Read-Utf8File {
+    param([Parameter(Mandatory)][string]$Path)
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    return [IO.File]::ReadAllText($Path, $utf8)
+}
+
 function Invoke-SqlQuery {
     param(
         [Parameter(Mandatory)][string]$Database,
@@ -29,27 +32,17 @@ function Invoke-SqlQuery {
     $containerOut = "/tmp/rs_${stamp}.out"
 
     try {
-        # 1. Пишем SQL в UTF-8 без BOM
         Write-Utf8File -Path $localSql -Content $Query
-
-        # 2. Копируем внутрь контейнера
         docker cp $localSql "${Container}:${containerIn}" | Out-Null
-
-        # 3. Выполняем psql -f, результат в файл внутри контейнера
         docker exec -i $Container bash -c "psql -U $User -d $Database -f $containerIn > $containerOut"
-
-        # 4. Забираем результат через docker cp (побайтово, без потерь)
         docker cp "${Container}:${containerOut}" $localOut | Out-Null
-
-        # 5. Читаем как UTF-8
-        Read-Utf8File -Path $localOut
+        return Read-Utf8File -Path $localOut
     } finally {
         docker exec -i $Container rm -f $containerIn $containerOut 2>$null
         Remove-Item $localSql, $localOut -ErrorAction SilentlyContinue
     }
 }
 
-# Применение SQL-файла (миграции). Тоже через docker cp.
 function Invoke-SqlFile {
     param(
         [Parameter(Mandatory)][string]$Path,

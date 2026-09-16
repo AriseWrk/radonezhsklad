@@ -2,6 +2,7 @@ package service
 
 import (
 "context"
+	"time"
 
 "github.com/google/uuid"
 
@@ -51,4 +52,21 @@ ok, err := s.repo.Delete(ctx, id)
 if err != nil { return apperr.Internal("delete contract", err) }
 if !ok { return apperr.NotFound("contract not found") }
 return nil
+}
+func (s *ContractService) Neighbors(ctx context.Context, id uuid.UUID) (*repository.ContractNeighbor, error) {
+nb, err := s.repo.Neighbors(ctx, id)
+if err != nil { return nil, apperr.Internal("neighbors", err) }
+return nb, nil
+}
+
+func (s *ContractService) GetNext(ctx context.Context, docDate time.Time, id uuid.UUID) (*models.Contract, error) {
+c, err := s.repo.GetNext(ctx, docDate, id)
+if err != nil { return nil, apperr.Internal("next", err) }
+return c, nil
+}
+
+func (s *ContractService) GetPrev(ctx context.Context, docDate time.Time, id uuid.UUID) (*models.Contract, error) {
+c, err := s.repo.GetPrev(ctx, docDate, id)
+if err != nil { return nil, apperr.Internal("prev", err) }
+return c, nil
 }

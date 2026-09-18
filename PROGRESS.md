@@ -368,3 +368,8 @@ Backend/API/браузер работают корректно — пробле�
       значения полей password, password_hash, token, refresh_token,
       access_token, secret в request_body перед отправкой в audit-сервис
 - [x] Очищены накопленные записи audit_logs (regexp_replace по password)
+## Этап 33. Фикс аналитики продаж (500 → 200)
+- [x] order/internal/repository: заменено ($1::text || ' days')::interval
+      на make_interval(days => $1) в SalesAnalytics и SalesDaily
+- [x] Причина: pgx v5 не мог согласовать тип параметра $1 при ::text-касте,
+      падал до выполнения запроса (в psql тот же SQL работал корректно)

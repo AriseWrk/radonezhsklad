@@ -276,7 +276,7 @@ FROM order_items oi
 JOIN orders o ON o.id = oi.order_id
 WHERE o.status = 'shipped'
   AND o.shipped_at IS NOT NULL
-  AND o.shipped_at >= NOW() - ($1::text || ' days')::interval
+  AND o.shipped_at >= NOW() - make_interval(days => $1)
 GROUP BY oi.product_id
 ORDER BY sold_sum DESC`, days)
 if err != nil { return nil, err }
@@ -312,7 +312,7 @@ FROM order_items oi
 JOIN orders o ON o.id = oi.order_id
 WHERE o.status = 'shipped'
   AND o.shipped_at IS NOT NULL
-  AND o.shipped_at >= NOW() - ($1::text || ' days')::interval
+  AND o.shipped_at >= NOW() - make_interval(days => $1)
 GROUP BY DATE(o.shipped_at)
 ORDER BY day`, days)
 if err != nil { return nil, err }

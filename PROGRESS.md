@@ -363,3 +363,8 @@ Backend/API/браузер работают корректно — пробле�
 - [x] Frontend: api/contracts.ts, ContractsView.vue (тулбар, чекбоксы, сортировка, фильтры, жёлтая подсветка неоплаченных, экспорт)
 - [x] Router: /contracts, подтаб Договоры в разделе CRM
 - [x] Import-Contracts.ps1 — импорт из XLS, матчит контрагентов по имени
+## Этап 32. Безопасность аудита — маскирование чувствительных полей
+- [x] gateway/internal/audit: добавлена sanitizeBody — рекурсивно маскирует
+      значения полей password, password_hash, token, refresh_token,
+      access_token, secret в request_body перед отправкой в audit-сервис
+- [x] Очищены накопленные записи audit_logs (regexp_replace по password)

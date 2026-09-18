@@ -58,8 +58,12 @@ c.Request.Body = io.NopCloser(bytes.NewReader(bodyCopy))
 
 c.Next()
 
-if bodyCopy == nil { return }
-if c.Writer.Status() < 200 || c.Writer.Status() >= 300 { return }
+if bodyCopy == nil {
+return
+}
+if c.Writer.Status() < 200 || c.Writer.Status() >= 300 {
+return
+}
 
 // кто
 var uidStr, email string
@@ -83,7 +87,7 @@ Path:        c.Request.URL.Path,
 Resource:    resource,
 ResourceID:  resourceID,
 Status:      c.Writer.Status(),
-RequestBody: truncate(string(bodyCopy), 4000),
+RequestBody: truncate(string(sanitizeBody(bodyCopy)), 4000),
 ClientIP:    c.ClientIP(),
 RequestID:   c.GetString(mw.CtxRequestID),
 }
@@ -95,10 +99,14 @@ go l.send(ev)
 
 func (l *Logger) send(ev event) {
 payload, err := json.Marshal(ev)
-if err != nil { return }
+if err != nil {
+return
+}
 
 req, err := http.NewRequest(http.MethodPost, l.baseURL+"/api/v1/internal/audit", bytes.NewReader(payload))
-if err != nil { return }
+if err != nil {
+return
+}
 req.Header.Set("Content-Type", "application/json")
 req.Header.Set("X-Internal-Token", l.internalToken)
 
@@ -117,7 +125,9 @@ slog.Warn("audit service rejected", "status", resp.StatusCode)
 func parseResource(path string) (string, string) {
 parts := strings.Split(strings.Trim(path, "/"), "/")
 // api, v1, products, abc-123
-if len(parts) < 3 { return "", "" }
+if len(parts) < 3 {
+return "", ""
+}
 resource := parts[2]
 id := ""
 if len(parts) >= 4 {
@@ -128,6 +138,53 @@ return resource, id
 }
 
 func truncate(s string, n int) string {
-if len(s) <= n { return s }
+if len(s) <= n {
+return s
+}
 return s[:n] + "...[truncated]"
+}
+
+// sensitiveKeys — поля, значения которых нельзя логировать в открытом виде.
+var sensitiveKeys = map[string]bool{
+"password":      true,
+"password_hash": true,
+"token":         true,
+"refresh_token": true,
+"access_token":  true,
+"secret":        true,
+}
+
+// sanitizeBody рекурсивно маскирует значения чувствительных полей в JSON.
+// Если тело не является JSON — возвращает его как есть.
+func sanitizeBody(raw []byte) []byte {
+if len(raw) == 0 {
+return raw
+}
+var obj any
+if err := json.Unmarshal(raw, &obj); err != nil {
+return raw
+}
+sanitizeValue(obj)
+out, err := json.Marshal(obj)
+if err != nil {
+return raw
+}
+return out
+}
+
+func sanitizeValue(v any) {
+switch t := v.(type) {
+case map[string]any:
+for k, val := range t {
+if sensitiveKeys[strings.ToLower(k)] {
+t[k] = "***"
+continue
+}
+sanitizeValue(val)
+}
+case []any:
+for _, item := range t {
+sanitizeValue(item)
+}
+}
 }

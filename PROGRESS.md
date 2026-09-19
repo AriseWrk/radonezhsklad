@@ -1009,3 +1009,43 @@ Gotcha: в move/loss/enter позициях нет vat/discount — COALESCE(...
 - internalorder: 11090 док. / ~68800 поз. → internal_orders + internal_order_items
 - inventory: 749 док. / ~103700 поз. → inventories + inventory_items
 
+
+### Финализация: internalorder + inventory
+
+| МС тип | Таблица | docs | items |
+|---|---|---:|---:|
+| internalorder | internal_orders + internal_order_items | 11090 | 45714 |
+| inventory | inventories + inventory_items | 749 | 46619 |
+
+Новые скрипты:
+- scripts/import-ms-internalorders.ps1
+- scripts/import-ms-inventory.ps1
+- scripts/sql/upsert_internalorders.sql
+- scripts/sql/upsert_inventory.sql
+
+Особенности:
+- internalorder: plan_date из deliveryPlannedMoment, project UUID сохраняется как текст
+  (в internal_orders.project VARCHAR), store/org через external_id
+- inventory: page size 50 (позиций много: некоторые доки >1000 поз., нужен fallback
+  MsApi-GetAll), поля calculatedQuantity/correctionAmount/correctionSum
+- missing product mappings: 18 (internalorder) + 1 (inventory) — товары, которых нет
+  в нашей БД; документы импортированы, эти позиции пропущены (product_id NOT NULL)
+
+### Итог Этапа 35
+
+Всего импортировано 49485 документов / ~220000 позиций:
+
+| Категория | docs | items |
+|---|---:|---:|
+| receipt (supply+enter) | 4807 | 13479 |
+| shipment (demand) | 9 | 15 |
+| transfer (move) | 15554 | 54796 |
+| writeoff (loss) | 17276 | 60041 |
+| internalorder | 11090 | 45714 |
+| inventory | 749 | 46619 |
+| **ВСЕГО** | **49485** | **220664** |
+
+Что НЕ импортировано (в МС 0 записей): receipt, customerorder, paymentin/out, cashin/out.
+
+Пуш на GitHub: 428a618, f921da6, aab105e (затем финальный коммит этапа).
+

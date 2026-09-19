@@ -75,7 +75,7 @@ ON CONFLICT (external_code) DO UPDATE SET
 INSERT INTO document_items (
     document_id, product_id, quantity, price, external_id, vat_rate, discount, sum
 )
-SELECT d.id, i.product_id, i.quantity, i.price, i.item_ms_id, i.vat, i.discount, i.sum
+SELECT d.id, i.product_id, COALESCE(i.quantity,0), COALESCE(i.price,0), i.item_ms_id, COALESCE(i.vat,0), COALESCE(i.discount,0), COALESCE(i.sum,0)
 FROM tmp_items i
 JOIN documents d ON d.external_code = i.doc_ms_id::text
 WHERE i.product_id IS NOT NULL

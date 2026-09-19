@@ -990,3 +990,22 @@ scripts/sql/upsert_documents.sql — SQL-шаблон с плейсхолдер�
 - supply → documents.type=receipt: 4789 док. / 13444 поз. / 0 missing products
   время: ~2:45 (fetch 2:30 + COPY/INSERT 15 сек)
 
+
+### Дополнение (move, loss, enter)
+
+| МС тип | DocType | docs | items |
+|---|---|---:|---:|
+| supply | receipt | 4789 | 13444 |
+| enter | receipt | 18 | 35 |
+| demand | shipment | 9 | 15 |
+| move | transfer | 15554 | 54796 |
+| loss | writeoff | 17276 | 60041 |
+| **итого** | | **37646** | **128331** |
+
+Gotcha: в move/loss/enter позициях нет vat/discount — COALESCE(...,0) в SQL.
+
+### Что осталось
+
+- internalorder: 11090 док. / ~68800 поз. → internal_orders + internal_order_items
+- inventory: 749 док. / ~103700 поз. → inventories + inventory_items
+

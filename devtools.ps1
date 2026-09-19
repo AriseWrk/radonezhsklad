@@ -140,3 +140,55 @@ function Read-Utf8File {
     $utf8 = New-Object System.Text.UTF8Encoding $false
     return [IO.File]::ReadAllText($abs, $utf8)
 }
+
+# === Extended MsApi-Get with retry (Stage 35) ===
+# Redefines MsApi-Get: validates JSON, retries on transient errors.
+function MsApi-Get {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [hashtable]$Query = @{},
+        [int]$MaxRetries = 6
+    )
+    $token = Get-MsToken
+    $qs = [string]::Empty
+    if ($Query.Count -gt 0) {
+        $pairs = foreach ($k in $Query.Keys) { "$k=$($Query[$k])" }
+        $qs = '?' + ($pairs -join '&')
+    }
+    $url = "https://api.moysklad.ru/api/remap/1.2$Path$qs"
+    $attempt = 0
+    $delay = 1000
+    while ($true) {
+        $attempt++
+        $tmp = Join-Path $env:TEMP ("ms_" + [guid]::NewGuid().ToString('N') + ".json")
+        $ok = $false
+        $result = $null
+        try {
+            & curl.exe -s --compressed -o $tmp `
+                -H "Authorization: Bearer $token" `
+                -H "Accept: application/json;charset=utf-8" `
+                -H "Accept-Encoding: gzip" `
+                $url
+            if ($LASTEXITCODE -ne 0) { throw "curl exit $LASTEXITCODE" }
+            $raw = [IO.File]::ReadAllText($tmp, (New-Object System.Text.UTF8Encoding $false))
+            $trim = $raw.TrimStart()
+            if ($trim.Length -eq 0) { throw "empty response" }
+            $c0 = [int][char]$trim[0]
+            if ($c0 -ne 123 -and $c0 -ne 91) {
+                $preview = $raw.Substring(0, [Math]::Min(200, $raw.Length))
+                throw "non-JSON response: $preview"
+            }
+            $result = $raw | ConvertFrom-Json
+            $ok = $true
+        } catch {
+            if ($attempt -ge $MaxRetries) { throw }
+            $msg = $_.Exception.Message
+            Write-Warning ("MS GET " + $Path + " failed (attempt " + $attempt + "/" + $MaxRetries + "): " + $msg + ". Retry in " + $delay + "ms")
+            Start-Sleep -Milliseconds $delay
+            $delay = [Math]::Min($delay * 2, 30000)
+        } finally {
+            Remove-Item $tmp -ErrorAction SilentlyContinue
+        }
+        if ($ok) { return $result }
+    }
+}

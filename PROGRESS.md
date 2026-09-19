@@ -1091,3 +1091,55 @@ Gotcha: в move/loss/enter позициях нет vat/discount — COALESCE(...
 они не попадают в movements, т.к. их type вне ''receipt''/''shipment''/''writeoff''/''transfer''
 и/или status != posted.
 
+
+---
+
+## Этап 38: Раздел «Инвентаризации» (frontend + backend)
+
+### Backend (services/warehouse)
+
+Новые файлы:
+- internal/repository/inventories.go — InventoryRepo (List/Get с JOIN на warehouses)
+- internal/service/inventories.go — InventoryService
+- internal/handler/inventories.go — Handler с обогащением имён через productClient.ListByIDs
+
+Изменения:
+- internal/models/models.go — +Inventory, +InventoryItem (ProductName, ProductSKU)
+- cmd/api/main.go — invRepo/invSvc/invH + routes:
+  - GET /inventories?warehouse_id=&from=&to=
+  - GET /inventories/:id (с items + product_name/sku)
+
+Gateway (services/gateway/cmd/api/main.go):
+- проксирование /inventories и /inventories/*path -> warehouse
+
+### Frontend (web/)
+
+Новые:
+- src/api/inventories.ts — listInventories, getInventory + типы Inventory/InventoryItem
+- src/views/InventoriesView.vue — список с фильтром (склад/период) + пагинация
+- src/views/InventoryCardView.vue — карточка 1:1 по образцу InternalOrderCardView
+
+Изменения:
+- src/router/index.ts — routes /inventories и /inventories/:id
+- src/layouts/MainLayout.vue — пункт меню «Инвентаризации» -> /inventories
+- src/views/InventoriesView.vue — клик по строке -> router.push(карточка)
+
+Заодно починены накопленные TS-ошибки:
+- CounterpartiesView.vue — убран c.okrn
+- InternalOrderCardView.vue — убран неиспользуемый cancelInternalOrder/blurTimer
+- InternalOrdersView.vue — убран неиспользуемый warehouseName
+
+### Проверки
+
+- API: GET /api/v1/inventories?limit=3 возвращает 500 записей
+- GET /api/v1/inventories/:id возвращает items с product_name/sku
+- npm run build — успешно, InventoryCardView-*.js собран
+
+### Известные хвосты
+
+- В карточке: pager «1 из 749» захардкожен, prev/next ведут на список
+- Кнопки «Изменить», «Создать документ», «Печать», таб «Связанные документы»,
+  «Задачи», «Файлы» — заглушки (disabled)
+- Аналогичный каркас надо будет сделать для «Документов» (там сейчас модалок нет —
+  пользуются DocumentsView с типами receipt/shipment/transfer/writeoff)
+

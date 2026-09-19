@@ -336,3 +336,50 @@
 5. Прочитать локально как UTF-8
 
 **Реализовано в devtools.ps1** функциями `Invoke-SqlQuery` и `Invoke-SqlFile`. **Никогда** не использовать `Get-Content file | docker exec -i psql` и не использовать `docker exec -i psql -c "..."` для русских строк.
+
+Backend/API/браузер работают корректно — проблема только на входе/выходе контейнера через pipe.
+## Этап 28. Страница «Товары» — редизайн 1:1 с МойСклад
+- [x] Левая панель категорий со счётчиками, клик фильтрует таблицу
+- [x] Toolbar: + Товар / ¥ Услуга / ⚙ Комплект / 🗂 Группа / Фильтр / поиск / счётчик / Изменить / Печать / Импорт / Экспорт / ⚙
+- [x] Таблица с колонками: чекбокс / Наименование / Код / Артикул / Ед. изм. / Цена продажи
+- [x] Сортировка по клику на заголовок (name, sku, price)
+- [x] Футер с пагинацией и итогами (позиций, сумма)
+- [x] Модалка создания/редактирования расширена: category, unit, price, cost_price, min_stock, barcode, description
+- [x] Экспорт в CSV
+## Этап 29. Страница «Аудит» — редизайн 1:1 с МойСклад
+- [x] Таблица из 3 колонок: Время | Сотрудник | Событие
+- [x] Сотрудник: аватар с инициалами + «Фамилия И. О.»
+- [x] Человекочитаемые события на русском (matchSpecial, detectResource, verbFor)
+      — Создан товар «...», Проведён документ, Распечатан внутренний заказ, Отгружен заказ и т.д.
+- [x] Из request_body вытягивается number/name для ссылки-идентификатора
+- [x] Фильтры: период, сотрудник, поиск по описанию события
+- [x] Пагинация с 4 кнопками и «1–100 из N»
+- [x] Иконка ⓘ возле заголовка, ↻ обновление
+## Этап 31. CRM → Договоры + импорт из Excel
+- [x] Миграция 0003_contracts: таблица contracts (number, code, doc_date, customer_id, organization_id, amount, currency, paid, fulfilled, comment, printed_at, sent_at, archived)
+- [x] Backend order: models.Contract, ContractRepo, ContractService, ContractHandler
+- [x] API: GET/POST /contracts, GET/PUT/DELETE /contracts/:id
+- [x] Gateway: проксирует /contracts
+- [x] Frontend: api/contracts.ts, ContractsView.vue (тулбар, чекбоксы, сортировка, фильтры, жёлтая подсветка неоплаченных, экспорт)
+- [x] Router: /contracts, подтаб Договоры в разделе CRM
+- [x] Import-Contracts.ps1 — импорт из XLS, матчит контрагентов по имени
+## Этап 32. Безопасность аудита — маскирование чувствительных полей
+- [x] gateway/internal/audit: добавлена sanitizeBody — рекурсивно маскирует
+      значения полей password, password_hash, token, refresh_token,
+      access_token, secret в request_body перед отправкой в audit-сервис
+- [x] Очищены накопленные записи audit_logs (regexp_replace по password)
+## Этап 33. Фикс аналитики продаж (500 → 200)
+- [x] order/internal/repository: заменено ($1::text || ' days')::interval
+      на make_interval(days => $1) в SalesAnalytics и SalesDaily
+- [x] Причина: pgx v5 не мог согласовать тип параметра $1 при ::text-касте,
+      падал до выполнения запроса (в psql тот же SQL работал корректно)
+## Этап 33. Фикс аналитики продаж (500 → 200)
+- [x] order/internal/repository: заменено ($1::text || ' days')::interval
+      на make_interval(days => $1) в SalesAnalytics и SalesDaily
+- [x] Причина: pgx v5 не мог согласовать тип параметра $1 при ::text-касте,
+      падал до выполнения запроса (в psql тот же SQL работал корректно)
+## Этап 33. Фикс аналитики продаж (500 → 200)
+- [x] order/internal/repository: заменено ($1::text || ' days')::interval
+      на make_interval(days => $1) в SalesAnalytics и SalesDaily
+- [x] Причина: pgx v5 не мог согласовать тип параметра $1 при ::text-касте,
+      падал до выполнения запроса (в psql тот же SQL работал корректно)

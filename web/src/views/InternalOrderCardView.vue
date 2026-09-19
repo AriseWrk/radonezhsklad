@@ -186,7 +186,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   getInternalOrder, createInternalOrder, updateInternalOrder,
-  postInternalOrder, cancelInternalOrder, nextInternalOrderNumber,
+  postInternalOrder, nextInternalOrderNumber,
   type IntOrderInput,
   exportInternalOrder,
 } from '../api/internalOrders'
@@ -246,8 +246,7 @@ const suggestions = computed(() => {
     (p.sku ?? '').toLowerCase().includes(q)
   ).slice(0, 8)
 })
-let blurTimer: any = null
-function hideSuggestSoon() { blurTimer = setTimeout(() => { showSuggest.value = false }, 150) }
+function hideSuggestSoon() { setTimeout(() => { showSuggest.value = false }, 150) }
 function onSearchInput() { showSuggest.value = true }
 function focusCatalog() { showSuggest.value = true }
 function addItem(p: Product) {

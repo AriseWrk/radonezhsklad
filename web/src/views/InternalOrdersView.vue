@@ -247,9 +247,6 @@ const sortDir = ref<'asc' | 'desc'>('desc')
 const selected = ref<Set<string>>(new Set())
 const router = useRouter()
 
-function warehouseName(id?: string) {
-  return id ? (warehouses.value.find((w) => w.id === id)?.name ?? '—') : '—'
-}
 function organizationName(id?: string) {
   if (!id) return organizations.value.find((o) => o.is_default)?.name ?? '—'
   return organizations.value.find((o) => o.id === id)?.name ?? '—'

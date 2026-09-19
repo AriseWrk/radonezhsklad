@@ -377,7 +377,7 @@ function openEdit(c: Customer) {
     actual_address: c.actual_address ?? '',
     inn: c.inn ?? '',
     kpp: c.kpp ?? '',
-    ogrn: c.okrn ?? c.ogrn ?? '',
+    ogrn: c.ogrn ?? '',
     okpo: c.okpo ?? '',
     external_code: c.external_code ?? '',
     counterparty_type: c.counterparty_type ?? '',

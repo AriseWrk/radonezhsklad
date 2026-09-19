@@ -121,3 +121,35 @@ VatRate   float64   `json:"vat_rate"`
 Sum       float64   `json:"sum"`
 CreatedAt time.Time `json:"created_at"`
 }
+
+// ---- Inventory ----
+
+type Inventory struct {
+    ID             uuid.UUID       `json:"id"`
+    ExternalID     *uuid.UUID      `json:"external_id,omitempty"`
+    Number         string          `json:"number"`
+    DocDate        time.Time       `json:"doc_date"`
+    WarehouseID    *uuid.UUID      `json:"warehouse_id,omitempty"`
+    WarehouseName  string          `json:"warehouse_name,omitempty"`
+    OrganizationID *uuid.UUID      `json:"organization_id,omitempty"`
+    Comment        *string         `json:"comment,omitempty"`
+    Total          float64         `json:"total"`
+    ItemsCount     int             `json:"items_count"`
+    CreatedAt      time.Time       `json:"created_at"`
+    UpdatedAt      time.Time       `json:"updated_at"`
+    Items          []InventoryItem `json:"items,omitempty"`
+}
+
+type InventoryItem struct {
+    ID                 uuid.UUID `json:"id"`
+    InventoryID        uuid.UUID `json:"inventory_id"`
+    ProductID          uuid.UUID `json:"product_id"`
+    ProductName        string    `json:"product_name,omitempty"`
+    ProductSKU         string    `json:"product_sku,omitempty"`
+    Quantity           float64   `json:"quantity"`
+    CalculatedQuantity float64   `json:"calculated_quantity"`
+    CorrectionAmount   float64   `json:"correction_amount"`
+    Price              float64   `json:"price"`
+    CorrectionSum      float64   `json:"correction_sum"`
+    CreatedAt          time.Time `json:"created_at"`
+}

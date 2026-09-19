@@ -38,16 +38,19 @@ slog.Info("db connected")
 repo := repository.New(pool)
 supRepo := repository.NewSupplierRepo(pool)
 	intOrderRepo := repository.NewInternalOrderRepo(pool)
+invRepo := repository.NewInventoryRepo(pool)
 orgRepo := repository.NewOrganizationRepo(pool)
 
 svc := service.New(repo)
 supSvc := service.NewSupplierService(supRepo, orgRepo)
 	intOrderSvc := service.NewInternalOrderService(intOrderRepo)
+invSvc := service.NewInventoryService(invRepo)
 pc := product.New(cfg.ProductURL)
 
 h := handler.New(svc, pc)
 supH := handler.NewSupplierHandler(supSvc)
 	intOrderH := handler.NewInternalOrderHandler(intOrderSvc, svc, supSvc, pc)
+invH := handler.NewInventoryHandler(invSvc, pc)
 
 if env == "prod" { gin.SetMode(gin.ReleaseMode) }
 r := gin.New()
@@ -68,6 +71,8 @@ read.GET("/stock", h.ListStock)
 read.GET("/stock/extended", h.StockExtended)
 			read.GET("/stock/product/:id", h.ProductStockDetail)
 read.GET("/inventory/prepare", h.InventoryPrepare)
+read.GET("/inventories", invH.List)
+read.GET("/inventories/:id", invH.Get)
 read.GET("/documents", h.ListDocuments)
 read.GET("/documents/:id", h.GetDocument)
 

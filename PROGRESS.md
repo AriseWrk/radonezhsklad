@@ -903,3 +903,90 @@ ON CONFLICT (external_code) падает с "no unique or exclusion constraint".
 - [x] Организации (/entity/organization) — organizations
 - [x] Склады (/entity/store) — warehouses
 - [ ] Документы (опционально): приёмки, отгрузки, внутренние заказы
+
+---
+
+## Этап 35: Импорт документов из МойСклад
+
+### Разведка
+
+Объёмы по типам (49485 документов, ~229k позиций):
+
+| Тип | Кол-во | Позиций | Куда |
+|---|---:|---:|---|
+| supply | 4789 | 13444 | documents (receipt) |
+| demand | 9 | 15 | documents (shipment) |
+| move | 15554 | ~23300 | documents (transfer) |
+| enter | 18 | 38 | documents (receipt) |
+| loss | 17276 | ~27600 | documents (writeoff) |
+| inventory | 749 | ~103700 | inventories + inventory_items |
+| internalorder | 11090 | ~68800 | internal_orders |
+
+МС используется только как складской контур: платежей/кассы/заказов покупателя нет.
+
+### Маппинг UUID
+
+Наши справочники имеют external_id (МС UUID) и external_code (короткий хэш МС):
+
+| Наш | external_id | external_code |
+|---|---|---|
+| products | product.id (UUID) | product.externalCode |
+| warehouses | store.id | store.externalCode |
+| suppliers | counterparty.id | counterparty.externalCode |
+| organizations | organization.id | organization.externalCode |
+
+Резолв FK: JOIN по external_id (UUID). Резолв product_id — в PowerShell,
+т.к. products в другой БД (radonezh_product), cross-DB JOIN невозможен.
+
+### Миграции
+
+- 0006_moysklad_documents.sql — external_id/external_code/doc_date/total/vat_enabled/vat_included
+  в documents; external_id/vat_rate/discount/sum в document_items;
+  external_id/external_code в internal_orders; external_id в internal_order_items;
+  таблицы inventories + inventory_items
+- 0007_unique_external_id_full.sql — full UNIQUE на external_id (partial не работает с ON CONFLICT)
+
+### Инфраструктура импорта
+
+devtools.ps1 — MsApi-Get переопределён с retry:
+- валидация JSON (первый символ { или [)
+- 6 попыток, backoff 1s → 30s
+- логирование preview при ошибке
+
+scripts/import-ms-docs.ps1 — параметризованный импортёр:
+- -Type supply|demand|move|enter|loss
+- -DocType receipt|shipment|transfer|writeoff
+- -Limit N — ограничение для пилота
+- -KeepTsv — сохранить TSV для диагностики
+
+Алгоритм:
+1. product_map: ms_uuid → our_uuid (одним SELECT)
+2. пагинация /entity/$Type с expand=positions (100/стр, sleep 120ms) — 48 запросов на 4789 док.
+3. TSV в формате text (\t разделитель, \N = NULL, экранирование \\, \t, \n, \r)
+4. docker cp + \copy ... WITH (FORMAT text) в TEMP-таблицы
+5. INSERT documents c JOIN warehouses/suppliers/organizations по external_id
+6. INSERT document_items с готовыми product_id
+
+scripts/sql/upsert_documents.sql — SQL-шаблон с плейсхолдерами
+{{DOCS_PATH}} / {{ITEMS_PATH}} / {{DOC_TYPE}}.
+
+### Подводные камни этапа
+
+1. MS rate limit: 45 запросов за 3 сек (X-RateLimit-Limit: 45,
+   X-Lognex-Retry-TimeInterval: 3000). Превышение → HTML вместо JSON.
+   Решение: expand=positions (48 запросов вместо 4837) + sleep 120ms.
+2. expand=positions: позиции в d.positions.rows (все), meta.size для проверки.
+3. FORMAT csv в \copy ломается на кавычках в текстах. Только FORMAT text
+   (\N = NULL, экранирование \\, \t, \n, \r).
+4. FORMAT text не поддерживает HEADER — TSV без заголовков.
+5. [math]::Round в ru-RU сериализует 3783,6 — ломает COPY. В начале скрипта:
+   [Threading.Thread]::CurrentThread.CurrentCulture = [InvariantCulture].
+6. partial UNIQUE не работает с ON CONFLICT — только full UNIQUE (NULL разрешены многократно).
+7. vatIncluded/applicable могут отсутствовать в ответе — COALESCE(..., false) в SQL.
+8. docker cp + psql \copy: psql интерпретирует \N как NULL в FORMAT text.
+
+### Результат
+
+- supply → documents.type=receipt: 4789 док. / 13444 поз. / 0 missing products
+  время: ~2:45 (fetch 2:30 + COPY/INSERT 15 сек)
+

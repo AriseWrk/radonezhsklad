@@ -65,3 +65,71 @@ function Set-ConsoleUtf8 {
     $global:OutputEncoding    = [System.Text.UTF8Encoding]::new($false)
     Write-Host "OK: PS 5.1 — UTF-8 обход применён"
 }
+# === Moysklad API (api.moysklad.ru/remap/1.2) ===
+# Token file: D:\Radonezhsklad\.secrets\moysklad.token (outside repo)
+# Headers: Authorization + Accept: application/json;charset=utf-8 + Accept-Encoding: gzip
+# Without Accept-Encoding: gzip the server returns 415 Unsupported Media Type.
+
+function Get-MsToken {
+    $path = 'D:\Radonezhsklad\.secrets\moysklad.token'
+    if (-not (Test-Path $path)) { throw "No MS token file: $path" }
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    $tok = ([IO.File]::ReadAllText($path, $utf8)).Trim()
+    if ([string]::IsNullOrWhiteSpace($tok)) { throw "Empty token in $path" }
+    return $tok
+}
+
+
+function MsApi-Get {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [hashtable]$Query = @{}
+    )
+    $token = Get-MsToken
+    $qs = [string]::Empty
+    if ($Query.Count -gt 0) {
+        $pairs = foreach ($k in $Query.Keys) { "$k=$($Query[$k])" }
+        $qs = '?' + ($pairs -join '&')
+    }
+    $url = "https://api.moysklad.ru/api/remap/1.2$Path$qs"
+    $tmp = Join-Path $env:TEMP ("ms_" + [guid]::NewGuid().ToString('N') + ".json")
+    try {
+        & curl.exe -s --compressed -o $tmp `
+            -H "Authorization: Bearer $token" `
+            -H "Accept: application/json;charset=utf-8" `
+            -H "Accept-Encoding: gzip" `
+            $url
+        if ($LASTEXITCODE -ne 0) { throw "curl exit $LASTEXITCODE for $url" }
+        $raw = [IO.File]::ReadAllText($tmp, (New-Object System.Text.UTF8Encoding $false))
+        return ($raw | ConvertFrom-Json)
+    } finally {
+        Remove-Item $tmp -ErrorAction SilentlyContinue
+    }
+}
+
+function MsApi-GetAll {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [hashtable]$Query = @{},
+        [int]$PageSize = 100,
+        [int]$MaxItems = 0
+    )
+    $all = New-Object System.Collections.Generic.List[object]
+    $offset = 0
+    while ($true) {
+        $q = @{}
+        foreach ($k in $Query.Keys) { $q[$k] = $Query[$k] }
+        $q['limit']  = $PageSize
+        $q['offset'] = $offset
+        $page = MsApi-Get -Path $Path -Query $q
+        if (-not $page.rows) { break }
+        foreach ($r in $page.rows) { $all.Add($r) }
+        $offset += $page.rows.Count
+        $total = [int]$page.meta.size
+        Write-Host "  received $($all.Count) / $total"
+        if ($MaxItems -gt 0 -and $all.Count -ge $MaxItems) { break }
+        if ($offset -ge $total) { break }
+        Start-Sleep -Milliseconds 100
+    }
+    return $all
+}

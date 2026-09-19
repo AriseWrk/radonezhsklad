@@ -1049,3 +1049,23 @@ Gotcha: в move/loss/enter позициях нет vat/discount — COALESCE(...
 
 Пуш на GitHub: 428a618, f921da6, aab105e (затем финальный коммит этапа).
 
+
+### Этап 36: дотянуть архивные товары (задача A)
+
+Причина 19 missing product mappings: в МС 12 товаров с `archived=true`,
+которые MS API не отдаёт в `/entity/product` по умолчанию. 5 из них
+реально использованы в позициях internalorder, 1 — в inventory.
+
+Что сделано:
+- `services/product/migrations/0004_unique_external_id_full.sql` — full UNIQUE на external_id
+  (partial не работает с ON CONFLICT)
+- `scripts/import-ms-archived-products.ps1` — импорт `filter=archived=true`
+  с маппингом uom (19f1edc0→pcs, dfe54549→m, +5 других) и ценами из salePrices/buyPrice
+- Перезапущены `import-ms-internalorders.ps1` и `import-ms-inventory.ps1` (UPSERT)
+
+Результат:
+- products: 3556 → 3568 (+12 архивных, is_archived=true)
+- internal_order_items: 45714 → 45732 (+18)
+- inventory_items: 46619 → 46620 (+1)
+- missing product mappings: 0
+

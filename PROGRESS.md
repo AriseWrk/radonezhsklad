@@ -1069,3 +1069,25 @@ Gotcha: в move/loss/enter позициях нет vat/discount — COALESCE(...
 - inventory_items: 46619 → 46620 (+1)
 - missing product mappings: 0
 
+
+### Этап 37: пересчёт stock_balances / stock_movements (задача B)
+
+Было: 1421 балансов и 1421 движения от seed (Restore-Stock.ps1, 6 документов).
+
+Алгоритм:
+1. Movements — из всех posted-документов (receipt +, shipment/writeoff/transfer -)
+   + transfer: приход на target_warehouse_id
+2. Balances — из /report/stock/all с фильтром `filter=store=<href>` по каждому
+   складу (223 шт.). Это истина из МС, включая отрицательные остатки.
+
+Скрипт: scripts/sync-stock.ps1 (-SkipMovements / -SkipBalances).
+
+Результат:
+- stock_movements: 183 731 (по 37 467 документам, 3421 товар, 189 складов)
+  receipt 14 895 + shipment 18 + transfer 109 288 + writeoff 59 530 = 183 731
+- stock_balances: 3 019 (85 складов, 453 отрицательных — как в МС, 0 missing products)
+
+Также почищены seed-документы (5 receipt + 3 shipment + 1 transfer, external_id=NULL) —
+они не попадают в movements, т.к. их type вне ''receipt''/''shipment''/''writeoff''/''transfer''
+и/или status != posted.
+

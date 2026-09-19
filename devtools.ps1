@@ -6,18 +6,6 @@ function Get-Utf8NoBom {
     return New-Object System.Text.UTF8Encoding $false
 }
 
-function Write-Utf8File {
-    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Content)
-    $utf8 = New-Object System.Text.UTF8Encoding $false
-    [IO.File]::WriteAllText($Path, $Content, $utf8)
-}
-
-function Read-Utf8File {
-    param([Parameter(Mandatory)][string]$Path)
-    $utf8 = New-Object System.Text.UTF8Encoding $false
-    return [IO.File]::ReadAllText($Path, $utf8)
-}
-
 function Invoke-SqlQuery {
     param(
         [Parameter(Mandatory)][string]$Database,
@@ -132,4 +120,23 @@ function MsApi-GetAll {
         Start-Sleep -Milliseconds 100
     }
     return $all
+}
+
+
+# ─── Fix CWD-резолюции относительных путей ─────────────────────────
+# PS 7 хранит [Environment]::CurrentDirectory отдельно от $PWD,
+# а [IO.File]::* резолвит относительный путь против Environment.CurrentDirectory.
+# Используем PS-провайдер, чтобы путь резолвился от $PWD вызывающего.
+function Write-Utf8File {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Content)
+    $abs = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    [IO.File]::WriteAllText($abs, $Content, $utf8)
+}
+
+function Read-Utf8File {
+    param([Parameter(Mandatory)][string]$Path)
+    $abs = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    return [IO.File]::ReadAllText($abs, $utf8)
 }

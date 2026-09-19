@@ -128,9 +128,9 @@
 
 - [ ] Тонкая настройка страницы «Сотрудники» (данные заполняются через UI)
 - [x] Импорт товаров из МойСклад API (3556 позиций) — см. Этап 34
-- [ ] Импорт контрагентов из МойСклад API
-- [ ] Импорт организаций из МойСклад API
-- [ ] Импорт складов из МойСклад API
+- [x] Импорт контрагентов из МойСклад API (146)
+- [x] Импорт организаций из МойСклад API (1)
+- [x] Импорт складов из МойСклад API (223)
 
 
 
@@ -338,7 +338,8 @@
 
 ### radonezh_warehouse
 
-- **warehouses** — id, name, address, is_active, created_at, updated_at
+- **warehouses** — id, name, address, is_active, external_id, external_code, source,
+  created_at, updated_at
 
 - **documents** — id, type (receipt/shipment/transfer/inventory), number,
 
@@ -350,13 +351,12 @@
 
   paid_amount, printed_at, sent_at
 
-- **suppliers** — id, name, inn, kpp, ogrn, phone, email, address, contact_person,
+- **suppliers** — id, name, inn, kpp, ogrn, okpo, phone, email, address,
+  legal_address, actual_address, fax, comment, counterparty_type, archived,
+  external_id, external_code, source, created_at, updated_at
 
-  comment, archived, created_at, updated_at
-
-- **organizations** — id, name, inn, kpp, ogrn, phone, email, address,
-
-  is_default, created_at, updated_at
+- **organizations** — id, name, inn, kpp, ogrn, okpo, legal_address, email,
+  is_default, archived, external_id, external_code, source, created_at
 
 - **internal_orders** — id, number, organization_id FK, warehouse_id FK,
 
@@ -381,11 +381,8 @@
 ### radonezh_order
 
 - **customers** — id, name, full_name, last_name, first_name, middle_name,
-
   phone, fax, email, address, legal_address, actual_address,
-
-  inn, kpp, ogrn, okpo, external_code, counterparty_type,
-
+  inn, kpp, ogrn, okpo, external_code, external_id, source, counterparty_type,
   status, group_name, comment, archived, created_at, updated_at
 
 - **orders** — id, number UNIQUE, customer_id FK, warehouse_id,
@@ -875,14 +872,34 @@ $products = MsApi-GetAll '/entity/product' -PageSize 1000
 | (нет) | source | moysklad |
 | productFolder | category_id | NULL, у товаров нет папок |
 
+### Что сделано (справочники)
+
+- [x] Контрагенты: 146 записей
+      customers: +external_id, +source, UNIQUE external_code (full)
+      suppliers: те же 146, роль поставщика
+- [x] Организации: 1 запись (ООО ЧОО АБ "РАДОНЕЖ")
+      +kpp, +ogrn, +okpo, +legal_address, +email, +archived
+- [x] Склады: 223 записи
+
+Миграции:
+- services/product/migrations/0003_moysklad.sql
+- services/order/migrations/0005_moysklad.sql
+- services/warehouse/migrations/0005_moysklad.sql
+
+### Маппинг MS - наши таблицы
+
+| Сущность МС | Таблица | UPSERT-ключ |
+|---|---|---|
+| counterparty | radonezh_order.customers | external_code |
+| counterparty | radonezh_warehouse.suppliers | external_code |
+| organization | radonezh_warehouse.organizations | external_code |
+| store | radonezh_warehouse.warehouses | external_code |
+
+UNIQUE-индекс на external_code должен быть full, не partial — иначе
+ON CONFLICT (external_code) падает с "no unique or exclusion constraint".
 ### Что дальше
 
-- [ ] Контрагенты (/entity/counterparty) - radonezh_order.counterparties
-- [ ] Организации (/entity/organization)
-- [ ] Склады (/entity/store) - radonezh_warehouse.warehouses
+- [x] Контрагенты (/entity/counterparty) — customers + suppliers
+- [x] Организации (/entity/organization) — organizations
+- [x] Склады (/entity/store) — warehouses
 - [ ] Документы (опционально): приёмки, отгрузки, внутренние заказы
-
-Скрипт загрузки товаров (одноразовый, вне репо):
-1. MsApi-GetAll /entity/product -PageSize 1000
-2. Генерация TSV (12 колонок) в D:\Radonezhsklad\.secrets\ms_products.tsv
-3. docker cp - temp-таблица - UPSERT по sku

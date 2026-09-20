@@ -56,7 +56,8 @@
       </div>
       <div class="field">
         <label>Проект</label>
-        <input v-model="form.project" :disabled="!canEdit" />
+        <div v-if="form.project_name" class="ro" :title="form.project || ''">{{ form.project_name }}</div>
+        <input v-else v-model="form.project" :disabled="!canEdit" placeholder="UUID проекта" />
       </div>
     </div>
 
@@ -228,6 +229,7 @@ const form = reactive({
   warehouse_id: '',
   plan_date: '',
   project: '',
+  project_name: '',
   comment: '',
   vat_enabled: true,
   vat_included: true,
@@ -300,6 +302,7 @@ async function load() {
       form.warehouse_id = o.warehouse_id ?? ''
       form.plan_date = o.plan_date ? o.plan_date.slice(0, 10) : ''
       form.project = o.project ?? ''
+      form.project_name = o.project_name ?? ''
       form.comment = o.comment ?? ''
       form.vat_enabled = o.vat_enabled
       form.vat_included = o.vat_included

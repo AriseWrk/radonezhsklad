@@ -97,6 +97,7 @@ OrganizationID *uuid.UUID          `json:"organization_id,omitempty"`
 WarehouseID    *uuid.UUID          `json:"warehouse_id,omitempty"`
 PlanDate       *time.Time          `json:"plan_date,omitempty"`
 Project        *string             `json:"project,omitempty"`
+ProjectName    string              `json:"project_name,omitempty"`
 Comment        *string             `json:"comment,omitempty"`
 Total          float64             `json:"total"`
 ShippedAmount  float64             `json:"shipped_amount"`

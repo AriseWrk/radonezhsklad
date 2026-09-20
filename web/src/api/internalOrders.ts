@@ -21,6 +21,7 @@ export interface InternalOrder {
   warehouse_id?: string
   plan_date?: string
   project?: string
+  project_name?: string
   comment?: string
   total: number
   shipped_amount: number
@@ -45,6 +46,7 @@ export interface IntOrderInput {
   warehouse_id?: string
   plan_date?: string
   project?: string
+  project_name?: string
   comment?: string
   vat_enabled?: boolean
   vat_included?: boolean

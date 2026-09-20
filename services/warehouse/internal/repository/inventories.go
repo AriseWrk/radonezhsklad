@@ -98,3 +98,28 @@ func (r *InventoryRepo) Get(ctx context.Context, id uuid.UUID) (*models.Inventor
     inv.Items = items
     return inv, rows.Err()
 }
+
+type InventoryNeighbors struct {
+    PrevID   *uuid.UUID
+    NextID   *uuid.UUID
+    Position int
+    Total    int
+}
+
+func (r *InventoryRepo) Neighbors(ctx context.Context, id uuid.UUID) (*InventoryNeighbors, error) {
+    var n InventoryNeighbors
+    err := r.db.QueryRow(ctx, `
+WITH ordered AS (
+    SELECT id,
+           ROW_NUMBER() OVER (ORDER BY doc_date DESC, id DESC) AS rn,
+           COUNT(*)    OVER ()                                  AS cnt
+    FROM inventories
+)
+SELECT
+    (SELECT id FROM ordered WHERE rn = o.rn - 1),
+    (SELECT id FROM ordered WHERE rn = o.rn + 1),
+    o.rn, o.cnt
+FROM ordered o WHERE o.id = $1`, id).Scan(&n.PrevID, &n.NextID, &n.Position, &n.Total)
+    if errors.Is(err, pgx.ErrNoRows) { return nil, nil }
+    return &n, err
+}

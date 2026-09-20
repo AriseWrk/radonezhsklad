@@ -73,6 +73,7 @@ read.GET("/stock/extended", h.StockExtended)
 read.GET("/inventory/prepare", h.InventoryPrepare)
 read.GET("/inventories", invH.List)
 read.GET("/inventories/:id", invH.Get)
+	read.GET("/inventories/:id/neighbors", invH.Neighbors)
 read.GET("/documents", h.ListDocuments)
 read.GET("/documents/:id", h.GetDocument)
 

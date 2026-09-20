@@ -28,3 +28,10 @@ func (s *InventoryService) Get(ctx context.Context, id uuid.UUID) (*models.Inven
     if inv == nil { return nil, apperr.NotFound("inventory not found") }
     return inv, nil
 }
+
+func (s *InventoryService) Neighbors(ctx context.Context, id uuid.UUID) (*repository.InventoryNeighbors, error) {
+    n, err := s.repo.Neighbors(ctx, id)
+    if err != nil { return nil, apperr.Internal("get inventory neighbors", err) }
+    if n == nil { return nil, apperr.NotFound("inventory not found") }
+    return n, nil
+}

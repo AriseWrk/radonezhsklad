@@ -49,3 +49,20 @@ export async function getInventory(id: string): Promise<Inventory> {
   const { data } = await http.get<Inventory>(`/inventories/${id}`)
   return data
 }
+
+
+export interface InventoryNeighbors {
+  prev_id: string | null
+  next_id: string | null
+  position: number
+  total: number
+}
+
+export async function getInventoryNeighbors(id: string): Promise<InventoryNeighbors> {
+  const { data } = await http.get<InventoryNeighbors>(
+`
+/inventories/${id}/neighbors
+`
+)
+  return data
+}

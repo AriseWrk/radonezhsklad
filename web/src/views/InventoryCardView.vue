@@ -4,9 +4,9 @@
       <button class="btn primary" disabled>Сохранить</button>
       <button class="btn" @click="close">Закрыть</button>
       <button class="btn" @click="print">Печать</button>
-      <button class="btn" @click="prev">‹</button>
-      <span class="muted" style="font-size:12px">1 из 749</span>
-      <button class="btn" @click="next">›</button>
+      <button class="btn" :disabled="!prevId" @click="prev">‹</button>
+      <span class="muted" style="font-size:12px">{{ position }} из {{ total }}</span>
+      <button class="btn" :disabled="!nextId" @click="next">›</button>
       <button class="btn">Изменить</button>
       <button class="btn">Создать документ</button>
       <div class="toolbar-info">
@@ -125,7 +125,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getInventory, type Inventory, type InventoryItem } from '../api/inventories'
+import { getInventory, getInventoryNeighbors, type Inventory, type InventoryItem } from '../api/inventories'
 import { listOrganizations, type Organization } from '../api/suppliers'
 import { apiErrorMessage } from '../api/client'
 import { useAuthStore } from '../stores/auth'
@@ -173,6 +173,13 @@ async function load() {
     ])
     doc.value = d
     items.value = d.items ?? []
+    try {
+      const nb = await getInventoryNeighbors(d.id)
+      prevId.value = nb.prev_id
+      nextId.value = nb.next_id
+      position.value = nb.position
+      total.value = nb.total
+    } catch { /* ignore */ }
     organizations.value = orgs
   } catch (e) {
     error.value = apiErrorMessage(e)
@@ -181,10 +188,15 @@ async function load() {
   }
 }
 
+const prevId = ref<string | null>(null)
+const nextId = ref<string | null>(null)
+const position = ref(0)
+const total = ref(0)
+
 function close() { router.push('/inventories') }
 function print() { window.print() }
-function prev() { router.push('/inventories') }
-function next() { router.push('/inventories') }
+function prev() { if (prevId.value) router.push('/inventories/' + prevId.value) }
+function next() { if (nextId.value) router.push('/inventories/' + nextId.value) }
 
 onMounted(load)
 </script>

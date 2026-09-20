@@ -68,3 +68,16 @@ func (h *InventoryHandler) Get(c *gin.Context) {
 
     httpx.OK(c, inv)
 }
+
+func (h *InventoryHandler) Neighbors(c *gin.Context) {
+    id, err := uuid.Parse(c.Param("id"))
+    if err != nil { c.Error(apperr.BadRequest("invalid id")); return }
+    n, err := h.svc.Neighbors(c.Request.Context(), id)
+    if err != nil { c.Error(err); return }
+    httpx.OK(c, gin.H{
+        "prev_id":  n.PrevID,
+        "next_id":  n.NextID,
+        "position": n.Position,
+        "total":    n.Total,
+    })
+}

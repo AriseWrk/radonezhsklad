@@ -1224,3 +1224,54 @@ Gateway (services/gateway/cmd/api/main.go):
 - Кнопки «Изменить», «Создать документ», табы «Связанные документы»/«Задачи»/«Файлы»
   в карточке — по-прежнему заглушки (disabled).
 - Кнопка «Печать» работает через window.print() (браузерный диалог).
+
+
+---
+
+## Этап 41: Карточка документа (receipt / shipment / transfer / writeoff)
+
+### Проблема
+
+DocumentsView показывал список по типам, но открытие документа было модалкой
+с базовой информацией без наименований товаров. Карточки как таковой не было.
+
+### Backend (services/warehouse)
+
+- models.go: + Document.ExternalID, + DocItem.ProductName/ProductSKU
+- repository.go: documentSelect + d.external_id; scanDocument и ListDocuments
+  сканируют &d.ExternalID
+- handler.go:
+  - + import "strings"
+  - GetDocument теперь обогащает items через productClient.ListByIDs —
+    product_name + product_sku (тот же паттерн, что InventoryHandler.Get)
+
+### Frontend (web/)
+
+- api/documents.ts: + Document.external_id, + DocItem.product_name/product_sku
+- router/index.ts: + /documents/:id → DocumentCardView.vue
+- DocumentsView.vue:
+  - useRouter, функция openCard(d) → router.push('/documents/'+d.id)
+  - кнопка «Открыть» переведена с модалки на карточку
+- views/DocumentCardView.vue (новый, ~250 строк):
+  - шапка: тип, №, дата, статус-пилюля, бейдж «МОЙСКЛАД» для импортированных
+  - поля: склад, склад-получатель (transfer), организация, входящий №/дата,
+    оплачено, проведён/отменён
+  - таблица позиций: наименование + артикул + кол-во + цена + сумма + итого
+  - комментарий (pre-wrap)
+  - кнопки: Провести (только draft + не импортированный), Отменить (posted + не импортированный),
+    Печать (window.print()), Закрыть
+  - watch(() => route.params.id, load) — перезагрузка при переходе между документами
+
+### Проверки
+
+- API: /documents/:id для writeoff/receipt/transfer/shipment возвращает
+  external_id и product_name/product_sku в items.
+- vue-tsc --noEmit — OK.
+- В браузере: клик по строке открывает карточку, у импортированных бейдж «МОЙСКЛАД»
+  и скрыты кнопки Провести/Отменить.
+
+### Известные хвосты
+
+- «Провести» / «Отменить» доступны для CRUD-документов (draft/posted без external_id);
+  на реальных импортированных данных не тестировалось (бета-тест).
+- Редактирование draft-документов (изменение позиций) — не реализовано.

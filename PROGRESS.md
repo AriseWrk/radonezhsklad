@@ -1143,3 +1143,39 @@ Gateway (services/gateway/cmd/api/main.go):
 - Аналогичный каркас надо будет сделать для «Документов» (там сейчас модалок нет —
   пользуются DocumentsView с типами receipt/shipment/transfer/writeoff)
 
+
+---
+
+## Этап 39: Внутренние заказы — read-only просмотр импортированных из МС
+
+### Проблема
+
+Импортированные из МойСклад внутренние заказы (11090 шт.) имеют status='draft',
+из-за чего фронт показывал их редактируемыми (canEdit = isNew || status === 'draft')
+и разрешал проведение через чекбокс «Проведено». Это ломало данные: пользователь
+мог случайно изменить/провести документ МС.
+
+### Backend (services/warehouse)
+
+- internal/models/models.go: + поле ExternalID *uuid.UUID `json:"external_id,omitempty"`
+- internal/repository/internal_orders.go: intOrderSelect + scanIntOrder + List
+  — добавлен o.external_id (&o.ExternalID в scan)
+- Коммит ef46603
+
+### Frontend (web/)
+
+- src/api/internalOrders.ts: + external_id?: string | null в InternalOrder
+- src/views/InternalOrderCardView.vue:
+  - новый ref externalId; заполняется в load() из o.external_id
+  - canEdit = isNew || (status === 'draft' && !externalId)
+  - бейдж «МОЙСКЛАД» в шапке карточки (title — «только просмотр»)
+  - CSS .ext-badge
+- Коммит 8410545
+
+### Проверки
+
+- API: GET /internal-orders/:id отдаёт external_id для импортированных,
+  пусто (omitempty) — для CRUD.
+- vue-tsc --noEmit — OK.
+- В браузере: импортированный → все поля серые, кнопка «Сохранить» disabled,
+  чекбокс «Проведено» disabled, бейдж «МОЙСКЛАД»; CRUD-заказ — редактируемый.

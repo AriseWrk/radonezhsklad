@@ -32,3 +32,9 @@ _backup/
 # Secrets
 .secrets/
 **/.secrets/
+
+# Локальные дампы БД (перенос на другой ПК)
+dumps/
+*.zip
+
+deploy-package/

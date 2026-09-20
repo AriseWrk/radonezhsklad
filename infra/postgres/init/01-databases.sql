@@ -9,3 +9,6 @@ WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'radonezh_warehouse')\
 
 SELECT 'CREATE DATABASE radonezh_order'
 WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'radonezh_order')\gexec
+
+SELECT 'CREATE DATABASE radonezh_audit'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'radonezh_audit')\gexec

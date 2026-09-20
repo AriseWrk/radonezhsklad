@@ -63,6 +63,7 @@ UpdatedAt         time.Time  `json:"updated_at"`
 PostedAt          *time.Time `json:"posted_at,omitempty"`
 CancelledAt       *time.Time `json:"cancelled_at,omitempty"`
 ExternalID        *uuid.UUID `json:"external_id,omitempty"`
+SourceInventoryID *uuid.UUID `json:"source_inventory_id,omitempty"`
 Items             []DocItem  `json:"items,omitempty"`
 ItemsCount        int        `json:"items_count"`
 Total             float64    `json:"total"`

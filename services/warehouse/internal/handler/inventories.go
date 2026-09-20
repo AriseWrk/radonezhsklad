@@ -81,3 +81,18 @@ func (h *InventoryHandler) Neighbors(c *gin.Context) {
         "total":    n.Total,
     })
 }
+
+
+func (h *InventoryHandler) CreateCorrection(c *gin.Context) {
+    id, err := uuid.Parse(c.Param("id"))
+    if err != nil { c.Error(apperr.BadRequest("invalid id")); return }
+    var req struct {
+        Kind string `json:"kind" binding:"required"`
+    }
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.Error(apperr.BadRequest(err.Error())); return
+    }
+    doc, err := h.svc.CreateCorrection(c.Request.Context(), id, req.Kind)
+    if err != nil { c.Error(err); return }
+    httpx.Created(c, doc)
+}

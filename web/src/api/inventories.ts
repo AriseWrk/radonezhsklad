@@ -62,3 +62,20 @@ export async function getInventoryNeighbors(id: string): Promise<InventoryNeighb
   const { data } = await http.get<InventoryNeighbors>(`/inventories/${id}/neighbors`)
   return data
 }
+
+
+export type CorrectionKind = 'shortage' | 'surplus'
+
+export interface CorrectionDocument {
+  id: string
+  type: string
+  number: string
+  status: string
+  total: number
+  source_inventory_id?: string
+}
+
+export async function createInventoryCorrection(id: string, kind: CorrectionKind): Promise<CorrectionDocument> {
+  const { data } = await http.post<CorrectionDocument>(`/inventories/${id}/create-correction`, { kind })
+  return data
+}

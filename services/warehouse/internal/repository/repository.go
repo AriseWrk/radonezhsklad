@@ -110,6 +110,7 @@ OrganizationID    *uuid.UUID
 IncomingNumber    *string
 IncomingDate      *time.Time
 Comment           *string
+SourceInventoryID *uuid.UUID
 CreatedBy         *uuid.UUID
 Items             []DocItemInput
 }
@@ -124,7 +125,7 @@ const documentSelect = `
 SELECT d.id, d.type, d.number, d.status, d.warehouse_id, d.target_warehouse_id,
        d.supplier_id, d.organization_id, d.incoming_number, d.incoming_date, d.paid_amount,
        d.printed_at, d.sent_at, d.comment, d.created_by,
-       d.created_at, d.updated_at, d.posted_at, d.cancelled_at, d.external_id,
+       d.created_at, d.updated_at, d.posted_at, d.cancelled_at, d.external_id, d.source_inventory_id,
        (SELECT COUNT(*) FROM document_items di WHERE di.document_id = d.id) AS items_count,
        (SELECT COALESCE(SUM(di.quantity * di.price), 0) FROM document_items di WHERE di.document_id = d.id) AS total
 FROM documents d`
@@ -134,7 +135,7 @@ d := &models.Document{}
 err := row.Scan(&d.ID, &d.Type, &d.Number, &d.Status, &d.WarehouseID, &d.TargetWarehouseID,
 &d.SupplierID, &d.OrganizationID, &d.IncomingNumber, &d.IncomingDate, &d.PaidAmount,
 &d.PrintedAt, &d.SentAt, &d.Comment, &d.CreatedBy,
-&d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt, &d.ExternalID,
+&d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt, &d.ExternalID, &d.SourceInventoryID,
 &d.ItemsCount, &d.Total)
 if errors.Is(err, pgx.ErrNoRows) { return nil, nil }
 return d, err
@@ -147,12 +148,12 @@ var id uuid.UUID
 err := tx.QueryRow(ctx,
 `INSERT INTO documents (type, number, warehouse_id, target_warehouse_id,
                         supplier_id, organization_id, incoming_number, incoming_date,
-                        comment, created_by)
- VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                        comment, created_by, source_inventory_id)
+ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
  RETURNING id`,
 in.Type, in.Number, in.WarehouseID, in.TargetWarehouseID,
 in.SupplierID, in.OrganizationID, in.IncomingNumber, in.IncomingDate,
-in.Comment, in.CreatedBy,
+in.Comment, in.CreatedBy, in.SourceInventoryID,
 ).Scan(&id)
 if err != nil { return err }
 
@@ -244,7 +245,7 @@ d := &models.Document{}
 if err := rows.Scan(&d.ID, &d.Type, &d.Number, &d.Status, &d.WarehouseID, &d.TargetWarehouseID,
 &d.SupplierID, &d.OrganizationID, &d.IncomingNumber, &d.IncomingDate, &d.PaidAmount,
 &d.PrintedAt, &d.SentAt, &d.Comment, &d.CreatedBy,
-&d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt, &d.ExternalID,
+&d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt, &d.ExternalID, &d.SourceInventoryID,
 &d.ItemsCount, &d.Total); err != nil {
 return nil, err
 }
@@ -444,4 +445,14 @@ var buf [20]byte
 i := len(buf)
 for n > 0 { i--; buf[i] = byte('0' + n%10); n /= 10 }
 return string(buf[i:])
+}
+
+func (r *Repo) DocumentExistsForInventory(ctx context.Context, inventoryID uuid.UUID, docType string) (bool, error) {
+    var exists bool
+    err := r.db.QueryRow(ctx, `
+SELECT EXISTS(
+  SELECT 1 FROM documents
+  WHERE source_inventory_id = $1 AND type = $2 AND status != 'cancelled'
+)`, inventoryID, docType).Scan(&exists)
+    return exists, err
 }

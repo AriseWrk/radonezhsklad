@@ -1,14 +1,12 @@
 <template>
   <div class="card-page">
     <div class="toolbar">
-      <button class="btn primary" disabled>Сохранить</button>
       <button class="btn" @click="close">Закрыть</button>
       <button class="btn" @click="print">Печать</button>
       <button class="btn" :disabled="!prevId" @click="prev">‹</button>
       <span class="muted" style="font-size:12px">{{ position }} из {{ total }}</span>
       <button class="btn" :disabled="!nextId" @click="next">›</button>
-      <button class="btn">Изменить</button>
-      <button class="btn">Создать документ</button>
+      <button class="btn primary" @click="showCreateDialog = true">Создать документ</button>
       <div class="toolbar-info">
         <span>{{ userLabel }}</span>
       </div>
@@ -110,14 +108,26 @@
       </div>
     </template>
 
-    <div class="section-block">
-      <div class="section-head"><span>Задачи</span><button class="btn-link" disabled>+ Задача</button></div>
-      <div class="muted" style="font-size:12px">Нет задач</div>
-    </div>
+  </div>
 
-    <div class="section-block">
-      <div class="section-head"><span>Файлы</span><button class="btn-link" disabled>+ Файл</button></div>
-      <div class="muted" style="font-size:12px">Нет файлов</div>
+  <div v-if="showCreateDialog" class="modal-backdrop" @click.self="showCreateDialog = false">
+    <div class="modal-box">
+      <h3>Создать корректирующий документ</h3>
+      <p class="muted" style="font-size:13px;margin:8px 0 16px">
+        Из инвентаризации №{{ doc.number }} от {{ formatDateTime(doc.doc_date) }}
+      </p>
+      <div class="dialog-actions">
+        <button class="btn" :disabled="creating" @click="createCorrection('shortage')">
+          Списать недостачи
+        </button>
+        <button class="btn" :disabled="creating" @click="createCorrection('surplus')">
+          Оприходовать избытки
+        </button>
+      </div>
+      <div v-if="createError" class="error-box" style="margin-top:12px">{{ createError }}</div>
+      <div class="dialog-footer">
+        <button class="btn" @click="showCreateDialog = false">Отмена</button>
+      </div>
     </div>
   </div>
 </template>
@@ -125,7 +135,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getInventory, getInventoryNeighbors, type Inventory, type InventoryItem } from '../api/inventories'
+import { getInventory, getInventoryNeighbors, createInventoryCorrection, type Inventory, type InventoryItem } from '../api/inventories'
 import { listOrganizations, type Organization } from '../api/suppliers'
 import { apiErrorMessage } from '../api/client'
 import { useAuthStore } from '../stores/auth'
@@ -142,6 +152,9 @@ const organizations = ref<Organization[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const tab = ref<'main' | 'related'>('main')
+const showCreateDialog = ref(false)
+const creating = ref(false)
+const createError = ref<string | null>(null)
 
 const userLabel = computed(() => auth.userId ? auth.userId.slice(0, 8) : '')
 
@@ -195,6 +208,21 @@ const total = ref(0)
 
 function close() { router.push('/inventories') }
 function print() { window.print() }
+
+async function createCorrection(kind: 'shortage' | 'surplus') {
+  if (!doc.value.id) return
+  creating.value = true
+  createError.value = null
+  try {
+    const d = await createInventoryCorrection(doc.value.id, kind)
+    showCreateDialog.value = false
+    router.push('/documents/' + d.id)
+  } catch (e) {
+    createError.value = apiErrorMessage(e)
+  } finally {
+    creating.value = false
+  }
+}
 function prev() { if (prevId.value) router.push('/inventories/' + prevId.value) }
 function next() { if (nextId.value) router.push('/inventories/' + nextId.value) }
 
@@ -280,4 +308,17 @@ watch(() => route.params.id, load)
 .section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-weight: 600; font-size: 13px; }
 .btn-link { background: none; border: none; color: #2c5d9c; cursor: pointer; font-size: 13px; }
 .btn-link:disabled { color: #8c959f; cursor: default; }
+
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center; z-index: 50;
+}
+.modal-box {
+  background: #fff; padding: 20px; border-radius: 6px; min-width: 420px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+.modal-box h3 { margin: 0; font-size: 16px; }
+.dialog-actions { display: flex; gap: 8px; }
+.dialog-actions .btn { flex: 1; }
+.dialog-footer { margin-top: 16px; text-align: right; }
 </style>

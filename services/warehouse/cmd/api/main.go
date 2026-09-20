@@ -44,7 +44,7 @@ orgRepo := repository.NewOrganizationRepo(pool)
 svc := service.New(repo)
 supSvc := service.NewSupplierService(supRepo, orgRepo)
 	intOrderSvc := service.NewInternalOrderService(intOrderRepo)
-invSvc := service.NewInventoryService(invRepo)
+invSvc := service.NewInventoryService(invRepo, repo)
 pc := product.New(cfg.ProductURL)
 
 h := handler.New(svc, pc)
@@ -115,6 +115,7 @@ docWrite.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "manager", "w
 docWrite.POST("/documents", h.CreateDocument)
 docWrite.POST("/documents/:id/post", h.PostDocument)
 docWrite.POST("/documents/:id/cancel", h.CancelDocument)
+docWrite.POST("/inventories/:id/create-correction", invH.CreateCorrection)
 }
 }
 

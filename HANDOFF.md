@@ -37,6 +37,9 @@ admin@radonezh.local / qwerty123
 | 36 | 6e68916 | Архивные товары (12 шт.) + missing позиции |
 | 37 | d2c2282 | Пересчёт stock_balances и stock_movements |
 | 38 | 6a7e36d | Раздел Инвентаризации — backend + frontend |
+| 39 | ef46603..3b76ea3 | Внутренние заказы: read-only для импортированных + external_id |
+| 40 | 069e110..6091717 | Pager в карточке инвентаризации (prev/next + position/total) |
+| 41 | d3f9d56..dbd9dd6 | Карточка документа (receipt/shipment/transfer/writeoff) |
 
 ### Цифры в БД
 
@@ -102,6 +105,26 @@ SQL-шаблоны: scripts/sql/upsert_documents.sql, upsert_internalorders.sql,
 11. Апострофы в одинарных PS-строках экранируются как два апострофа (двойной апостроф).
     Пример: вместо it's — it''s.
 
+12. [IO.File]::ReadAllText/WriteAllText используют CWD процесса, а не PS-локацию.
+    Всегда Join-Path (Get-Location).Path <rel>, иначе FileNotFoundException на rel-пути.
+13. EOL у файлов разный: Go-файлы warehouse — CRLF, большинство Vue/TS — LF.
+    Перед anchor: if ($s.Contains("`r`n")) { CRLF } else { LF }.
+14. Многострочные anchors с `n легко промахиваются — то LF, то CRLF.
+    Надёжнее: однострочный anchor + явный $crlf/$lf в replacement.
+15. Вложенный here-string @'...'@ внутри внешнего @'...'@ бьётся — PS закрывает
+    внешний на первой строке '@ вложенного. Разбивать на отдельные блоки
+    или через массивы строк @('a','b') -join $nl.
+16. Большие vue-файлы (10+ KB) через терминал бьются — PSReadLine режет на ~8k.
+    Писать через .ps1-файл: содержимое в @'...'@ → [IO.File]::WriteAllText.
+17. В TS template literal ${id} ломает поиск закрывающей } через IndexOf.
+    Искать от return data или использовать другой якорь.
+18. Vue Router переиспользует компонент при смене только route.params.id —
+    onMounted(load) НЕ срабатывает при переходах внутри того же route.
+    Обязательно: watch(() => route.params.id, load).
+19. axios baseURL '/api/v1' + многострочный template literal URL:
+    переносы `n попадают в URL → gateway 404. URL всегда одной строкой.
+
+
 ---
 
 ## Правила работы в PS 7
@@ -113,6 +136,9 @@ SQL-шаблоны: scripts/sql/upsert_documents.sql, upsert_internalorders.sql,
 4. Большие here-string через терминал бьются — писать через [string[]]@(...) + WriteAllLines.
 5. Перед каждой правкой файла — показать превью / содержимое, потом писать.
 6. После каждой значимой правки — git add / commit / push + обновить PROGRESS.md.
+7. Перед anchor проверять EOL: $s.Contains("`r`n") → CRLF иначе LF.
+   У Go-файлов warehouse — CRLF, у Vue/TS — LF. Если anchor многострочный —
+   разбить на однострочный + явный $crlf/$lf в replacement.
 
 ---
 
@@ -145,18 +171,26 @@ SQL-шаблоны: scripts/sql/upsert_documents.sql, upsert_internalorders.sql,
 
 ## С чего начать завтра
 
-Вариант 1 — Добить карточку инвентаризации (10-15 мин):
-- Pager (1 из 749) через query-параметр или отдельный endpoint
-- Prev/next через sort + offset
-- Кнопка Печать через window.print()
+Варианты 1/2/3 из предыдущего HANDOFF закрыты в Этапах 39-41:
+- Вариант 3 — read-only для импортированных внутренних заказов
+- Вариант 1 — pager в карточке инвентаризации
+- Вариант 2 — карточка документа DocumentCardView.vue
 
-Вариант 2 — DocumentCardView.vue для документов (30-60 мин):
-- Роут /documents/:id
-- Карточка по образцу InventoryCardView
-- Кнопки: Изменить (для draft), Провести, Отменить, Печать
+Новые задачи (обсудить приоритеты):
 
-Вариант 3 — Расширить InternalOrdersView карточкой для импортированных (30-60 мин):
-- Проверить, что InternalOrderCardView работает для read-only
-- Добавить ссылки из списка
+A) Заглушки в карточке инвентаризации (InventoryCardView):
+   - Кнопки «Изменить», «Создать документ»
+   - Табы «Связанные документы», «Задачи», «Файлы»
 
-Начать с диагностики: что сейчас в UI реально отображается, где кнопки, какие actions доступны.
+B) Редактирование draft-документов в DocumentCardView:
+   - Изменение позиций, добавление/удаление строк
+   - Сохранение через PUT/PATCH
+
+C) Сверка сумм: SUM(documents.total) vs МойСклад по типам — валидация импорта
+
+D) Регулярная синхронизация: cron/queue для sync-stock.ps1 и импортёров
+
+E) Дополнительные справочники: uom (у нас 7, в МС 62), productFolder,
+   project, contract, expenseItem
+
+F) UI для движения товара: /stock/product/:id уже есть в backend, но не в UI

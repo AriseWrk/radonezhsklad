@@ -95,6 +95,7 @@ DocDate        time.Time           `json:"doc_date"`
 Status         string              `json:"status"`
 OrganizationID *uuid.UUID          `json:"organization_id,omitempty"`
 WarehouseID    *uuid.UUID          `json:"warehouse_id,omitempty"`
+WarehouseName  string              `json:"warehouse_name,omitempty"`
 PlanDate       *time.Time          `json:"plan_date,omitempty"`
 Project        *string             `json:"project,omitempty"`
 ProjectName    string              `json:"project_name,omitempty"`
@@ -103,6 +104,7 @@ Total          float64             `json:"total"`
 ShippedAmount  float64             `json:"shipped_amount"`
 SentAt         *time.Time          `json:"sent_at,omitempty"`
 PrintedAt      *time.Time          `json:"printed_at,omitempty"`
+IsPrinted      bool                `json:"is_printed"`
 OwnerID        *uuid.UUID          `json:"owner_id,omitempty"`
 OwnerDept      *string             `json:"owner_dept,omitempty"`
 VatEnabled     bool                `json:"vat_enabled"`

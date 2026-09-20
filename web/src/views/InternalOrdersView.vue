@@ -144,13 +144,14 @@
           <th class="num" style="width:130px" @click="sortBy('total')">Сумма <span v-if="sortKey === 'total'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span></th>
           <th class="num" style="width:130px">Отгружено</th>
           <th class="num" style="width:130px">Отправлено</th>
+          <th style="width:150px">Склад</th>
           <th style="width:130px">Напечатано</th>
           <th>Комментарий</th>
         </tr>
       </thead>
       <tbody>
-        <tr v-if="loading"><td colspan="9" class="muted" style="text-align:center;padding:24px">Загрузка...</td></tr>
-        <tr v-else-if="filtered.length === 0"><td colspan="9" class="muted" style="text-align:center;padding:24px">Нет заказов</td></tr>
+        <tr v-if="loading"><td colspan="10" class="muted" style="text-align:center;padding:24px">Загрузка...</td></tr>
+        <tr v-else-if="filtered.length === 0"><td colspan="10" class="muted" style="text-align:center;padding:24px">Нет заказов</td></tr>
         <tr
           v-else
           v-for="o in paginated"
@@ -171,8 +172,9 @@
             <span v-if="o.sent_at" class="link">{{ formatMoney(o.total) }}</span>
             <span v-else class="muted">0,00</span>
           </td>
+          <td class="muted">{{ o.warehouse_name || '' }}</td>
           <td>
-            <span v-if="o.printed_at" class="badge badge-printed">Напечатан</span>
+            <span v-if="o.is_printed || o.printed_at" class="badge badge-printed">Напечатан</span>
             <span v-else-if="o.sent_at" class="badge badge-sent">Отправлен</span>
           </td>
           <td class="muted">{{ o.comment || '' }}</td>

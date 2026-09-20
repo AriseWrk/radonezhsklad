@@ -40,20 +40,21 @@ VatRate   float64
 }
 
 const intOrderSelect = `
-SELECT o.id, o.number, o.doc_date, o.status, o.organization_id, o.warehouse_id,
+SELECT o.id, o.number, o.doc_date, o.status, o.organization_id, o.warehouse_id, COALESCE(w.name, '') AS warehouse_name,
        o.plan_date, o.project, COALESCE(p.name, '') AS project_name, o.comment, o.total, o.shipped_amount,
-       o.sent_at, o.printed_at, o.owner_id, o.owner_dept,
+       o.sent_at, o.printed_at, o.is_printed, o.owner_id, o.owner_dept,
        o.vat_enabled, o.vat_included,
        o.posted_at, o.cancelled_at, o.created_by, o.created_at, o.updated_at, o.external_id,
        (SELECT COUNT(*) FROM internal_order_items i WHERE i.order_id = o.id)
 FROM internal_orders o
-LEFT JOIN projects p ON p.external_id::text = o.project`
+LEFT JOIN projects p ON p.external_id::text = o.project
+LEFT JOIN warehouses w ON w.id = o.warehouse_id`
 
 func scanIntOrder(row pgx.Row) (*models.InternalOrder, error) {
 o := &models.InternalOrder{}
-err := row.Scan(&o.ID, &o.Number, &o.DocDate, &o.Status, &o.OrganizationID, &o.WarehouseID,
+err := row.Scan(&o.ID, &o.Number, &o.DocDate, &o.Status, &o.OrganizationID, &o.WarehouseID, &o.WarehouseName,
 &o.PlanDate, &o.Project, &o.ProjectName, &o.Comment, &o.Total, &o.ShippedAmount,
-&o.SentAt, &o.PrintedAt, &o.OwnerID, &o.OwnerDept,
+&o.SentAt, &o.PrintedAt, &o.IsPrinted, &o.OwnerID, &o.OwnerDept,
 &o.VatEnabled, &o.VatIncluded,
 &o.PostedAt, &o.CancelledAt, &o.CreatedBy, &o.CreatedAt, &o.UpdatedAt, &o.ExternalID, &o.ItemsCount)
 if errors.Is(err, pgx.ErrNoRows) { return nil, nil }
@@ -158,9 +159,9 @@ defer rows.Close()
 out := []models.InternalOrder{}
 for rows.Next() {
 o := &models.InternalOrder{}
-if err := rows.Scan(&o.ID, &o.Number, &o.DocDate, &o.Status, &o.OrganizationID, &o.WarehouseID,
+if err := rows.Scan(&o.ID, &o.Number, &o.DocDate, &o.Status, &o.OrganizationID, &o.WarehouseID, &o.WarehouseName,
 &o.PlanDate, &o.Project, &o.ProjectName, &o.Comment, &o.Total, &o.ShippedAmount,
-&o.SentAt, &o.PrintedAt, &o.OwnerID, &o.OwnerDept,
+&o.SentAt, &o.PrintedAt, &o.IsPrinted, &o.OwnerID, &o.OwnerDept,
 &o.VatEnabled, &o.VatIncluded,
 &o.PostedAt, &o.CancelledAt, &o.CreatedBy, &o.CreatedAt, &o.UpdatedAt, &o.ExternalID, &o.ItemsCount); err != nil {
 return nil, err

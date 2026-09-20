@@ -19,6 +19,7 @@ export interface InternalOrder {
   status: IntOrderStatus
   organization_id?: string
   warehouse_id?: string
+  warehouse_name?: string
   plan_date?: string
   project?: string
   project_name?: string
@@ -27,6 +28,7 @@ export interface InternalOrder {
   shipped_amount: number
   sent_at?: string
   printed_at?: string
+  is_printed?: boolean
   owner_id?: string
   owner_dept?: string
   vat_enabled: boolean
@@ -44,6 +46,7 @@ export interface IntOrderInput {
   number?: string
   organization_id?: string
   warehouse_id?: string
+  warehouse_name?: string
   plan_date?: string
   project?: string
   project_name?: string

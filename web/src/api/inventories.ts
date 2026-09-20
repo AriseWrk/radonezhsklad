@@ -59,10 +59,6 @@ export interface InventoryNeighbors {
 }
 
 export async function getInventoryNeighbors(id: string): Promise<InventoryNeighbors> {
-  const { data } = await http.get<InventoryNeighbors>(
-`
-/inventories/${id}/neighbors
-`
-)
+  const { data } = await http.get<InventoryNeighbors>(`/inventories/${id}/neighbors`)
   return data
 }

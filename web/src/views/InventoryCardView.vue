@@ -123,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getInventory, getInventoryNeighbors, type Inventory, type InventoryItem } from '../api/inventories'
 import { listOrganizations, type Organization } from '../api/suppliers'
@@ -199,6 +199,7 @@ function prev() { if (prevId.value) router.push('/inventories/' + prevId.value) 
 function next() { if (nextId.value) router.push('/inventories/' + nextId.value) }
 
 onMounted(load)
+watch(() => route.params.id, load)
 </script>
 
 <style scoped>

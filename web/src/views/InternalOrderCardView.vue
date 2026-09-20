@@ -16,6 +16,7 @@
     <div class="doc-header">
       <div class="doc-title">
         <span class="muted">Внутренний заказ</span>
+        <span v-if="externalId" class="ext-badge" title="Импортирован из МойСклад — только просмотр">МойСклад</span>
         <span class="doc-number">№</span>
         <input v-model="form.number" class="num-input" :disabled="!canEdit" placeholder="авто" />
         <span class="muted">от</span>
@@ -234,7 +235,8 @@ const form = reactive({
 })
 
 const currentId = ref<string | null>(null)
-const canEdit = computed(() => isNew.value || form.status === 'draft')
+const externalId = ref<string | null>(null)
+const canEdit = computed(() => isNew.value || (form.status === 'draft' && !externalId.value))
 
 const newItemSearch = ref('')
 const showSuggest = ref(false)
@@ -301,6 +303,7 @@ async function load() {
       form.comment = o.comment ?? ''
       form.vat_enabled = o.vat_enabled
       form.vat_included = o.vat_included
+      externalId.value = o.external_id ?? null
       form.items = (o.items ?? []).map((it) => ({
         product_id: it.product_id, quantity: it.quantity, price: it.price, vat_rate: it.vat_rate,
       }))
@@ -436,6 +439,11 @@ onMounted(load)
 }
 .posted-check { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #1f2328; }
 .posted-check input { width: auto; }
+.ext-badge {
+  padding: 2px 6px; font-size: 11px; font-weight: 500;
+  background: #eaeef2; color: #57606a; border-radius: 3px;
+  text-transform: uppercase; letter-spacing: 0.3px;
+}
 
 .fields-grid {
   display: grid;

@@ -36,6 +36,7 @@ export interface InternalOrder {
   updated_at: string
   items?: InternalOrderItem[]
   items_count?: number
+  external_id?: string | null
 }
 
 export interface IntOrderInput {

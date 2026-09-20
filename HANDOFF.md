@@ -44,6 +44,7 @@ admin@radonezh.local / qwerty123
 
 | 43 | be4cbc3 | Сверка сумм с МС + VAT-логика в total |
 | 44 | a0bce51 | Справочник проектов МС + project_name в internal_orders |
+| 45 | ea5e3b4 | is_printed из МС + колонка Склад в списке заказов |
 
 ### Цифры в БД
 

@@ -1429,3 +1429,48 @@ scripts/import-ms-projects.ps1 — /entity/project (limit=1000, без positions
 - Инвентаризации тоже хранят project UUID (нет колонки в inventories).
   Если понадобится — применить тот же подход.
 - Селектор проекта в режиме редактирования — пока UUID-инпут.
+
+
+---
+
+## Этап 45: is_printed из МС + колонка Склад во внутренних заказах
+
+### Проблема
+
+В списке внутренних заказов бейдж «Напечатан» появлялся только у 3 заказов,
+хотя в МС printed=true у 10031 из 11090. Причина: при импорте поле printed
+(boolean) не мапилось, а printed_at (timestamp) в МС отсутствует как таковое.
+Плюс в списке не было колонки Склад, хотя фильтр по складу существовал.
+
+### Backend
+
+- migrations/0010_is_printed.sql: internal_orders.is_printed BOOLEAN NOT NULL
+  DEFAULT FALSE.
+- models.go: InternalOrder + IsPrinted bool `json:"is_printed"`,
+  + WarehouseName string `json:"warehouse_name,omitempty"`.
+- repository/internal_orders.go: intOrderSelect дополнен
+  COALESCE(w.name, '') AS warehouse_name + LEFT JOIN warehouses w
+  ON w.id = o.warehouse_id; в select добавлено o.is_printed; сканы
+  дополнены &o.WarehouseName и &o.IsPrinted (scanIntOrder и List).
+
+### Backfill
+
+scripts/backfill-ms-intorder-printed.ps1 — выгружает 11090 internalorder
+(limit=1000, без positions) в TSV (external_id, printed), COPY в TEMP,
+UPDATE по external_id. Результат: printed=true → 10031, false → 1060.
+
+### Frontend
+
+- api/internalOrders.ts: + warehouse_name?, + is_printed?.
+- InternalOrdersView.vue: колонка Склад (после «Отправлено»);
+  бейдж «Напечатан» теперь по o.is_printed || o.printed_at.
+
+### Проверки
+
+- API: warehouse_name у всех 500 первых заказов, is_printed=true у 456 (91%).
+- Заказ 02070: Склад Гуржий МС, is_printed=true.
+- vue-tsc --noEmit — OK. warehouse build — OK.
+
+### Известные хвосты
+
+- sent_at (Отправлено) в МС отсутствует — в списке всегда 0,00. Ок.

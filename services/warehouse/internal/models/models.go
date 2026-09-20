@@ -107,6 +107,7 @@ CancelledAt    *time.Time          `json:"cancelled_at,omitempty"`
 CreatedBy      *uuid.UUID          `json:"created_by,omitempty"`
 CreatedAt      time.Time           `json:"created_at"`
 UpdatedAt      time.Time           `json:"updated_at"`
+ExternalID     *uuid.UUID          `json:"external_id,omitempty"`
 Items          []InternalOrderItem `json:"items,omitempty"`
 ItemsCount     int                 `json:"items_count"`
 }

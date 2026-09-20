@@ -44,7 +44,7 @@ SELECT o.id, o.number, o.doc_date, o.status, o.organization_id, o.warehouse_id,
        o.plan_date, o.project, o.comment, o.total, o.shipped_amount,
        o.sent_at, o.printed_at, o.owner_id, o.owner_dept,
        o.vat_enabled, o.vat_included,
-       o.posted_at, o.cancelled_at, o.created_by, o.created_at, o.updated_at,
+       o.posted_at, o.cancelled_at, o.created_by, o.created_at, o.updated_at, o.external_id,
        (SELECT COUNT(*) FROM internal_order_items i WHERE i.order_id = o.id)
 FROM internal_orders o`
 
@@ -54,7 +54,7 @@ err := row.Scan(&o.ID, &o.Number, &o.DocDate, &o.Status, &o.OrganizationID, &o.W
 &o.PlanDate, &o.Project, &o.Comment, &o.Total, &o.ShippedAmount,
 &o.SentAt, &o.PrintedAt, &o.OwnerID, &o.OwnerDept,
 &o.VatEnabled, &o.VatIncluded,
-&o.PostedAt, &o.CancelledAt, &o.CreatedBy, &o.CreatedAt, &o.UpdatedAt, &o.ItemsCount)
+&o.PostedAt, &o.CancelledAt, &o.CreatedBy, &o.CreatedAt, &o.UpdatedAt, &o.ExternalID, &o.ItemsCount)
 if errors.Is(err, pgx.ErrNoRows) { return nil, nil }
 return o, err
 }
@@ -161,7 +161,7 @@ if err := rows.Scan(&o.ID, &o.Number, &o.DocDate, &o.Status, &o.OrganizationID, 
 &o.PlanDate, &o.Project, &o.Comment, &o.Total, &o.ShippedAmount,
 &o.SentAt, &o.PrintedAt, &o.OwnerID, &o.OwnerDept,
 &o.VatEnabled, &o.VatIncluded,
-&o.PostedAt, &o.CancelledAt, &o.CreatedBy, &o.CreatedAt, &o.UpdatedAt, &o.ItemsCount); err != nil {
+&o.PostedAt, &o.CancelledAt, &o.CreatedBy, &o.CreatedAt, &o.UpdatedAt, &o.ExternalID, &o.ItemsCount); err != nil {
 return nil, err
 }
 out = append(out, *o)

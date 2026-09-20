@@ -127,7 +127,14 @@ SELECT d.id, d.type, d.number, d.status, d.warehouse_id, d.target_warehouse_id,
        d.printed_at, d.sent_at, d.comment, d.created_by,
        d.created_at, d.updated_at, d.posted_at, d.cancelled_at, d.external_id, d.source_inventory_id,
        (SELECT COUNT(*) FROM document_items di WHERE di.document_id = d.id) AS items_count,
-       (SELECT COALESCE(SUM(di.quantity * di.price), 0) FROM document_items di WHERE di.document_id = d.id) AS total
+       (SELECT COALESCE(SUM(
+            CASE
+              WHEN d.vat_enabled AND NOT d.vat_included AND di.vat_rate > 0
+                THEN di.quantity * di.price * (100 + di.vat_rate) / 100
+              ELSE di.quantity * di.price
+            END
+          ), 0)
+   FROM document_items di WHERE di.document_id = d.id) AS total
 FROM documents d`
 
 func scanDocument(row pgx.Row) (*models.Document, error) {

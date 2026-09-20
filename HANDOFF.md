@@ -41,6 +41,7 @@ admin@radonezh.local / qwerty123
 | 40 | 069e110..6091717 | Pager в карточке инвентаризации (prev/next + position/total) |
 | 41 | d3f9d56..dbd9dd6 | Карточка документа (receipt/shipment/transfer/writeoff) |
 | 42 | 4dd37be | Создание writeoff/receipt из инвентаризации (source_inventory_id) |
+| 43 | (текущий) | Сверка сумм с МС + VAT-логика в total |
 
 ### Цифры в БД
 
@@ -124,6 +125,11 @@ SQL-шаблоны: scripts/sql/upsert_documents.sql, upsert_internalorders.sql,
     Обязательно: watch(() => route.params.id, load).
 19. axios baseURL '/api/v1' + многострочный template literal URL:
     переносы `n попадают в URL → gateway 404. URL всегда одной строкой.
+20. MS API: expand=positions работает ТОЛЬКО при limit <= 100. При limit=500
+    MS молча отдаёт пустой positions.rows. Для сумм/аудита всегда limit<=100.
+21. MS .sum у supply/demand: при vatEnabled=true И vatIncluded=false сумма
+    включает НДС СВЕРХУ к qty×price. Для остальных типов — qty×price.
+    Наш документ.total теперь считает то же самое через CASE в documentSelect.
 
 
 ---

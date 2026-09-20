@@ -151,7 +151,7 @@ args := []any{}
 i := 1
 if f.Status != nil      { q += ` AND o.status = $` + itoa(i);       args = append(args, *f.Status); i++ }
 if f.WarehouseID != nil { q += ` AND o.warehouse_id = $` + itoa(i); args = append(args, *f.WarehouseID); i++ }
-q += ` ORDER BY o.created_at DESC LIMIT 500`
+q += ` ORDER BY o.doc_date DESC NULLS LAST, o.id DESC LIMIT 20000`
 
 rows, err := r.db.Query(ctx, q, args...)
 if err != nil { return nil, err }

@@ -2,6 +2,7 @@ package handler
 
 import (
 "net/http"
+"strings"
 "time"
 
 "github.com/gin-gonic/gin"
@@ -176,6 +177,30 @@ id, err := uuid.Parse(c.Param("id"))
 if err != nil { c.Error(apperr.BadRequest("invalid id")); return }
 d, err := h.svc.GetDocument(c.Request.Context(), id)
 if err != nil { c.Error(err); return }
+
+if len(d.Items) > 0 {
+token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+ids := make([]uuid.UUID, 0, len(d.Items))
+seen := map[uuid.UUID]bool{}
+for _, it := range d.Items {
+if !seen[it.ProductID] {
+seen[it.ProductID] = true
+ids = append(ids, it.ProductID)
+}
+}
+prods, err := h.productClient.ListByIDs(c.Request.Context(), token, ids)
+if err == nil {
+pmap := make(map[uuid.UUID]product.Product, len(prods))
+for _, p := range prods { pmap[p.ID] = p }
+for i := range d.Items {
+if p, ok := pmap[d.Items[i].ProductID]; ok {
+d.Items[i].ProductName = p.Name
+if p.SKU != nil { d.Items[i].ProductSKU = *p.SKU }
+}
+}
+}
+}
+
 httpx.OK(c, d)
 }
 

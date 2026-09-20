@@ -111,7 +111,7 @@
           <td class="actions-col">
             <button v-if="d.status === 'draft'" class="btn-link" @click="onPost(d)">Провести</button>
             <button v-if="d.status === 'posted'" class="btn-link danger-text" @click="onCancel(d)">Отменить</button>
-            <button class="btn-link" @click="showDetails(d)">Открыть</button>
+            <button class="btn-link" @click="openCard(d)">Открыть</button>
           </td>
         </tr>
       </tbody>
@@ -237,6 +237,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useRoute } from 'vue-router'
 import {
   listDocuments, createDocument, postDocument, cancelDocument, getDocument,
@@ -466,6 +467,9 @@ async function onCancel(d: Document) {
   if (!confirm(`Отменить документ ${d.number}?`)) return
   try { await cancelDocument(d.id); await load() } catch (e) { error.value = apiErrorMessage(e) }
 }
+
+const router = useRouter()
+function openCard(d: Document) { router.push('/documents/' + d.id) }
 
 async function showDetails(d: Document) {
   try { detailDoc.value = await getDocument(d.id) } catch (e) { error.value = apiErrorMessage(e) }

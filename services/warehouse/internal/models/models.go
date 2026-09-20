@@ -62,6 +62,7 @@ CreatedAt         time.Time  `json:"created_at"`
 UpdatedAt         time.Time  `json:"updated_at"`
 PostedAt          *time.Time `json:"posted_at,omitempty"`
 CancelledAt       *time.Time `json:"cancelled_at,omitempty"`
+ExternalID        *uuid.UUID `json:"external_id,omitempty"`
 Items             []DocItem  `json:"items,omitempty"`
 ItemsCount        int        `json:"items_count"`
 Total             float64    `json:"total"`
@@ -71,6 +72,8 @@ type DocItem struct {
 ID         uuid.UUID `json:"id"`
 DocumentID uuid.UUID `json:"document_id"`
 ProductID  uuid.UUID `json:"product_id"`
+ProductName string    `json:"product_name,omitempty"`
+ProductSKU  string    `json:"product_sku,omitempty"`
 Quantity   float64   `json:"quantity"`
 Price      float64   `json:"price"`
 CreatedAt  time.Time `json:"created_at"`

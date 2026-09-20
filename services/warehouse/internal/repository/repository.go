@@ -124,7 +124,7 @@ const documentSelect = `
 SELECT d.id, d.type, d.number, d.status, d.warehouse_id, d.target_warehouse_id,
        d.supplier_id, d.organization_id, d.incoming_number, d.incoming_date, d.paid_amount,
        d.printed_at, d.sent_at, d.comment, d.created_by,
-       d.created_at, d.updated_at, d.posted_at, d.cancelled_at,
+       d.created_at, d.updated_at, d.posted_at, d.cancelled_at, d.external_id,
        (SELECT COUNT(*) FROM document_items di WHERE di.document_id = d.id) AS items_count,
        (SELECT COALESCE(SUM(di.quantity * di.price), 0) FROM document_items di WHERE di.document_id = d.id) AS total
 FROM documents d`
@@ -134,7 +134,7 @@ d := &models.Document{}
 err := row.Scan(&d.ID, &d.Type, &d.Number, &d.Status, &d.WarehouseID, &d.TargetWarehouseID,
 &d.SupplierID, &d.OrganizationID, &d.IncomingNumber, &d.IncomingDate, &d.PaidAmount,
 &d.PrintedAt, &d.SentAt, &d.Comment, &d.CreatedBy,
-&d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt,
+&d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt, &d.ExternalID,
 &d.ItemsCount, &d.Total)
 if errors.Is(err, pgx.ErrNoRows) { return nil, nil }
 return d, err
@@ -244,7 +244,7 @@ d := &models.Document{}
 if err := rows.Scan(&d.ID, &d.Type, &d.Number, &d.Status, &d.WarehouseID, &d.TargetWarehouseID,
 &d.SupplierID, &d.OrganizationID, &d.IncomingNumber, &d.IncomingDate, &d.PaidAmount,
 &d.PrintedAt, &d.SentAt, &d.Comment, &d.CreatedBy,
-&d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt,
+&d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt, &d.ExternalID,
 &d.ItemsCount, &d.Total); err != nil {
 return nil, err
 }

@@ -7,6 +7,8 @@ export interface DocItem {
   id: string
   document_id: string
   product_id: string
+  product_name?: string
+  product_sku?: string
   quantity: number
   price: number
 }
@@ -23,6 +25,7 @@ export interface Document {
   incoming_number?: string
   incoming_date?: string
   paid_amount: number
+  external_id?: string | null
   printed_at?: string
   sent_at?: string
   comment?: string

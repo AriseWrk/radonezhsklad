@@ -1275,3 +1275,59 @@ DocumentsView показывал список по типам, но открыт
 - «Провести» / «Отменить» доступны для CRUD-документов (draft/posted без external_id);
   на реальных импортированных данных не тестировалось (бета-тест).
 - Редактирование draft-документов (изменение позиций) — не реализовано.
+
+
+---
+
+## Этап 42: Создание корректирующего документа из инвентаризации
+
+### Проблема
+
+В карточке инвентаризации кнопки «Сохранить», «Изменить», «Создать документ»
+были заглушками, табы «Задачи»/«Файлы» — тоже. Все 749 инвентаризаций импортированы
+из МС (external_id NOT NULL), CRUD-редактирование не имеет смысла.
+Полезная функция — сгенерировать writeoff (списание недостач) или receipt
+(оприходование избытков) на основе коррекций инвентаризации.
+
+### Backend (services/warehouse)
+
+- migrations/0008_document_source_inventory.sql: documents.source_inventory_id UUID
+  REFERENCES inventories(id) ON DELETE SET NULL + partial index.
+- models.go: Document.SourceInventoryID *uuid.UUID.
+- repository.go:
+  - documentSelect + d.source_inventory_id; scan в scanDocument и ListDocuments;
+  - DocumentInput + SourceInventoryID;
+  - CreateDocument INSERT дополнен полем (11 параметров);
+  - DocumentExistsForInventory(ctx, inventoryID, docType) — защита от дубля.
+- service/inventories.go:
+  - InventoryService получил docRepo *repository.Repo (второй аргумент конструктора);
+  - CreateCorrection(ctx, invID, kind) — shortage → writeoff, surplus → receipt;
+    фильтрует items по знаку correction_amount, создаёт документ draft с номером
+    <номер-инвентаризации>-СП / -ОП и комментарием.
+- handler/inventories.go: CreateCorrection — POST /inventories/:id/create-correction
+  с {kind: shortage|surplus}, отвечает 201 или 400.
+- main.go: подключение docRepo к InventoryService + роут docWrite.
+
+### Frontend (web/)
+
+- api/inventories.ts: + CorrectionKind, + CorrectionDocument, + createInventoryCorrection.
+- views/InventoryCardView.vue:
+  - тулбар упрощён (убраны «Сохранить», «Изменить», «Задачи», «Файлы»);
+  - активная кнопка «Создать документ» (primary);
+  - модалка с 2 кнопками («Списать недостачи» / «Оприходовать избытки»);
+  - после успеха — редирект на карточку созданного документа;
+  - при 400 (уже создан) — красное сообщение в модалке.
+
+### Проверки
+
+- POST /inventories/<id>/create-correction {"kind":"shortage"} → 201, документ
+  00064-СП writeoff, 5 позиций, total 5881.25, source_inventory_id установлен.
+- Повторный вызов → 400 «корректирующий документ уже создан».
+- vue-tsc --noEmit — OK.
+- warehouse build — OK.
+
+### Известные хвосты
+
+- Таб «Связанные документы» показывает заглушку — расширить до списка
+  документов с этим source_inventory_id.
+- Проведение созданного документа — вручную через карточку документа.

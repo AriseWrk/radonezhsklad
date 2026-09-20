@@ -1179,3 +1179,48 @@ Gateway (services/gateway/cmd/api/main.go):
 - vue-tsc --noEmit — OK.
 - В браузере: импортированный → все поля серые, кнопка «Сохранить» disabled,
   чекбокс «Проведено» disabled, бейдж «МОЙСКЛАД»; CRUD-заказ — редактируемый.
+
+
+---
+
+## Этап 40: Pager в карточке инвентаризации
+
+### Проблема
+
+В InventoryCardView.vue было захардкожено «1 из 749», prev() и next() оба вели
+на список /inventories. Нельзя было листать карточки подряд.
+
+### Backend (services/warehouse)
+
+- repository/inventories.go: +InventoryNeighbors + метод Neighbors(ctx, id) —
+  оконная функция ROW_NUMBER() OVER (ORDER BY doc_date DESC, id DESC) + COUNT(*) OVER ()
+  Возвращает prev_id/next_id (или null на краях), position, total.
+- service/inventories.go: обёртка Neighbors.
+- handler/inventories.go: GET /inventories/:id/neighbors → {prev_id, next_id, position, total}
+- cmd/api/main.go: маршрут read.GET("/inventories/:id/neighbors", invH.Neighbors)
+
+### Frontend (web/)
+
+- src/api/inventories.ts: +InventoryNeighbors + getInventoryNeighbors(id) —
+  однострочный URL /inventories//neighbors (многострочный template literal
+  ломал путь и gateway отдавал 404 из-за двойного слеша).
+- src/views/InventoryCardView.vue:
+  - refs prevId/nextId/position/total
+  - load() параллельно с getInventory тянет getInventoryNeighbors
+  - кнопки ‹/› теперь :disabled на краях и переходят на /inventories/:id
+  - счётчик {{ position }} из {{ total }}
+  - watch(() => route.params.id, load) — Vue Router переиспользует компонент
+    при смене только params.id, без watch карточка не перезагружалась.
+
+### Проверки
+
+- API /inventories/:id/neighbors: position=1/total=749/prev_id=null на первом,
+  position=749/next_id=null на последнем.
+- vue-tsc --noEmit — OK.
+- В браузере: prev/next листают карточки, счётчик меняется, крайние кнопки disabled.
+
+### Известные хвосты
+
+- Кнопки «Изменить», «Создать документ», табы «Связанные документы»/«Задачи»/«Файлы»
+  в карточке — по-прежнему заглушки (disabled).
+- Кнопка «Печать» работает через window.print() (браузерный диалог).

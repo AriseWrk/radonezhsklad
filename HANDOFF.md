@@ -41,7 +41,9 @@ admin@radonezh.local / qwerty123
 | 40 | 069e110..6091717 | Pager в карточке инвентаризации (prev/next + position/total) |
 | 41 | d3f9d56..dbd9dd6 | Карточка документа (receipt/shipment/transfer/writeoff) |
 | 42 | 4dd37be | Создание writeoff/receipt из инвентаризации (source_inventory_id) |
-| 43 | (текущий) | Сверка сумм с МС + VAT-логика в total |
+
+| 43 | be4cbc3 | Сверка сумм с МС + VAT-логика в total |
+| 44 | a0bce51 | Справочник проектов МС + project_name в internal_orders |
 
 ### Цифры в БД
 

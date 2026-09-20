@@ -1386,3 +1386,46 @@ document_items. Доп. миграций не потребовалось.
 
 - Для 140 t/f supply-документов расхождение до 13 руб (округление). Не критично,
   но если нужна точность до копейки — округлять в SQL по каждой позиции.
+
+
+---
+
+## Этап 44: Справочник проектов МойСклад + project_name в заказах
+
+### Проблема
+
+Поле internal_orders.project хранит UUID проекта из МС (2315 различных),
+но в UI карточки внутреннего заказа отображается как сырой UUID.
+Реальные имена — это адреса объектов Сбербанка/Почты Банка и т.п.
+
+### Backend
+
+- migrations/0009_projects.sql: таблица projects(id, external_id UNIQUE, name,
+  archived, created_at, updated_at) + индексы по external_id и name.
+- models.go: InternalOrder + ProjectName string `json:"project_name,omitempty"`.
+- repository/internal_orders.go: intOrderSelect дополнен
+  COALESCE(p.name, '') AS project_name + LEFT JOIN projects p
+  ON p.external_id::text = o.project; scanIntOrder и List сканируют &o.ProjectName.
+
+### Импорт справочника
+
+scripts/import-ms-projects.ps1 — /entity/project (limit=1000, без positions),
+2733 записи, UPSERT по external_id.
+
+### Frontend
+
+- api/internalOrders.ts: + project_name?: string.
+- InternalOrderCardView.vue: если project_name заполнено — показываем имя
+  (с title=UUID), иначе input для ручного ввода UUID.
+
+### Проверки
+
+- API /internal-orders: project_name = «Сбербанк Талдом Карла Маркса 18 (9040/0419».
+- vue-tsc --noEmit — OK.
+- warehouse build — OK.
+
+### Известные хвосты
+
+- Инвентаризации тоже хранят project UUID (нет колонки в inventories).
+  Если понадобится — применить тот же подход.
+- Селектор проекта в режиме редактирования — пока UUID-инпут.

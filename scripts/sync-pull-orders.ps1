@@ -18,6 +18,19 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Офис без Docker: если есть нативный psql и не задан RS_SQL_BACKEND — использовать psql
+if (-not $env:RS_SQL_BACKEND) {
+    $psqlCandidates = @(
+        'C:\Program Files\PostgreSQL\17\bin\psql.exe',
+        'C:\Program Files\PostgreSQL\16\bin\psql.exe',
+        'C:\Program Files\PostgreSQL\15\bin\psql.exe',
+        'C:\Program Files\PostgreSQL\14\bin\psql.exe'
+    )
+    foreach ($c in $psqlCandidates) {
+        if (Test-Path $c) { $env:RS_SQL_BACKEND = 'psql'; break }
+    }
+}
 [System.Threading.Thread]::CurrentThread.CurrentCulture = [System.Globalization.CultureInfo]::InvariantCulture
 
 $root = Split-Path -Parent $PSScriptRoot

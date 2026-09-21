@@ -207,6 +207,13 @@ $script:RsPgHost     = 'localhost'
 $script:RsPgPass     = if ($env:PGPASSWORD) { $env:PGPASSWORD } else { 'radonezh_dev_pass' }
 
 function Get-RsSqlBackend {
+	# Явное переопределение через env (например, офис без Docker)
+	if ($env:RS_SQL_BACKEND) {
+		$script:RsSqlBackend = $env:RS_SQL_BACKEND
+		Write-Host "rs-sql backend: $($script:RsSqlBackend) (env override)" -ForegroundColor DarkGray
+		return $script:RsSqlBackend
+	}
+
     if ($script:RsSqlBackend) { return $script:RsSqlBackend }
 
     # 1) ищем локальный psql

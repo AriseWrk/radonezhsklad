@@ -222,7 +222,6 @@ func (p *Pusher) PushDocument(ctx context.Context, docID uuid.UUID, token string
 	var resp struct {
 		ID uuid.UUID `json:"id"`
 	}
-	slog.Info("mspush: POST doc", "our_id", docID, "entity", entity)
 	if err := p.ms.Post(ctx, "/entity/"+entity, payload, &resp); err != nil {
 		_ = p.repo.SetDocumentMSError(ctx, docID, err.Error())
 		return err

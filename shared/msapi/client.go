@@ -200,6 +200,11 @@ func (c *Client) Put(ctx context.Context, path string, body any, out any) error 
 	return c.do(ctx, http.MethodPut, path, nil, body, out)
 }
 
+// Delete — DELETE без тела. out обычно nil.
+func (c *Client) Delete(ctx context.Context, path string) error {
+	return c.do(ctx, http.MethodDelete, path, nil, nil, nil)
+}
+
 // --- meta-хелперы ---
 
 // Meta — объект-ссылка на сущность МС для payload.

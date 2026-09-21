@@ -343,3 +343,25 @@ func (p *Pusher) PushInternalOrder(ctx context.Context, orderID uuid.UUID, token
 	}
 	return nil
 }
+
+// DeleteInternalOrder удаляет заказ в МС, если он туда уже улетал.
+// Ошибку возвращает, но локальный delete не блокирует — его вызовет handler.
+func (p *Pusher) DeleteInternalOrder(ctx context.Context, orderID uuid.UUID, token string) error {
+	if !p.Enabled() {
+		return nil
+	}
+	order, err := p.orders.Get(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	if order == nil || order.ExternalID == nil {
+		return nil
+	}
+	path := "/entity/internalorder/" + order.ExternalID.String()
+	if err := p.ms.Delete(ctx, path); err != nil {
+		_ = p.repo.SetOrderMSError(ctx, orderID, err.Error())
+		return err
+	}
+	slog.Info("mspush: internal_order deleted", "our_id", orderID, "ms_id", *order.ExternalID)
+	return nil
+}

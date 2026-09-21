@@ -269,6 +269,12 @@ func (h *InternalOrderHandler) Delete(c *gin.Context) {
 		c.Error(apperr.BadRequest("invalid id"))
 		return
 	}
+	// сначала удаляем в МС (если улетал), потом локально
+	if h.pusher != nil && h.pusher.Enabled() {
+		token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+		_ = h.pusher.DeleteInternalOrder(c.Request.Context(), id, token)
+	}
+
 	if err := h.svc.Delete(c.Request.Context(), id); err != nil {
 		c.Error(err)
 		return

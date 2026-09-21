@@ -5,6 +5,9 @@
       <button class="btn primary" @click="save" :disabled="saving || !canEdit">{{ saving ? 'Сохранение...' : 'Сохранить' }}</button>
       <button class="btn" @click="close">Закрыть</button>
       <button class="btn" @click="print">Печать</button>
+      <button class="btn" @click="onSend" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отправить</button>
+      <button class="btn" @click="onCancel" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отменить</button>
+      <button class="btn danger" @click="onDelete" :disabled="!currentId && !isNew">Удалить</button>
       <div class="toolbar-info">
         <span>{{ userLabel }}</span>
       </div>
@@ -199,6 +202,9 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  cancelInternalOrder,
+  deleteInternalOrder,
+  sendInternalOrder,
   getInternalOrder, createInternalOrder, updateInternalOrder,
   postInternalOrder, nextInternalOrderNumber,
   type IntOrderInput,
@@ -404,6 +410,38 @@ async function onTogglePosted(e: Event) {
 }
 
 function close() { router.push('/internal-orders') }
+
+async function onDelete() {
+  if (!currentId.value) { router.push('/internal-orders'); return }
+  if (!confirm('Удалить заказ? Действие необратимо.')) return
+  try {
+    await deleteInternalOrder(currentId.value)
+    router.push('/internal-orders')
+  } catch (e) {
+    error.value = apiErrorMessage(e)
+  }
+}
+
+async function onCancel() {
+  if (!currentId.value) return
+  if (!confirm('Отменить заказ?')) return
+  try {
+    const updated = await cancelInternalOrder(currentId.value)
+    form.status = updated.status
+  } catch (e) {
+    error.value = apiErrorMessage(e)
+  }
+}
+
+async function onSend() {
+  if (!currentId.value) return
+  try {
+    const updated = await sendInternalOrder(currentId.value)
+    form.sent_at = updated.sent_at
+  } catch (e) {
+    error.value = apiErrorMessage(e)
+  }
+}
 async function print() {
   if (!currentId.value) {
     error.value = 'Сначала сохраните заказ'
@@ -624,6 +662,16 @@ onMounted(load)
 }
 .cell-input:hover { border-color: #d0d7de; background: #fff; }
 .cell-input:focus { border-color: #2c5d9c; background: #fff; outline: none; }
+.btn.danger {
+  background: #fff;
+  color: #cf222e;
+  border-color: #cf222e;
+}
+.btn.danger:hover:not(:disabled) {
+  background: #cf222e;
+  color: #fff;
+}
+
 .x-btn {
   background: transparent; border: none;
   color: #8c959f; font-size: 18px; cursor: pointer;

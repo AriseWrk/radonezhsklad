@@ -7,7 +7,7 @@
       <button class="btn" @click="print">Печать</button>
       <button class="btn" @click="onSend" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отправить</button>
       <button class="btn" @click="onCancel" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отменить</button>
-      <button class="btn danger" @click="onDelete" :disabled="!currentId && !isNew">Удалить</button>
+      <button class="btn danger" @click="onDelete" :disabled="(!currentId && !isNew) || (currentId !== null && form.status !== 'draft')">Удалить</button>
       <div class="toolbar-info">
         <span>{{ userLabel }}</span>
       </div>

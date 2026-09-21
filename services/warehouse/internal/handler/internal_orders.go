@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -269,10 +270,24 @@ func (h *InternalOrderHandler) Delete(c *gin.Context) {
 		c.Error(apperr.BadRequest("invalid id"))
 		return
 	}
-	// сначала удаляем в МС (если улетал), потом локально
+
+	// сначала убеждаемся, что заказ существует и его можно удалить (draft)
+	order, err := h.svc.Get(c.Request.Context(), id)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	if order.Status != "draft" {
+		c.Error(apperr.Conflict("удалить можно только черновик; для проведённого используйте «Отменить»"))
+		return
+	}
+
+	// теперь удаляем в МС (если заказ туда улетал) — best effort
 	if h.pusher != nil && h.pusher.Enabled() {
 		token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
-		_ = h.pusher.DeleteInternalOrder(c.Request.Context(), id, token)
+		if err := h.pusher.DeleteInternalOrder(c.Request.Context(), id, token); err != nil {
+			slog.Warn("mspush: удаление в МС не удалось, удаляем локально", "our_id", id, "error", err)
+		}
 	}
 
 	if err := h.svc.Delete(c.Request.Context(), id); err != nil {

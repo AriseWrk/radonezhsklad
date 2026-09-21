@@ -81,7 +81,7 @@ return s.Get(ctx, id)
 func (s *InternalOrderService) Delete(ctx context.Context, id uuid.UUID) error {
 ok, err := s.repo.Delete(ctx, id)
 if err != nil { return apperr.Internal("delete order", err) }
-if !ok { return apperr.NotFound("order not found or not draft") }
+if !ok { return apperr.Conflict("удалить можно только черновик; для проведённого используйте «Отменить»") }
 return nil
 }
 func (s *InternalOrderService) MarkPrinted(ctx context.Context, id uuid.UUID) error {

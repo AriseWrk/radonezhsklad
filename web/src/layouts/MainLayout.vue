@@ -20,6 +20,10 @@
       </nav>
 
       <div class="top-right">
+        <button class="sync-btn" @click="openSync" title="Синхронизировать с МойСклад">
+          <span class="sync-btn-icon">🔄</span>
+          <span class="sync-btn-label">Синхронизировать с МойСклад</span>
+        </button>
         <span class="top-icon" title="Чат">💬</span>
         <span class="top-icon" title="Уведомления">🔔</span>
         <span class="top-icon" title="Помощь">❓</span>
@@ -46,6 +50,8 @@
     <main class="page-content">
       <router-view />
     </main>
+
+    <SyncModal ref="syncRef" />
   </div>
 </template>
 
@@ -53,10 +59,15 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore, type Role } from '../stores/auth'
+	import SyncModal from '../components/SyncModal.vue'
+	import { ref } from 'vue'
 
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
+
+const syncRef = ref<InstanceType<typeof SyncModal> | null>(null)
+function openSync() { syncRef.value?.open() }
 
 interface Section {
   key: string
@@ -211,6 +222,24 @@ function onLogout() {
   display: flex; align-items: center; gap: 12px;
   margin-left: 12px;
 }
+.sync-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f6f8fa;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #24292f;
+  margin-right: 8px;
+}
+.sync-btn:hover { background: #eaeef2; }
+.sync-btn-icon { font-size: 14px; }
+.sync-btn-label { font-weight: 500; }
+
+
 .top-icon { font-size: 18px; cursor: pointer; opacity: 0.85; }
 .top-icon:hover { opacity: 1; }
 .user-block {

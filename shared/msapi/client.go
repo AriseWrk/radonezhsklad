@@ -112,8 +112,7 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 		}
 		req.Header.Set("Authorization", "Bearer "+c.token)
 		req.Header.Set("Accept", "application/json;charset=utf-8")
-		// gzip: полагаемся на автотранспорт Go — он сам добавит Accept-Encoding
-		// и сам декомпрессирует. Ручная установка ломала Unmarshal.
+		req.Header.Set("Accept-Encoding", "gzip")
 		if bodyBytes != nil {
 			req.Header.Set("Content-Type", "application/json")
 		}

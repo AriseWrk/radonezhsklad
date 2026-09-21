@@ -38,17 +38,29 @@
     <div class="fields-grid">
       <div class="field">
         <label>Организация</label>
-        <select v-model="form.organization_id" :disabled="!canEdit">
-          <option value="">— выберите —</option>
-          <option v-for="o in organizations" :key="o.id" :value="o.id">{{ o.name }}</option>
-        </select>
+                <input
+          v-model="organizationSearch"
+          :disabled="!canEdit"
+          placeholder="Начните вводить название..."
+          @focus="showOrganizationSuggest = true"
+          @blur="hideOrganizationSuggestSoon"
+        />
+        <div v-if="showOrganizationSuggest && organizationSuggestions.length" class="ac-dropdown">
+          <div v-for="o in organizationSuggestions" :key="o.id" class="ac-item" @mousedown.prevent="selectOrganization(o)">{{ o.name }}</div>
+        </div>
       </div>
       <div class="field">
         <label>Склад</label>
-        <select v-model="form.warehouse_id" :disabled="!canEdit">
-          <option value="">— выберите —</option>
-          <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
-        </select>
+                <input
+          v-model="warehouseSearch"
+          :disabled="!canEdit"
+          placeholder="Начните вводить название..."
+          @focus="showWarehouseSuggest = true"
+          @blur="hideWarehouseSuggestSoon"
+        />
+        <div v-if="showWarehouseSuggest && warehouseSuggestions.length" class="ac-dropdown">
+          <div v-for="w in warehouseSuggestions" :key="w.id" class="ac-item" @mousedown.prevent="selectWarehouse(w)">{{ w.name }}</div>
+        </div>
       </div>
       <div class="field">
         <label>План. дата приёмки</label>
@@ -184,7 +196,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   getInternalOrder, createInternalOrder, updateInternalOrder,
@@ -300,6 +312,8 @@ async function load() {
       form.status = o.status
       form.organization_id = o.organization_id ?? organizations.value.find((x) => x.is_default)?.id ?? ''
       form.warehouse_id = o.warehouse_id ?? ''
+      syncWarehouseSearch()
+      syncOrganizationSearch()
       form.plan_date = o.plan_date ? o.plan_date.slice(0, 10) : ''
       form.project = o.project ?? ''
       form.project_name = o.project_name ?? ''
@@ -315,6 +329,8 @@ async function load() {
       try { form.number = await nextInternalOrderNumber() } catch { /* ignore */ }
       form.organization_id = organizations.value.find((x) => x.is_default)?.id ?? ''
       form.warehouse_id = warehouses.value[0]?.id ?? ''
+      syncWarehouseSearch()
+      syncOrganizationSearch()
     }
   } catch (e) {
     error.value = apiErrorMessage(e)
@@ -401,6 +417,57 @@ async function print() {
 function checkStock() { alert('Проверка комплектации: функция в разработке') }
 function importCsv() { alert('Импорт: функция в разработке') }
 
+// === Autocomplete sklad/organizatsiya ===
+const warehouseSearch = ref('')
+const organizationSearch = ref('')
+const showWarehouseSuggest = ref(false)
+const showOrganizationSuggest = ref(false)
+
+const warehouseSuggestions = computed(() => {
+  const q = warehouseSearch.value.trim().toLowerCase()
+  const list = warehouses.value
+  if (!q) return list.slice(0, 8)
+  return list.filter((w) => w.name.toLowerCase().includes(q)).slice(0, 10)
+})
+
+const organizationSuggestions = computed(() => {
+  const q = organizationSearch.value.trim().toLowerCase()
+  const list = organizations.value
+  if (!q) return list.slice(0, 8)
+  return list.filter((o) => o.name.toLowerCase().includes(q)).slice(0, 10)
+})
+
+function hideWarehouseSuggestSoon() { setTimeout(() => { showWarehouseSuggest.value = false }, 150) }
+function hideOrganizationSuggestSoon() { setTimeout(() => { showOrganizationSuggest.value = false }, 150) }
+
+function selectWarehouse(w: Warehouse) {
+  form.warehouse_id = w.id
+  warehouseSearch.value = w.name
+  showWarehouseSuggest.value = false
+}
+function selectOrganization(o: Organization) {
+  form.organization_id = o.id
+  organizationSearch.value = o.name
+  showOrganizationSuggest.value = false
+}
+
+function syncWarehouseSearch() {
+  const w = warehouses.value.find((x) => x.id === form.warehouse_id)
+  warehouseSearch.value = w?.name ?? ''
+}
+function syncOrganizationSearch() {
+  const o = organizations.value.find((x) => x.id === form.organization_id)
+  organizationSearch.value = o?.name ?? ''
+}
+
+watch(warehouseSearch, (val) => {
+  const w = warehouses.value.find((x) => x.name === val)
+  form.warehouse_id = w?.id ?? ''
+})
+watch(organizationSearch, (val) => {
+  const o = organizations.value.find((x) => x.name === val)
+  form.organization_id = o?.id ?? ''
+})
 onMounted(load)
 </script>
 
@@ -600,4 +667,17 @@ onMounted(load)
   border-radius: 4px; font-size: 12px; cursor: pointer;
 }
 .section-head .btn-link:hover { background: #f6f8fa; }
+
+.field { position: relative; }
+.ac-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 20;
+  background: #fff; border: 1px solid #d0d7de; border-top: none;
+  border-radius: 0 0 3px 3px; max-height: 220px; overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.ac-item {
+  padding: 6px 10px; font-size: 13px; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ac-item:hover { background: #eaeef2; }
 </style>

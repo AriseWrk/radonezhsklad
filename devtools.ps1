@@ -299,3 +299,33 @@ function Remove-PostgresTemp {
         docker exec rs_postgres rm -f $RemotePath 2>$null | Out-Null
     }
 }
+
+# === Backend-aware Invoke-SqlQuery / Invoke-SqlFile (override старых docker-only версий) ===
+function Invoke-SqlQuery {
+    param(
+        [Parameter(Mandatory)][string]$Db,
+        [Parameter(Mandatory)][string]$Query
+    )
+    $backend = Get-RsSqlBackend
+    if ($backend -eq 'docker') {
+        $out = docker exec rs_postgres psql -U radonezh -d $Db -v ON_ERROR_STOP=1 -t -A --set=client_min_messages=error -c $Query 2>&1
+    } else {
+        $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+        try {
+            $env:PGPASSWORD = $script:RsPgPass
+            $env:PGCLIENTENCODING = 'UTF8'
+            $out = & $script:RsPsqlLocal -U radonezh -h $script:RsPgHost -d $Db -v ON_ERROR_STOP=1 -t -A --set=client_min_messages=error -c $Query 2>&1
+        } finally { $ErrorActionPreference = $prev }
+    }
+    if ($LASTEXITCODE -ne 0) { throw "psql failed in $Db : $($out | Out-String)" }
+    $clean = @(); foreach ($l in $out) { if ($l -isnot [System.Management.Automation.ErrorRecord]) { $clean += $l } }
+    return ($clean -join "`n")
+}
+
+function Invoke-SqlFile {
+    param(
+        [Parameter(Mandatory)][string]$Database,
+        [Parameter(Mandatory)][string]$File
+    )
+    return Invoke-PsqlFile -Database $Database -File $File
+}

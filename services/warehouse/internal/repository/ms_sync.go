@@ -19,19 +19,17 @@ type ExternalRef struct {
 // DocumentExternalRefs — внешние ссылки, необходимые для push документа в МС.
 type DocumentExternalRefs struct {
 	Warehouse       ExternalRef
-	TargetWarehouse *ExternalRef // для transfer
-	Supplier        *ExternalRef // для receipt
+	TargetWarehouse *ExternalRef
+	Supplier        *ExternalRef
 	Organization    *ExternalRef
 }
 
 // GetDocumentExternalRefs достаёт external_id склада, склада-цели, поставщика, организации.
 func (r *Repo) GetDocumentExternalRefs(ctx context.Context, docID uuid.UUID) (*DocumentExternalRefs, error) {
 	var (
-		whID, twID, supID, orgID     *uuid.UUID
-		whExt, twExt, supExt, orgExt *uuid.UUID
+		whID, twID, supID, orgID *uuid.UUID
 	)
 
-	// документ
 	err := r.db.QueryRow(ctx, `
 SELECT warehouse_id, target_warehouse_id, supplier_id, organization_id
 FROM documents WHERE id = $1`, docID).Scan(&whID, &twID, &supID, &orgID)
@@ -55,10 +53,10 @@ FROM documents WHERE id = $1`, docID).Scan(&whID, &twID, &supID, &orgID)
 		return ext, err
 	}
 
-	whExt, _ = lookup("warehouses", whID)
-	twExt, _ = lookup("warehouses", twID)
-	supExt, _ = lookup("suppliers", supID)
-	orgExt, _ = lookup("organizations", orgID)
+	whExt, _ := lookup("warehouses", whID)
+	twExt, _ := lookup("warehouses", twID)
+	supExt, _ := lookup("suppliers", supID)
+	orgExt, _ := lookup("organizations", orgID)
 
 	out := &DocumentExternalRefs{}
 	if whID != nil {
@@ -76,11 +74,11 @@ FROM documents WHERE id = $1`, docID).Scan(&whID, &twID, &supID, &orgID)
 	return out, nil
 }
 
-// InternalOrderExternalRefs — внешние ссылки для customerorder.
+// InternalOrderExternalRefs — внешние ссылки для customerorder/internalorder.
 type InternalOrderExternalRefs struct {
 	Warehouse    *ExternalRef
 	Organization *ExternalRef
-	Project      *ExternalRef // projects.external_id — это UUID МС?
+	Project      *ExternalRef
 }
 
 func (r *Repo) GetInternalOrderExternalRefs(ctx context.Context, orderID uuid.UUID) (*InternalOrderExternalRefs, error) {
@@ -120,7 +118,6 @@ FROM internal_orders WHERE id = $1`, orderID).Scan(&whID, &orgID, &projectExtern
 	if orgID != nil {
 		out.Organization = &ExternalRef{OurID: *orgID, ExternalID: orgExt}
 	}
-	// project хранится как external_id МС (строка), т.е. это MS UUID проекта.
 	if projectExternal != nil && *projectExternal != "" {
 		if pid, err := uuid.Parse(*projectExternal); err == nil {
 			out.Project = &ExternalRef{ExternalID: &pid}
@@ -134,9 +131,9 @@ FROM internal_orders WHERE id = $1`, orderID).Scan(&whID, &orgID, &projectExtern
 func (r *Repo) SetDocumentMSSynced(ctx context.Context, id uuid.UUID, msUUID uuid.UUID) error {
 	_, err := r.db.Exec(ctx, `
 UPDATE documents
-SET external_id = $2, ms_synced_at = NOW(), ms_sync_error = NULL,
+SET external_id = $2::uuid, ms_synced_at = NOW(), ms_sync_error = NULL,
     external_code = $2::text
-WHERE id = $1`, id, msUUID)
+WHERE id = $1`, id, msUUID.String())
 	return err
 }
 
@@ -149,9 +146,9 @@ UPDATE documents SET ms_sync_error = $2 WHERE id = $1`, id, msg)
 func (r *Repo) SetOrderMSSynced(ctx context.Context, id uuid.UUID, msUUID uuid.UUID) error {
 	_, err := r.db.Exec(ctx, `
 UPDATE internal_orders
-SET external_id = $2, ms_synced_at = NOW(), ms_sync_error = NULL,
+SET external_id = $2::uuid, ms_synced_at = NOW(), ms_sync_error = NULL,
     external_code = $2::text
-WHERE id = $1`, id, msUUID)
+WHERE id = $1`, id, msUUID.String())
 	return err
 }
 

@@ -222,12 +222,17 @@ func (p *Pusher) PushDocument(ctx context.Context, docID uuid.UUID, token string
 	var resp struct {
 		ID uuid.UUID `json:"id"`
 	}
+	slog.Info("mspush: POST doc", "our_id", docID, "entity", entity)
 	if err := p.ms.Post(ctx, "/entity/"+entity, payload, &resp); err != nil {
 		_ = p.repo.SetDocumentMSError(ctx, docID, err.Error())
 		return err
 	}
 	if err := p.repo.SetDocumentMSSynced(ctx, docID, resp.ID); err != nil {
+		slog.Error("mspush: SetDocumentMSSynced failed", "our_id", docID, "error", err)
 		return err
+	}
+	if resp.ID == uuid.Nil {
+		slog.Error("mspush: MS returned empty id", "our_id", docID, "resp", resp)
 	}
 	slog.Info("mspush: document pushed", "our_id", docID, "ms_id", resp.ID, "entity", entity, "type", doc.Type)
 	return nil

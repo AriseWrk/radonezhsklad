@@ -150,22 +150,26 @@ Write-Host "  item rows:  $($itemLines.Count)"
 Write-Host "  missing product mappings: $missing"
 Write-Host "  extra position calls:     $extraPosCalls"
 
-Write-Host "[3/5] Copying TSVs to container..."
-docker cp $docsTsv  rs_postgres:/tmp/ms_docs.tsv  | Out-Null
-docker cp $itemsTsv rs_postgres:/tmp/ms_items.tsv | Out-Null
+Write-Host "[3/5] Copying TSVs to DB side..."
+$backend = Get-RsSqlBackend
+$docsPath  = Copy-ToPostgres -LocalPath $docsTsv  -RemoteName "ms_docs_$([guid]::NewGuid().ToString('N')).tsv"
+$itemsPath = Copy-ToPostgres -LocalPath $itemsTsv -RemoteName "ms_items_$([guid]::NewGuid().ToString('N')).tsv"
+Write-Host "  docs:  $docsPath"
+Write-Host "  items: $itemsPath"
 
 $tpl = Read-Utf8File -Path (Join-Path $root 'scripts\sql\upsert_internalorders.sql')
-$sql = $tpl.Replace('{{DOCS_PATH}}',  '/tmp/ms_docs.tsv').Replace('{{ITEMS_PATH}}', '/tmp/ms_items.tsv')
+$sql = $tpl.Replace('{{DOCS_PATH}}',  $docsPath).Replace('{{ITEMS_PATH}}', $itemsPath)
 
 $sqlLocal = Join-Path $env:TEMP ("ms_upsert_" + [guid]::NewGuid().ToString('N') + '.sql')
 [IO.File]::WriteAllText($sqlLocal, $sql, $utf8)
-docker cp $sqlLocal rs_postgres:/tmp/ms_upsert.sql | Out-Null
 
 Write-Host "[4/5] Running upsert..."
-& docker exec -i rs_postgres bash -c "psql -U radonezh -d radonezh_warehouse -f /tmp/ms_upsert.sql"
+$out = Invoke-PsqlFile -Database radonezh_warehouse -File $sqlLocal
+if ($out) { $out | Select-Object -Last 12 | ForEach-Object { Write-Host $_ } }
 
 Write-Host "[5/5] Cleaning up..."
-& docker exec -i rs_postgres rm -f /tmp/ms_docs.tsv /tmp/ms_items.tsv /tmp/ms_upsert.sql
+Remove-PostgresTemp $docsPath
+Remove-PostgresTemp $itemsPath
 Remove-Item $sqlLocal -ErrorAction SilentlyContinue
 if (-not $KeepTsv) { Remove-Item -Recurse -Force $tsvDir -ErrorAction SilentlyContinue } else { Write-Host "TSVs: $tsvDir" }
 Write-Host "=== DONE ==="

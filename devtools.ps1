@@ -198,3 +198,97 @@ function MsApi-Get {
         if ($ok) { return $result }
     }
 }
+
+# === Универсальный слой SQL: docker (дома) / native psql (офис) ===
+# Кэшируем выбор при первом вызове.
+$script:RsSqlBackend = $null   # 'docker' | 'psql'
+$script:RsPsqlLocal  = $null
+$script:RsPgHost     = 'localhost'
+$script:RsPgPass     = if ($env:PGPASSWORD) { $env:PGPASSWORD } else { 'radonezh_dev_pass' }
+
+function Get-RsSqlBackend {
+    if ($script:RsSqlBackend) { return $script:RsSqlBackend }
+
+    # 1) ищем локальный psql
+    $candidates = @(
+        'C:\Program Files\PostgreSQL\16\bin\psql.exe',
+        'C:\Program Files\PostgreSQL\15\bin\psql.exe',
+        'C:\Program Files\PostgreSQL\14\bin\psql.exe',
+        'C:\Program Files\PostgreSQL\17\bin\psql.exe'
+    )
+    $psql = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $psql) {
+        $cmd = Get-Command psql -ErrorAction SilentlyContinue
+        if ($cmd) { $psql = $cmd.Source }
+    }
+    if ($psql) {
+        $script:RsPsqlLocal  = $psql
+        $script:RsSqlBackend = 'psql'
+        Write-Host "rs-sql backend: native psql ($psql)" -ForegroundColor DarkGray
+        return 'psql'
+    }
+
+    # 2) fallback — docker
+    $running = docker ps --filter "name=rs_postgres" --filter "status=running" --format "{{.Names}}" 2>$null
+    if ($running -eq 'rs_postgres') {
+        $script:RsSqlBackend = 'docker'
+        Write-Host "rs-sql backend: docker exec rs_postgres" -ForegroundColor DarkGray
+        return 'docker'
+    }
+
+    throw "Ни нативный psql, ни запущенный rs_postgres не найдены."
+}
+
+# Копирует файл в БД-сторону (docker cp или ничего для native psql)
+# Возвращает строку, которую надо подставить в '\copy ... FROM ''<path>'''
+function Copy-ToPostgres {
+    param(
+        [Parameter(Mandatory)][string]$LocalPath,
+        [Parameter(Mandatory)][string]$RemoteName
+    )
+    $abs = (Get-Item -LiteralPath $LocalPath).FullName
+    $backend = Get-RsSqlBackend
+    if ($backend -eq 'docker') {
+        $remote = "/tmp/$RemoteName"
+        docker cp $abs "rs_postgres:$remote" | Out-Null
+        return $remote
+    } else {
+        # native psql: \copy читает локальный файл; путь с прямыми слешами
+        return ($abs -replace '\\', '/')
+    }
+}
+
+# Выполнить SQL-файл. Возвращает вывод psql.
+function Invoke-PsqlFile {
+    param(
+        [Parameter(Mandatory)][string]$Database,
+        [Parameter(Mandatory)][string]$File
+    )
+    $abs = (Get-Item -LiteralPath $File).FullName
+    $backend = Get-RsSqlBackend
+    if ($backend -eq 'docker') {
+        $tmp = "/tmp/rs_$(Get-Random).sql"
+        docker cp $abs "rs_postgres:$tmp" | Out-Null
+        $out = docker exec rs_postgres psql -U radonezh -d $Database -v ON_ERROR_STOP=1 --set=client_min_messages=error -f $tmp 2>&1
+        if ($LASTEXITCODE -ne 0) { Write-Host ($out | Out-String) -ForegroundColor Red; throw "psql failed: $File" }
+        return $out
+    } else {
+        $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+        try {
+            $env:PGPASSWORD = $script:RsPgPass
+            $env:PGCLIENTENCODING = 'UTF8'
+            $out = & $script:RsPsqlLocal -U radonezh -h $script:RsPgHost -d $Database -v ON_ERROR_STOP=1 --set=client_min_messages=error -f $abs 2>&1
+        } finally { $ErrorActionPreference = $prev }
+        if ($LASTEXITCODE -ne 0) { Write-Host ($out | Out-String) -ForegroundColor Red; throw "psql failed: $File" }
+        return $out
+    }
+}
+
+# Удалить временный файл в контейнере (для native psql — no-op)
+function Remove-PostgresTemp {
+    param([string]$RemotePath)
+    $backend = Get-RsSqlBackend
+    if ($backend -eq 'docker' -and $RemotePath) {
+        docker exec rs_postgres rm -f $RemotePath 2>$null | Out-Null
+    }
+}

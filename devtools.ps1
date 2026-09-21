@@ -329,3 +329,23 @@ function Invoke-SqlFile {
     )
     return Invoke-PsqlFile -Database $Database -File $File
 }
+# === Backend-aware Invoke-SqlQuery — без [Parameter], иначе -Db конфликтует с -Debug ===
+function Invoke-SqlQuery {
+    param([string]$Db, [string]$Query)
+    if (-not $Db)    { throw "Invoke-SqlQuery: -Db is required" }
+    if (-not $Query) { throw "Invoke-SqlQuery: -Query is required" }
+    $backend = Get-RsSqlBackend
+    if ($backend -eq 'docker') {
+        $out = docker exec rs_postgres psql -U radonezh -d $Db -v ON_ERROR_STOP=1 -t -A --set=client_min_messages=error -c $Query 2>&1
+    } else {
+        $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+        try {
+            $env:PGPASSWORD = $script:RsPgPass
+            $env:PGCLIENTENCODING = 'UTF8'
+            $out = & $script:RsPsqlLocal -U radonezh -h $script:RsPgHost -d $Db -v ON_ERROR_STOP=1 -t -A --set=client_min_messages=error -c $Query 2>&1
+        } finally { $ErrorActionPreference = $prev }
+    }
+    if ($LASTEXITCODE -ne 0) { throw "psql failed in $Db : $($out | Out-String)" }
+    $clean = @(); foreach ($l in $out) { if ($l -isnot [System.Management.Automation.ErrorRecord]) { $clean += $l } }
+    return ($clean -join "`n")
+}

@@ -92,6 +92,87 @@ SQL-шаблоны: scripts/sql/upsert_documents.sql, upsert_internalorders.sql,
 
 ---
 
+---
+
+## Обратная синхронизация: RadonezhSklad -> МС (push)
+
+Созданные у нас документы и внутренние заказы автоматически пушатся в МС,
+чтобы офис, работающий в МС, их видел. Импорт МС -> мы работает как раньше.
+
+### Как включить
+
+В `services/warehouse/.env`:
+
+    MS_PUSH_ENABLED=true
+    MS_API_BASE=https://api.moysklad.ru/api/remap/1.2
+    MS_TOKEN_FILE=D:\Radonezhsklad\.secrets\moysklad.token
+
+(либо `MS_TOKEN=<токен>` — для офисного ПК с PS 5.1)
+
+При старте warehouse в логе: `mspush: enabled base=...`.
+Если push выключен: `mspush: disabled (MS_PUSH_ENABLED=false)`.
+
+### Что пушится и когда
+
+| Триггер | Наш тип | MS entity |
+|---|---|---|
+| POST /documents/:id/post | receipt  | enter  |
+| POST /documents/:id/post | shipment | demand |
+| POST /documents/:id/post | writeoff | loss   |
+| POST /documents/:id/post | transfer | move   |
+| POST /internal-orders/:id/post | - | internalorder |
+
+Порядок: сначала локальный commit (транзакция POST), затем синхронный POST в МС.
+Если МС недоступен/вернул ошибку — документ уже сохранён, пишем `ms_sync_error`.
+Ответ клиенту: `external_id`, `ms_synced_at`, `ms_sync_error`.
+
+### Идемпотентность
+
+При POST в МС передаём `syncId = <наш UUID>`. МС дедуплицирует по нему:
+повторный push вернёт существующий документ. Уже запушенные документы
+пропускаются (проверка `external_id IS NULL`).
+
+### Где смотреть
+
+    -- что не уехало
+    SELECT number, type, ms_sync_error FROM documents
+    WHERE source='manual' AND external_id IS NULL AND status='posted';
+
+    -- что уехало
+    SELECT number, external_id, ms_synced_at FROM documents
+    WHERE ms_synced_at IS NOT NULL ORDER BY ms_synced_at DESC LIMIT 20;
+
+### Код
+
+- `shared/msapi/client.go` — Go-клиент МС (POST/GET, retry на 429/5xx, meta-хелперы)
+- `services/warehouse/internal/mspush/mspush.go` — сборка payload, вызов МС
+- `services/warehouse/internal/repository/ms_sync.go` — external-refs, SetXxxMSSynced/Error
+- `services/warehouse/internal/handler/handler.go` (PostDocument) — врезка
+- `services/warehouse/internal/handler/internal_orders.go` (Post) — врезка
+- `services/warehouse/cmd/api/main.go` — инициализация pusher
+
+### Unit-конверсии
+
+- в БД: цена в рублях (numeric(15,2)), quantity — дробное
+- в МС: `price` — целое в копейках, `quantity` — число
+- при push: `price_kop = round(price_rub * 100)`
+- при импорте: `price_rub = price_kop / 100` (см. import-ms-docs.ps1)
+
+### GOTCHA push в МС (проверено)
+
+1. `Accept-Encoding: gzip` вручную ставить нельзя — Go-транспорт перестаёт
+   декомпрессировать, JSON приходит с `\x1f`. Решение: не ставить вручную,
+   либо распаковывать через `compress/gzip` (сделано в shared/msapi/client.go).
+2. SQL UPDATE с одним и тем же `$2` в `external_id` (uuid) и `external_code` (text)
+   даёт `SQLSTATE 42P08: inconsistent types deduced for parameter $2`.
+   Решение: явные касты `$2::uuid` и `$2::text` + `msUUID.String()`.
+3. `internalorder` — правильный entity, НЕ `customerorder`.
+4. `applicable=true` — иначе документ будет черновиком в МС.
+5. `moment` в МС — без TZ, строка `2006-01-02 15:04:05.000` в МСК.
+6. Если у продукта/склада/организации нет `external_id` — push пропускается
+   целиком, в `ms_sync_error` пишется причина.
+
+---
 ## КРИТИЧНЫЕ GOTCHA (проверено на этапах 35-38)
 
 1. MS rate limit: 45 запросов за 3 сек (X-RateLimit-Limit: 45, X-Lognex-Retry-TimeInterval: 3000).

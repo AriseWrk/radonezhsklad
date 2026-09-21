@@ -1508,3 +1508,50 @@ PostgreSQL отдавал произвольные 500 строк.
 
 - При 11 091 строках ответ весит ~2 МБ, уезжает мгновенно. При росте до 50k+
   потребуется серверная пагинация (limit/offset в handler + repo).
+
+---
+
+## Этап 47: Обратная синхронизация (RadonezhSklad -> МС)
+
+### Задача
+
+В бете офис работает в МС, один тестер — у нас. Документы и заказы,
+созданные у нас, должны появляться в МС, чтобы офис их видел.
+
+### Реализовано
+
+- Миграция 0012_ms_push.sql: колонки source, ms_synced_at, ms_sync_error
+  в documents и internal_orders + индексы на pending-записи.
+- shared/msapi — Go-клиент МС remap 1.2:
+  Post/Get с retry на 429/5xx (Retry-After), meta-хелперы для payload.
+- services/warehouse/internal/mspush — сборка payload и push:
+  - documents: receipt -> enter, shipment -> demand, writeoff -> loss, transfer -> move
+  - internal_orders -> internalorder
+  - syncId = <наш UUID> — идемпотентность на стороне МС
+  - цены: рубли -> копейки (int64, round)
+- repository/ms_sync.go — выгрузка external_id связанных сущностей
+  (склад, склад-цель, поставщик, организация), запись результата.
+- Врезка в handler.PostDocument и handler.Post (internal_orders):
+  push после локального commit, ошибка -> ms_sync_error.
+- warehouse/config + .env.example: MS_PUSH_ENABLED, MS_API_BASE,
+  MS_TOKEN / MS_TOKEN_FILE.
+- Product-service: external_id проброшен в JSON /products и /products/list.
+
+### E2E проверено
+
+- receipt -> enter: external_id=9f01e45d-..., ms_synced_at заполнен
+- internal_order -> internalorder: external_id=b3dc01db-...
+- в МС видны позиции, суммы, склад, организация; syncId совпадает.
+
+### GOTCHA
+
+- gzip: не ставить Accept-Encoding вручную (см. HANDOFF).
+- SQLSTATE 42P08: явные касты $2::uuid / $2::text (см. HANDOFF).
+- entity для внутреннего заказа — internalorder, не customerorder.
+
+### Хвосты
+
+- VAT в push документа (сейчас vat: 0 в позициях document-документов;
+  у internal_orders vat_rate пробрасывается).
+- Периодическая досылка "застрявших" (ms_sync_error IS NOT NULL) — ручка/скрипт.
+- writeoff/shipment/transfer — код есть, e2e пока только на receipt.

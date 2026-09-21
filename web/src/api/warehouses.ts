@@ -2,6 +2,7 @@ import { http } from './client'
 
 export interface Warehouse {
   id: string
+  external_id?: string | null
   name: string
   address?: string
   is_active: boolean

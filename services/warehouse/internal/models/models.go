@@ -29,6 +29,7 @@ type Supplier struct {
 
 type Organization struct {
 	ID        uuid.UUID `json:"id"`
+	ExternalID *uuid.UUID `json:"external_id,omitempty"`
 	Name      string    `json:"name"`
 	INN       *string   `json:"inn,omitempty"`
 	IsDefault bool      `json:"is_default"`

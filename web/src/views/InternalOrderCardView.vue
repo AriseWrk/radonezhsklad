@@ -257,7 +257,7 @@ const showSuggest = ref(false)
 const suggestions = computed(() => {
   const q = newItemSearch.value.trim().toLowerCase()
   if (!q) return []
-  return products.value.filter((p) =>
+  return products.value.filter((p) => !!p.external_id).filter((p) =>
     p.name.toLowerCase().includes(q) ||
     (p.sku ?? '').toLowerCase().includes(q)
   ).slice(0, 8)
@@ -360,6 +360,19 @@ async function save() {
   saving.value = true
   try {
     if (form.items.length === 0) throw new Error('Добавьте хотя бы одну позицию')
+    if (!form.warehouse_id) throw new Error('Выберите склад из списка')
+    const wh = warehouses.value.find((x) => x.id === form.warehouse_id)
+    if (!wh) throw new Error('Склад не найден — выберите из списка')
+    if (!wh.external_id) throw new Error('Склад не привязан к МойСклад — выберите другой')
+    if (!form.organization_id) throw new Error('Выберите организацию из списка')
+    const org = organizations.value.find((x) => x.id === form.organization_id)
+    if (!org) throw new Error('Организация не найдена — выберите из списка')
+    if (!org.external_id) throw new Error('Организация не привязана к МойСклад')
+    for (const it of form.items) {
+      const prod = products.value.find((x) => x.id === it.product_id)
+      if (!prod) throw new Error('Товар не найден — удалите позицию и выберите из списка')
+      if (!prod.external_id) throw new Error(`Товар «${prod.name}» не привязан к МойСклад`)
+    }
     if (isNew.value) {
       const created = await createInternalOrder(buildInput())
       currentId.value = created.id
@@ -425,14 +438,14 @@ const showOrganizationSuggest = ref(false)
 
 const warehouseSuggestions = computed(() => {
   const q = warehouseSearch.value.trim().toLowerCase()
-  const list = warehouses.value
+  const list = warehouses.value.filter((w) => !!w.external_id)
   if (!q) return list.slice(0, 8)
   return list.filter((w) => w.name.toLowerCase().includes(q)).slice(0, 10)
 })
 
 const organizationSuggestions = computed(() => {
   const q = organizationSearch.value.trim().toLowerCase()
-  const list = organizations.value
+  const list = organizations.value.filter((o) => !!o.external_id)
   if (!q) return list.slice(0, 8)
   return list.filter((o) => o.name.toLowerCase().includes(q)).slice(0, 10)
 })

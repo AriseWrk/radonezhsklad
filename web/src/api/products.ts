@@ -2,6 +2,7 @@ import { http } from './client'
 
 export interface Product {
   id: string
+  external_id?: string | null
   name: string
   sku?: string
   barcode?: string

@@ -13,6 +13,7 @@ export interface Supplier {
 
 export interface Organization {
   id: string
+  external_id?: string | null
   name: string
   inn?: string
   is_default: boolean

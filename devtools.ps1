@@ -59,12 +59,20 @@ function Set-ConsoleUtf8 {
 # Without Accept-Encoding: gzip the server returns 415 Unsupported Media Type.
 
 function Get-MsToken {
-    $path = 'D:\Radonezhsklad\.secrets\moysklad.token'
-    if (-not (Test-Path $path)) { throw "No MS token file: $path" }
-    $utf8 = New-Object System.Text.UTF8Encoding $false
-    $tok = ([IO.File]::ReadAllText($path, $utf8)).Trim()
-    if ([string]::IsNullOrWhiteSpace($tok)) { throw "Empty token in $path" }
-    return $tok
+    # 1) env MS_TOKEN_FILE
+    $candidates = @()
+    if ($env:MS_TOKEN_FILE) { $candidates += $env:MS_TOKEN_FILE }
+    # 2) дефолтные пути (дома + офис)
+    $candidates += @(
+        'D:\Radonezhsklad\.secrets\moysklad.token',
+        'C:\radonezhsklad\.secrets\moysklad.token'
+    )
+    foreach ($path in $candidates) {
+        if ($path -and (Test-Path $path)) {
+            return (Get-Content -LiteralPath $path -Raw).Trim()
+        }
+    }
+    throw "No MS token file (tried: $($candidates -join '; '))"
 }
 
 

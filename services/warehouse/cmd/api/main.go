@@ -67,6 +67,9 @@ func main() {
 		slog.Info("mspush: disabled (MS_PUSH_ENABLED=false)")
 	}
 
+	syncH := handler.NewSyncHandler(cfg.ScriptsDir)
+	slog.Info("sync: scripts dir", "dir", cfg.ScriptsDir)
+
 	h := handler.New(svc, pc, pusher)
 	supH := handler.NewSupplierHandler(supSvc)
 	intOrderH := handler.NewInternalOrderHandler(intOrderSvc, svc, supSvc, pc, pusher)
@@ -106,6 +109,7 @@ func main() {
 			read.GET("/internal-orders/next-number", intOrderH.NextNumber)
 			read.GET("/internal-orders/:id/export", intOrderH.Export)
 			read.GET("/organizations", supH.ListOrganizations)
+			read.GET("/sync/jobs/:id", syncH.Get)
 		}
 
 		whWrite := api.Group("")
@@ -123,6 +127,7 @@ func main() {
 			supWrite.PUT("/suppliers/:id", supH.Update)
 			supWrite.DELETE("/suppliers/:id", supH.Delete)
 			supWrite.POST("/internal-orders", intOrderH.Create)
+			supWrite.POST("/sync/pull-orders", syncH.Start)
 			supWrite.PUT("/internal-orders/:id", intOrderH.Update)
 			supWrite.POST("/internal-orders/:id/post", intOrderH.Post)
 			supWrite.POST("/internal-orders/:id/cancel", intOrderH.Cancel)

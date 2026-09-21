@@ -29,6 +29,9 @@
             🖨 Печать
           </button>
         </div>
+        <button class="btn danger" @click="deleteSelected" :disabled="selected.size === 0">
+          Удалить
+        </button>
         <button class="btn icon-only" title="Настройки">⚙</button>
       </div>
     </div>
@@ -218,7 +221,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { listInternalOrders, type InternalOrder } from '../api/internalOrders'
+import { listInternalOrders, deleteInternalOrder, type InternalOrder } from '../api/internalOrders'
 import { listWarehouses, type Warehouse } from '../api/warehouses'
 import { listOrganizations, type Organization } from '../api/suppliers'
 import { apiErrorMessage } from '../api/client'
@@ -339,6 +342,25 @@ async function load() {
 function open(o: InternalOrder) { router.push(`/internal-orders/${o.id}`) }
 function create() { router.push('/internal-orders/new') }
 function printSelected() { window.print() }
+
+async function deleteSelected() {
+  const ids = Array.from(selected.value)
+  if (ids.length === 0) return
+  if (!confirm(`Удалить выбранные заказы (${ids.length})? Действие необратимо.`)) return
+  const failed: string[] = []
+  for (const id of ids) {
+    try {
+      await deleteInternalOrder(id)
+    } catch (e) {
+      failed.push(`${id}: ${apiErrorMessage(e)}`)
+    }
+  }
+  selected.value = new Set()
+  await load()
+  if (failed.length > 0) {
+    error.value = `Не удалось удалить ${failed.length}: ` + failed.join('; ')
+  }
+}
 
 function clearFilters() {
   search.value = ''
@@ -527,4 +549,14 @@ tr.clickable { cursor: pointer; }
 }
 .totals-label { color: #57606a; }
 .totals-val { font-weight: 600; color: #1f2328; font-variant-numeric: tabular-nums; }
+.btn.danger {
+  background: #fff;
+  color: #cf222e;
+  border-color: #cf222e;
+}
+.btn.danger:hover:not(:disabled) {
+  background: #cf222e;
+  color: #fff;
+}
+
 </style>

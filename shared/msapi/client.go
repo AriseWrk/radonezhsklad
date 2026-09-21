@@ -195,6 +195,11 @@ func (c *Client) Get(ctx context.Context, path string, query url.Values, out any
 	return c.do(ctx, http.MethodGet, path, query, nil, out)
 }
 
+// Put — PUT с JSON-телом. out может быть nil.
+func (c *Client) Put(ctx context.Context, path string, body any, out any) error {
+	return c.do(ctx, http.MethodPut, path, nil, body, out)
+}
+
 // --- meta-хелперы ---
 
 // Meta — объект-ссылка на сущность МС для payload.

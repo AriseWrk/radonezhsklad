@@ -146,6 +146,15 @@ func (h *InternalOrderHandler) Create(c *gin.Context) {
 		c.Error(err)
 		return
 	}
+
+	// push в МС (создание черновика); ошибка уже в o.ms_sync_error
+	if h.pusher != nil && h.pusher.Enabled() {
+		token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+		_ = h.pusher.PushInternalOrder(c.Request.Context(), o.ID, token)
+		if refreshed, err := h.svc.Get(c.Request.Context(), o.ID); err == nil && refreshed != nil {
+			o = refreshed
+		}
+	}
 	httpx.Created(c, o)
 }
 
@@ -204,6 +213,15 @@ func (h *InternalOrderHandler) Update(c *gin.Context) {
 	if err != nil {
 		c.Error(err)
 		return
+	}
+
+	// push в МС (обновление); ошибка уже в o.ms_sync_error
+	if h.pusher != nil && h.pusher.Enabled() {
+		token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+		_ = h.pusher.PushInternalOrder(c.Request.Context(), o.ID, token)
+		if refreshed, err := h.svc.Get(c.Request.Context(), o.ID); err == nil && refreshed != nil {
+			o = refreshed
+		}
 	}
 	httpx.OK(c, o)
 }

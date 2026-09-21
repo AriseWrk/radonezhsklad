@@ -284,7 +284,7 @@ func (p *Pusher) buildOrderPayload(ctx context.Context, order *models.InternalOr
 		Name:         order.Number,
 		SyncID:       order.ID.String(),
 		Moment:       msMoment(order.DocDate),
-		Applicable:   true,
+		Applicable:   order.Status == "posted",
 		Organization: p.ms.EntityMeta("organization", *refs.Organization.ExternalID),
 		Store:        p.ms.EntityMeta("store", *refs.Warehouse.ExternalID),
 		Positions:    positions,
@@ -307,12 +307,6 @@ func (p *Pusher) PushInternalOrder(ctx context.Context, orderID uuid.UUID, token
 	if order == nil {
 		return fmt.Errorf("order %s not found", orderID)
 	}
-	if order.ExternalID != nil {
-		return nil
-	}
-	if order.Status != "posted" {
-		return nil
-	}
 
 	payload, err := p.buildOrderPayload(ctx, order, token)
 	if err != nil {
@@ -323,13 +317,29 @@ func (p *Pusher) PushInternalOrder(ctx context.Context, orderID uuid.UUID, token
 	var resp struct {
 		ID uuid.UUID `json:"id"`
 	}
-	if err := p.ms.Post(ctx, "/entity/internalorder", payload, &resp); err != nil {
-		_ = p.repo.SetOrderMSError(ctx, orderID, err.Error())
-		return err
+
+	if order.ExternalID == nil {
+		// первый push — POST в МС, applicable зависит от статуса
+		if err := p.ms.Post(ctx, "/entity/internalorder", payload, &resp); err != nil {
+			_ = p.repo.SetOrderMSError(ctx, orderID, err.Error())
+			return err
+		}
+		if err := p.repo.SetOrderMSSynced(ctx, orderID, resp.ID); err != nil {
+			return err
+		}
+		slog.Info("mspush: internal_order created", "our_id", orderID, "ms_id", resp.ID, "status", order.Status)
+	} else {
+		// повторный push — PUT, обновляем существующий
+		path := "/entity/internalorder/" + order.ExternalID.String()
+		if err := p.ms.Put(ctx, path, payload, &resp); err != nil {
+			_ = p.repo.SetOrderMSError(ctx, orderID, err.Error())
+			return err
+		}
+		// сбросим ms_sync_error и обновим ms_synced_at
+		if err := p.repo.SetOrderMSSynced(ctx, orderID, *order.ExternalID); err != nil {
+			return err
+		}
+		slog.Info("mspush: internal_order updated", "our_id", orderID, "ms_id", *order.ExternalID, "status", order.Status)
 	}
-	if err := p.repo.SetOrderMSSynced(ctx, orderID, resp.ID); err != nil {
-		return err
-	}
-	slog.Info("mspush: internal_order pushed", "our_id", orderID, "ms_id", resp.ID)
 	return nil
 }

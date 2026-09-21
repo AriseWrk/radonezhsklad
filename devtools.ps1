@@ -76,7 +76,10 @@ function MsApi-Get {
     $token = Get-MsToken
     $qs = [string]::Empty
     if ($Query.Count -gt 0) {
-        $pairs = foreach ($k in $Query.Keys) { "$k=$($Query[$k])" }
+        $pairs = foreach ($k in $Query.Keys) {
+            $val = [string]$Query[$k]
+            "$([uri]::EscapeDataString($k))=$([uri]::EscapeDataString($val))"
+        }
         $qs = '?' + ($pairs -join '&')
     }
     $url = "https://api.moysklad.ru/api/remap/1.2$Path$qs"
@@ -152,7 +155,10 @@ function MsApi-Get {
     $token = Get-MsToken
     $qs = [string]::Empty
     if ($Query.Count -gt 0) {
-        $pairs = foreach ($k in $Query.Keys) { "$k=$($Query[$k])" }
+        $pairs = foreach ($k in $Query.Keys) {
+            $val = [string]$Query[$k]
+            "$([uri]::EscapeDataString($k))=$([uri]::EscapeDataString($val))"
+        }
         $qs = '?' + ($pairs -join '&')
     }
     $url = "https://api.moysklad.ru/api/remap/1.2$Path$qs"

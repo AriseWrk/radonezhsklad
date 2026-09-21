@@ -1,5 +1,6 @@
 param(
     [int]$Limit = 0,
+    [string]$Since = '',
     [switch]$KeepTsv
 )
 $ErrorActionPreference = 'Stop'
@@ -66,6 +67,7 @@ $extraPosCalls = 0
 while ($true) {
     if ($Limit -gt 0 -and $fetched -ge $Limit) { break }
     $q = @{ limit = $pageSize; offset = $offset; expand = 'positions' }
+    if ($Since) { $q.filter = "updated>=$Since" }
     $page = MsApi-Get -Path '/entity/internalorder' -Query $q
     if ($null -eq $total) { $total = [int]$page.meta.size; Write-Host "  total: $total" }
     if (-not $page.rows -or $page.rows.Count -eq 0) { break }
@@ -136,7 +138,7 @@ while ($true) {
     }
 
     $offset += $page.rows.Count
-    Write-Host "  fetched $fetched / $total  (docs: $($docLines.Count), items: $($itemLines.Count))"
+    Write-Host "[PROGRESS] fetched=$fetched total=$total"
     if ($offset -ge $total) { break }
     Start-Sleep -Milliseconds 120
 }

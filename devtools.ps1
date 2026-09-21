@@ -207,12 +207,28 @@ $script:RsPgHost     = 'localhost'
 $script:RsPgPass     = if ($env:PGPASSWORD) { $env:PGPASSWORD } else { 'radonezh_dev_pass' }
 
 function Get-RsSqlBackend {
-	# Явное переопределение через env (например, офис без Docker)
-	if ($env:RS_SQL_BACKEND) {
-		$script:RsSqlBackend = $env:RS_SQL_BACKEND
-		Write-Host "rs-sql backend: $($script:RsSqlBackend) (env override)" -ForegroundColor DarkGray
-		return $script:RsSqlBackend
-	}
+# Явное переопределение через env (например, офис без Docker)
+if ($env:RS_SQL_BACKEND) {
+$script:RsSqlBackend = $env:RS_SQL_BACKEND
+if ($script:RsSqlBackend -eq 'psql' -and -not $script:RsPsqlLocal) {
+$candidates = @(
+'C:\Program Files\PostgreSQL\17\bin\psql.exe',
+'C:\Program Files\PostgreSQL\16\bin\psql.exe',
+'C:\Program Files\PostgreSQL\15\bin\psql.exe',
+'C:\Program Files\PostgreSQL\14\bin\psql.exe'
+)
+foreach ($c in $candidates) {
+if (Test-Path $c) { $script:RsPsqlLocal = $c; break }
+}
+if (-not $script:RsPsqlLocal) {
+$cmd = Get-Command psql -ErrorAction SilentlyContinue
+if ($cmd) { $script:RsPsqlLocal = $cmd.Source }
+}
+if (-not $script:RsPsqlLocal) { throw "RS_SQL_BACKEND=psql, но psql.exe не найден" }
+}
+Write-Host "rs-sql backend: $($script:RsSqlBackend) (env override, psql=$($script:RsPsqlLocal))" -ForegroundColor DarkGray
+return $script:RsSqlBackend
+}
 
     if ($script:RsSqlBackend) { return $script:RsSqlBackend }
 

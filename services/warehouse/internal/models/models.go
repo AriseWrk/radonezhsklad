@@ -8,6 +8,7 @@ import (
 
 type Warehouse struct {
 	ID        uuid.UUID `json:"id"`
+	ExternalID *uuid.UUID `json:"external_id,omitempty"`
 	Name      string    `json:"name"`
 	Address   *string   `json:"address,omitempty"`
 	IsActive  bool      `json:"is_active"`

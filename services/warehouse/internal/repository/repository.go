@@ -34,15 +34,15 @@ func (r *Repo) CreateWarehouse(ctx context.Context, name string, address *string
 	w := &models.Warehouse{}
 	err := r.db.QueryRow(ctx,
 		`INSERT INTO warehouses (name, address) VALUES ($1, $2)
- RETURNING id, name, address, is_active, created_at, updated_at`,
+ RETURNING id, external_id, name, address, is_active, created_at, updated_at`,
 		name, address,
-	).Scan(&w.ID, &w.Name, &w.Address, &w.IsActive, &w.CreatedAt, &w.UpdatedAt)
+	).Scan(&w.ID, &w.ExternalID, &w.Name, &w.Address, &w.IsActive, &w.CreatedAt, &w.UpdatedAt)
 	return w, err
 }
 
 func (r *Repo) ListWarehouses(ctx context.Context) ([]models.Warehouse, error) {
 	rows, err := r.db.Query(ctx,
-		`SELECT id, name, address, is_active, created_at, updated_at FROM warehouses ORDER BY name`)
+		`SELECT id, external_id, name, address, is_active, created_at, updated_at FROM warehouses ORDER BY name`)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (r *Repo) ListWarehouses(ctx context.Context) ([]models.Warehouse, error) {
 	out := []models.Warehouse{}
 	for rows.Next() {
 		var w models.Warehouse
-		if err := rows.Scan(&w.ID, &w.Name, &w.Address, &w.IsActive, &w.CreatedAt, &w.UpdatedAt); err != nil {
+		if err := rows.Scan(&w.ID, &w.ExternalID, &w.Name, &w.Address, &w.IsActive, &w.CreatedAt, &w.UpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, w)
@@ -61,8 +61,8 @@ func (r *Repo) ListWarehouses(ctx context.Context) ([]models.Warehouse, error) {
 func (r *Repo) GetWarehouse(ctx context.Context, id uuid.UUID) (*models.Warehouse, error) {
 	w := &models.Warehouse{}
 	err := r.db.QueryRow(ctx,
-		`SELECT id, name, address, is_active, created_at, updated_at FROM warehouses WHERE id = $1`, id,
-	).Scan(&w.ID, &w.Name, &w.Address, &w.IsActive, &w.CreatedAt, &w.UpdatedAt)
+		`SELECT id, external_id, name, address, is_active, created_at, updated_at FROM warehouses WHERE id = $1`, id,
+	).Scan(&w.ID, &w.ExternalID, &w.Name, &w.Address, &w.IsActive, &w.CreatedAt, &w.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -73,9 +73,9 @@ func (r *Repo) UpdateWarehouse(ctx context.Context, id uuid.UUID, name string, a
 	w := &models.Warehouse{}
 	err := r.db.QueryRow(ctx,
 		`UPDATE warehouses SET name = $2, address = $3, is_active = $4 WHERE id = $1
- RETURNING id, name, address, is_active, created_at, updated_at`,
+ RETURNING id, external_id, name, address, is_active, created_at, updated_at`,
 		id, name, address, isActive,
-	).Scan(&w.ID, &w.Name, &w.Address, &w.IsActive, &w.CreatedAt, &w.UpdatedAt)
+	).Scan(&w.ID, &w.ExternalID, &w.Name, &w.Address, &w.IsActive, &w.CreatedAt, &w.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}

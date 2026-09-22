@@ -240,7 +240,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRoute } from 'vue-router'
 import {
-  listDocuments, createDocument, postDocument, cancelDocument, getDocument,
+  listDocuments, createDocument, postDocument, cancelDocument,
   type Document, type DocType,
 } from '../api/documents'
 import { listWarehouses, type Warehouse } from '../api/warehouses'
@@ -470,10 +470,6 @@ async function onCancel(d: Document) {
 
 const router = useRouter()
 function openCard(d: Document) { router.push('/documents/' + d.id) }
-
-async function showDetails(d: Document) {
-  try { detailDoc.value = await getDocument(d.id) } catch (e) { error.value = apiErrorMessage(e) }
-}
 
 function print() { window.print() }
 

@@ -7,13 +7,13 @@ import (
 )
 
 type Warehouse struct {
-	ID        uuid.UUID `json:"id"`
+	ID         uuid.UUID  `json:"id"`
 	ExternalID *uuid.UUID `json:"external_id,omitempty"`
-	Name      string    `json:"name"`
-	Address   *string   `json:"address,omitempty"`
-	IsActive  bool      `json:"is_active"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	Name       string     `json:"name"`
+	Address    *string    `json:"address,omitempty"`
+	IsActive   bool       `json:"is_active"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
 }
 
 type Supplier struct {
@@ -28,12 +28,12 @@ type Supplier struct {
 }
 
 type Organization struct {
-	ID        uuid.UUID `json:"id"`
+	ID         uuid.UUID  `json:"id"`
 	ExternalID *uuid.UUID `json:"external_id,omitempty"`
-	Name      string    `json:"name"`
-	INN       *string   `json:"inn,omitempty"`
-	IsDefault bool      `json:"is_default"`
-	CreatedAt time.Time `json:"created_at"`
+	Name       string     `json:"name"`
+	INN        *string    `json:"inn,omitempty"`
+	IsDefault  bool       `json:"is_default"`
+	CreatedAt  time.Time  `json:"created_at"`
 }
 
 type StockBalance struct {
@@ -166,4 +166,15 @@ type InventoryItem struct {
 	Price              float64   `json:"price"`
 	CorrectionSum      float64   `json:"correction_sum"`
 	CreatedAt          time.Time `json:"created_at"`
+}
+
+// ---- Projects ----
+
+type Project struct {
+	ID         uuid.UUID  `json:"id"`
+	ExternalID *uuid.UUID `json:"external_id,omitempty"`
+	Name       string     `json:"name"`
+	Archived   bool       `json:"archived"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
 }

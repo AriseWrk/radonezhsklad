@@ -71,10 +71,21 @@
       </div>
       <div class="field">
         <label>Проект</label>
-        <div v-if="form.project_name" class="ro" :title="form.project || ''">{{ form.project_name }}</div>
-        <input v-else v-model="form.project" :disabled="!canEdit" placeholder="UUID проекта" />
-      </div>
-    </div>
+        <div class="ac-wrap">
+          <input
+            v-model="projectSearch"
+            :disabled="!canEdit"
+            placeholder="Начните вводить название..."
+            @focus="showProjectSuggest = true"
+            @blur="hideProjectSuggestSoon"
+          />
+          <button v-if="canEdit" type="button" class="ac-add" title="Создать проект" @mousedown.prevent="openCreateProject">+</button>
+          <button v-if="canEdit && form.project" type="button" class="ac-clear" title="Очистить" @mousedown.prevent="clearProject">×</button>
+          <div v-if="showProjectSuggest && projectSuggestions.length" class="ac-dropdown">
+            <div v-for="p in projectSuggestions" :key="p.id" class="ac-item" @mousedown.prevent="selectProject(p)">{{ p.name }}</div>
+          </div>
+        </div>
+      </div>    </div>
 
     <!-- Вкладки -->
     <div class="doc-tabs">
@@ -195,6 +206,22 @@
       <div class="section-head"><span>Файлы</span><button class="btn-link">+ Файл</button></div>
       <div class="muted" style="font-size:12px">Нет файлов</div>
     </div>
+
+    <!-- Модалка: новый проект -->
+    <div v-if="showCreateProject" class="modal-backdrop" @click.self="showCreateProject = false">
+      <form class="card modal" @submit.prevent="submitCreateProject">
+        <h2>Новый проект</h2>
+        <div v-if="projectError" class="error-box">{{ projectError }}</div>
+        <label>Название</label>
+        <input v-model="newProjectName" placeholder="Название проекта" autofocus />
+        <div class="modal-actions">
+          <button type="button" @click="showCreateProject = false">Отмена</button>
+          <button class="primary" type="submit" :disabled="creatingProject">
+            {{ creatingProject ? 'Сохранение...' : 'Создать' }}
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 </template>
 
@@ -213,6 +240,7 @@ import {
 import { listProducts, type Product } from '../api/products'
 import { listWarehouses, type Warehouse } from '../api/warehouses'
 import { listOrganizations, type Organization } from '../api/suppliers'
+import { listProjects, createProject, type Project } from '../api/projects'
 import { listStockExtended } from '../api/stock'
 import { apiErrorMessage } from '../api/client'
 import { useAuthStore } from '../stores/auth'
@@ -231,6 +259,7 @@ const auth = useAuthStore()
 const products = ref<Product[]>([])
 const warehouses = ref<Warehouse[]>([])
 const organizations = ref<Organization[]>([])
+const projects = ref<Project[]>([])
 const stockMap = ref<Map<string, number>>(new Map())
 
 const loading = ref(false)
@@ -248,6 +277,7 @@ const form = reactive({
   plan_date: '',
   project: '',
   project_name: '',
+  sent_at: undefined as string | undefined,
   comment: '',
   vat_enabled: true,
   vat_included: true,
@@ -297,15 +327,17 @@ const userLabel = computed(() => auth.userId ? auth.userId.slice(0, 8) : '')
 async function load() {
   loading.value = true; error.value = null
   try {
-    const [prods, w, orgs, stock] = await Promise.all([
+    const [prods, w, orgs, stock, projs] = await Promise.all([
       listProducts(true),
       listWarehouses(),
       listOrganizations(),
       listStockExtended().catch(() => ({ items: [] as any[] })),
+      listProjects().catch(() => [] as Project[]),
     ])
     products.value = prods
     warehouses.value = w
     organizations.value = orgs
+    projects.value = projs
     const m = new Map<string, number>()
     for (const r of (stock as any).items ?? []) m.set(r.product_id, r.quantity)
     stockMap.value = m
@@ -323,6 +355,7 @@ async function load() {
       form.plan_date = o.plan_date ? o.plan_date.slice(0, 10) : ''
       form.project = o.project ?? ''
       form.project_name = o.project_name ?? ''
+      syncProjectSearch()
       form.comment = o.comment ?? ''
       form.vat_enabled = o.vat_enabled
       form.vat_included = o.vat_included
@@ -337,6 +370,7 @@ async function load() {
       form.warehouse_id = warehouses.value[0]?.id ?? ''
       syncWarehouseSearch()
       syncOrganizationSearch()
+      syncProjectSearch()
     }
   } catch (e) {
     error.value = apiErrorMessage(e)
@@ -519,7 +553,65 @@ watch(organizationSearch, (val) => {
   const o = organizations.value.find((x) => x.name === val)
   form.organization_id = o?.id ?? ''
 })
-onMounted(load)
+
+// === Проект ===
+const projectSearch = ref('')
+const showProjectSuggest = ref(false)
+const showCreateProject = ref(false)
+const newProjectName = ref('')
+const creatingProject = ref(false)
+const projectError = ref<string | null>(null)
+
+const projectSuggestions = computed(() => {
+  const q = projectSearch.value.trim().toLowerCase()
+  const list = projects.value
+  if (!q) return list.slice(0, 8)
+  return list.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 10)
+})
+
+function hideProjectSuggestSoon() { setTimeout(() => { showProjectSuggest.value = false }, 150) }
+
+function selectProject(p: Project) {
+  form.project = p.external_id ?? ''
+  form.project_name = p.name
+  projectSearch.value = p.name
+  showProjectSuggest.value = false
+}
+function clearProject() {
+  form.project = ''
+  form.project_name = ''
+  projectSearch.value = ''
+}
+function syncProjectSearch() {
+  projectSearch.value = form.project_name || ''
+}
+watch(projectSearch, (val) => {
+  const p = projects.value.find((x) => x.name === val)
+  form.project = p?.external_id ?? ''
+  form.project_name = p?.name ?? ''
+})
+
+function openCreateProject() {
+  newProjectName.value = projectSearch.value.trim()
+  projectError.value = null
+  showCreateProject.value = true
+}
+async function submitCreateProject() {
+  const name = newProjectName.value.trim()
+  if (!name) { projectError.value = 'Введите название'; return }
+  creatingProject.value = true
+  projectError.value = null
+  try {
+    const created = await createProject(name)
+    projects.value = [...projects.value, created].sort((a,b) => a.name.localeCompare(b.name))
+    selectProject(created)
+    showCreateProject.value = false
+  } catch (e) {
+    projectError.value = apiErrorMessage(e)
+  } finally {
+    creatingProject.value = false
+  }
+}onMounted(load)
 </script>
 
 <style scoped>
@@ -741,4 +833,41 @@ onMounted(load)
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .ac-item:hover { background: #eaeef2; }
+
+/* Проект: автокомплит + кнопка + */
+.ac-wrap { position: relative; display: flex; align-items: center; gap: 4px; }
+.ac-wrap > input { flex: 1; }
+.ac-add, .ac-clear {
+  flex: 0 0 auto;
+  width: 26px; height: 26px;
+  border: 1px solid #d0d7de; background: #fff;
+  border-radius: 4px; cursor: pointer;
+  font-size: 16px; line-height: 1;
+  color: #2c5d9c;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0;
+}
+.ac-add:hover { background: #eaf3ff; }
+.ac-clear { color: #cf222e; }
+.ac-clear:hover { background: #ffecec; }
+
+/* Модалка (для создания проекта) */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; z-index: 100;
+}
+.modal {
+  width: 420px; max-width: 100%;
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 16px;
+}
+.modal h2 { margin: 0 0 4px; font-size: 18px; }
+.modal label { font-size: 13px; color: #444; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+.error-box {
+  background: #ffecec; color: #cf222e;
+  border: 1px solid #ffb3b3; border-radius: 4px;
+  padding: 6px 10px; font-size: 13px;
+}
 </style>

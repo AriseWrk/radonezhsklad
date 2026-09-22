@@ -43,12 +43,14 @@ func main() {
 	repo := repository.New(pool)
 	supRepo := repository.NewSupplierRepo(pool)
 	intOrderRepo := repository.NewInternalOrderRepo(pool)
+	projectRepo := repository.NewProjectRepo(pool)
 	invRepo := repository.NewInventoryRepo(pool)
 	orgRepo := repository.NewOrganizationRepo(pool)
 
 	svc := service.New(repo)
 	supSvc := service.NewSupplierService(supRepo, orgRepo)
 	intOrderSvc := service.NewInternalOrderService(intOrderRepo)
+	projectSvc := service.NewProjectService(projectRepo)
 	invSvc := service.NewInventoryService(invRepo, repo)
 	pc := product.New(cfg.ProductURL)
 
@@ -73,6 +75,7 @@ func main() {
 	h := handler.New(svc, pc, pusher)
 	supH := handler.NewSupplierHandler(supSvc)
 	intOrderH := handler.NewInternalOrderHandler(intOrderSvc, svc, supSvc, pc, pusher)
+	projectH := handler.NewProjectHandler(projectSvc)
 	invH := handler.NewInventoryHandler(invSvc, pc)
 
 	if env == "prod" {
@@ -109,6 +112,8 @@ func main() {
 			read.GET("/internal-orders/next-number", intOrderH.NextNumber)
 			read.GET("/internal-orders/:id/export", intOrderH.Export)
 			read.GET("/organizations", supH.ListOrganizations)
+			read.GET("/projects", projectH.List)
+			read.GET("/projects/:id", projectH.Get)
 			read.GET("/sync/jobs/:id", syncH.Get)
 		}
 
@@ -126,6 +131,9 @@ func main() {
 			supWrite.POST("/suppliers", supH.Create)
 			supWrite.PUT("/suppliers/:id", supH.Update)
 			supWrite.DELETE("/suppliers/:id", supH.Delete)
+			supWrite.POST("/projects", projectH.Create)
+			supWrite.PUT("/projects/:id", projectH.Update)
+			supWrite.DELETE("/projects/:id", projectH.Delete)
 			supWrite.POST("/internal-orders", intOrderH.Create)
 			supWrite.POST("/sync/pull-orders", syncH.Start)
 			supWrite.PUT("/internal-orders/:id", intOrderH.Update)

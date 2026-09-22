@@ -91,6 +91,7 @@ type msOrderPayload struct {
 	Description  string       `json:"description,omitempty"`
 	Organization msapi.Meta   `json:"organization"`
 	Store        msapi.Meta   `json:"store,omitempty"`
+	Project      *msapi.Meta  `json:"project,omitempty"`
 	Positions    []msPosition `json:"positions"`
 }
 
@@ -292,6 +293,13 @@ func (p *Pusher) buildOrderPayload(ctx context.Context, order *models.InternalOr
 	if order.Comment != nil {
 		payload.Description = *order.Comment
 	}
+	// проект: order.Project хранит external_id МС (UUID)
+	if order.Project != nil && *order.Project != "" {
+		if pid, perr := uuid.Parse(*order.Project); perr == nil {
+			m := p.ms.EntityMeta("project", pid)
+			payload.Project = &m
+		}
+	}
 	return payload, nil
 }
 
@@ -364,4 +372,27 @@ func (p *Pusher) DeleteInternalOrder(ctx context.Context, orderID uuid.UUID, tok
 	}
 	slog.Info("mspush: internal_order deleted", "our_id", orderID, "ms_id", *order.ExternalID)
 	return nil
+}
+
+// -------- projects --------
+
+// CreateProject создаёт проект в МС и возвращает его UUID.
+// Используется при создании локального проекта — чтобы он сразу был известен МС
+// и мог быть проставлен во внутренние заказы.
+func (p *Pusher) CreateProject(ctx context.Context, name string) (uuid.UUID, error) {
+	if !p.Enabled() {
+		return uuid.Nil, fmt.Errorf("mspush: disabled")
+	}
+	type createReq struct {
+		Name string `json:"name"`
+	}
+	var resp struct {
+		ID uuid.UUID `json:"id"`
+	}
+	req := createReq{Name: name}
+	if err := p.ms.Post(ctx, "/entity/project", req, &resp); err != nil {
+		return uuid.Nil, fmt.Errorf("mspush: create project: %w", err)
+	}
+	slog.Info("mspush: project created", "name", name, "ms_id", resp.ID)
+	return resp.ID, nil
 }

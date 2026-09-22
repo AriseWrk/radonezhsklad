@@ -68,6 +68,7 @@ func main() {
 		pusher = mspush.New(nil, pc, repo, intOrderRepo, false)
 		slog.Info("mspush: disabled (MS_PUSH_ENABLED=false)")
 	}
+	projectSvc.SetMSPusher(pusher)
 
 	syncH := handler.NewSyncHandler(cfg.ScriptsDir)
 	slog.Info("sync: scripts dir", "dir", cfg.ScriptsDir)

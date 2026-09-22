@@ -11,13 +11,24 @@ import (
 	"github.com/radonezhsklad/warehouse/internal/repository"
 )
 
+// MSProjectCreator — минимальный интерфейс для создания проекта в МС.
+// Реализуется mspush.Pusher; интерфейс разрывает цикл импортов.
+type MSProjectCreator interface {
+	Enabled() bool
+	CreateProject(ctx context.Context, name string) (uuid.UUID, error)
+}
+
 type ProjectService struct {
 	repo *repository.ProjectRepo
+	ms   MSProjectCreator
 }
 
 func NewProjectService(repo *repository.ProjectRepo) *ProjectService {
 	return &ProjectService{repo: repo}
 }
+
+// SetMSPusher — поздняя инъекция pusher'а (создаётся после сервиса в main).
+func (s *ProjectService) SetMSPusher(ms MSProjectCreator) { s.ms = ms }
 
 type ProjectInput struct {
 	Name     string
@@ -30,6 +41,13 @@ func (s *ProjectService) Create(ctx context.Context, in ProjectInput) (*models.P
 		return nil, apperr.BadRequest("name is required")
 	}
 	p := &models.Project{Name: name}
+	if s.ms != nil && s.ms.Enabled() {
+		ext, merr := s.ms.CreateProject(ctx, name)
+		if merr != nil {
+			return nil, apperr.Internal("create project in MS", merr)
+		}
+		p.ExternalID = &ext
+	}
 	if err := s.repo.Create(ctx, p); err != nil {
 		return nil, apperr.Internal("create project", err)
 	}

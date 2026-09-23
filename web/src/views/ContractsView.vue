@@ -1,55 +1,52 @@
 <template>
   <div>
-    <div class="page-title-bar">
-      <div class="page-title">
-        <span class="info-icon">ⓘ</span>
-        <span>Договоры</span>
-        <span class="refresh" @click="load" title="Обновить">↻</span>
-      </div>
-      <div class="page-actions">
-        <button class="btn primary icon-btn" @click="create">
-          <span class="plus">+</span> Договор
-        </button>
-        <button class="btn" @click="showFilter = !showFilter">Фильтр</button>
-        <input v-model="search" class="search-input" placeholder="Номер или комментарий" />
-        <div class="counter" :class="{ active: selected.size > 0 }">{{ selected.size }}</div>
-        <select class="mini-select" v-model="filterStatus">
-          <option value="">Статус</option>
-          <option value="unpaid">Не оплачен</option>
-          <option value="partial">Частично оплачен</option>
-          <option value="paid">Оплачен</option>
-        </select>
-        <button class="btn icon-only" @click="printList" title="Печать">🖨</button>
-        <button class="btn icon-only" title="Настройки">⚙</button>
-      </div>
+    <div class="ms-title">
+      <button class="ms-help" title="Справка"><MsIcon name="help" :size="14" /></button>
+      <span>Договоры</span>
+      <button class="ms-refresh" @click="load" title="Обновить"><MsIcon name="refresh" :size="14" /></button>
     </div>
 
-    <div v-if="showFilter" class="filter-panel">
-      <div class="filter-row">
-        <div class="filter-actions">
-          <button class="btn-find" @click="page = 1">Найти</button>
-          <button class="btn-clear" @click="clearFilters">Очистить</button>
-        </div>
+    <div class="ms-toolbar">
+      <MsButton variant="primary" icon="plus" @click="create">Договор</MsButton>
+      <MsButton icon="filter" @click="showFilter = !showFilter">Фильтр</MsButton>
+      <input v-model="search" class="ms-input" placeholder="Номер или комментарий" />
+      <div class="ms-counter" :class="{ active: selected.size > 0 }">{{ selected.size }}</div>
+      <select class="ms-select" v-model="filterStatus">
+        <option value="">Статус</option>
+        <option value="unpaid">Не оплачен</option>
+        <option value="partial">Частично оплачен</option>
+        <option value="paid">Оплачен</option>
+      </select>
+      <MsButton icon="print" @click="printList">Печать</MsButton>
+      <MsButton variant="icon" icon="gear" title="Настройки" />
+    </div>
+
+    <div v-if="showFilter" class="ms-filter">
+      <div class="filter-actions">
+        <MsButton variant="green" @click="page = 1">Найти</MsButton>
+        <MsButton @click="clearFilters">Очистить</MsButton>
+      </div>
+      <div class="filter-grid">
         <div class="filter-field">
-          <label>Архивные</label>
+          <label class="filter-label"><span class="dot"></span>Архивные</label>
           <select v-model="includeArchived" @change="load">
             <option :value="false">Скрыть</option>
             <option :value="true">Показать</option>
           </select>
         </div>
         <div class="filter-field">
-          <label>Контрагент</label>
+          <label class="filter-label"><span class="dot"></span>Контрагент</label>
           <select v-model="filterCustomer">
-            <option value="">Все</option>
+            <option value="">—</option>
             <option v-for="c in customers" :key="c.id" :value="c.id">{{ c.name }}</option>
           </select>
         </div>
         <div class="filter-field">
-          <label>Период с</label>
+          <label class="filter-label"><span class="dot"></span>Период с</label>
           <input v-model="filterDateFrom" type="date" />
         </div>
         <div class="filter-field">
-          <label>Период по</label>
+          <label class="filter-label"><span class="dot"></span>Период по</label>
           <input v-model="filterDateTo" type="date" />
         </div>
       </div>
@@ -136,6 +133,8 @@ import { listContracts, type Contract } from '../api/contracts'
 import { listCustomers, type Customer } from '../api/customers'
 import { listOrganizations, type Organization } from '../api/suppliers'
 import { apiErrorMessage } from '../api/client'
+import MsButton from '../components/MsButton.vue'
+import MsIcon from '../components/MsIcon.vue'
 
 const items = ref<Contract[]>([])
 const customers = ref<Customer[]>([])
@@ -312,4 +311,24 @@ tr.clickable.row-warning:hover { background: #fceec9; }
 .mono { font-family: monospace; font-size: 12px; }
 .link { color: #2c5d9c; }
 .sort-arrow { color: #2c5d9c; font-size: 11px; margin-left: 4px; }
+
+/* === МойСклад-стиль === */
+.ms-title { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 600; color: #1f2328; margin-bottom: 12px; }
+.ms-help { width: 20px; height: 20px; border-radius: 50%; border: 1px solid #b8c0c8; background: transparent; color: #57606a; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.ms-help:hover { background: #f0f2f5; }
+.ms-refresh { width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; color: #57606a; cursor: pointer; }
+.ms-refresh:hover { color: #2c5d9c; }
+.ms-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.ms-input { flex: 1; max-width: 320px; height: 30px; padding: 0 10px; font-size: 13px; border: 1px solid #d0d7de; border-radius: 4px; background: #fff; color: #1f2328; }
+.ms-input::placeholder { color: #8c959f; }
+.ms-counter { min-width: 40px; height: 30px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #d0d7de; border-radius: 4px; background: #fff; color: #8c959f; font-variant-numeric: tabular-nums; font-size: 13px; }
+.ms-counter.active { color: #2c5d9c; border-color: #2c5d9c; font-weight: 600; }
+.ms-select { height: 30px; padding: 0 8px; font-size: 13px; border: 1px solid #d0d7de; border-radius: 4px; background: #fff; color: #1f2328; max-width: 180px; }
+.ms-filter { background: #eef1f5; border: 1px solid #d8dee4; border-radius: 4px; padding: 10px 14px 12px; margin-bottom: 12px; }
+.filter-actions { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.filter-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 14px; }
+.filter-field { display: flex; flex-direction: column; gap: 3px; }
+.filter-label { font-size: 12px; color: #57606a; display: flex; align-items: center; gap: 5px; }
+.filter-label .dot { width: 8px; height: 8px; border-radius: 50%; background: #2c5d9c; flex-shrink: 0; }
+.filter-field input, .filter-field select { height: 28px; padding: 0 8px; font-size: 12px; border: 1px solid #d0d7de; border-radius: 3px; background: #fff; color: #1f2328; }
 </style>

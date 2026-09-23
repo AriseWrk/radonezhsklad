@@ -38,3 +38,7 @@ dumps/
 *.zip
 
 deploy-package/
+# dev-up / dev-down рабочие артефакты
+logs/
+.run/
+services/*/bin/

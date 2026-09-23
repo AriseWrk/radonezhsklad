@@ -131,6 +131,9 @@
               <span v-if="p.sku">Арт. {{ p.sku }}</span>
               <span style="margin-left:12px">{{ p.price.toFixed(2) }} ₽</span>
             </div>
+            <div class="suggest-stock" :class="{ 'out': availableFor(p.id) <= 0 }">
+              {{ availableFor(p.id) > 0 ? 'Остаток: ' + formatQty(availableFor(p.id)) : 'Нет в наличии' }}
+            </div>
           </div>
         </div>
       </div>
@@ -725,6 +728,8 @@ async function submitCreateProject() {
 .suggest-item:last-child { border-bottom: none; }
 .suggest-name { font-size: 13px; color: #1f2328; }
 .suggest-meta { font-size: 11px; }
+.suggest-stock { font-size: 11px; color: #6b7280; margin-top: 2px; }
+.suggest-stock.out { color: #b91c1c; }
 
 .items-table {
   width: 100%;
@@ -1000,6 +1005,8 @@ async function submitCreateProject() {
 .suggest-item:hover { background: #f6f8fa; }
 .suggest-name { font-size: 13px; color: #1f2328; }
 .suggest-meta { font-size: 11px; margin-top: 2px; }
+.suggest-stock { font-size: 11px; color: #6b7280; margin-top: 2px; }
+.suggest-stock.out { color: #b91c1c; }
 
 /* Таблица позиций */
 .ms-items {

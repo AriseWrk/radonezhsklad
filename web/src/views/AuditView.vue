@@ -1,72 +1,58 @@
 <template>
-  <div>
-    <!-- Заголовок -->
-    <div class="page-title-bar">
-      <div class="page-title">
-        <span class="info-icon" title="История действий пользователей">ⓘ</span>
-        <span>Аудит</span>
-        <span class="refresh" @click="load" title="Обновить">↻</span>
-      </div>
-      <div class="page-actions">
-        <button class="btn" @click="showFilter = !showFilter">Фильтр</button>
-      </div>
+  <div class="page">
+    <div class="ms-title">
+      <button class="ms-help" title="История действий пользователей"><MsIcon name="help" :size="14" /></button>
+      <span>Аудит</span>
+      <button class="ms-refresh" @click="load" title="Обновить"><MsIcon name="refresh" :size="14" /></button>
     </div>
 
-    <!-- Панель фильтров -->
-    <div v-if="showFilter" class="filter-panel">
-      <div class="filter-row">
-        <div class="filter-actions">
-          <button class="btn-find" @click="applyFilters">Найти</button>
-          <button class="btn-clear" @click="clearFilters">Очистить</button>
-        </div>
+    <div class="ms-toolbar">
+      <MsButton icon="filter" @click="showFilter = !showFilter">Фильтр</MsButton>
+      <input v-model="filterSearch" class="ms-input" placeholder="Событие: заказ, товар..." />
+      <div class="ms-counter">{{ filtered.length }}</div>
+      <div class="toolbar-spacer"></div>
+      <MsButton variant="icon" icon="gear" title="Настройки" />
+    </div>
+
+    <div v-if="showFilter" class="ms-filter">
+      <div class="filter-actions">
+        <MsButton variant="green" @click="applyFilters">Найти</MsButton>
+        <MsButton @click="clearFilters">Очистить</MsButton>
+      </div>
+      <div class="filter-grid">
         <div class="filter-field">
-          <label>Период с</label>
+          <label class="filter-label"><span class="dot"></span>Период с</label>
           <input v-model="filterDateFrom" type="date" />
         </div>
         <div class="filter-field">
-          <label>Период по</label>
+          <label class="filter-label"><span class="dot"></span>Период по</label>
           <input v-model="filterDateTo" type="date" />
         </div>
         <div class="filter-field">
-          <label>Сотрудник</label>
+          <label class="filter-label"><span class="dot"></span>Сотрудник</label>
           <select v-model="filterUserId">
-            <option value="">Все</option>
+            <option value="">—</option>
             <option v-for="u in users" :key="u.id" :value="u.id">{{ fullName(u) }}</option>
           </select>
-        </div>
-        <div class="filter-field">
-          <label>Событие</label>
-          <input v-model="filterSearch" placeholder="Например: заказ, товар" />
         </div>
       </div>
     </div>
 
     <div v-if="error" class="error-box">{{ error }}</div>
 
-    <!-- Таблица -->
-    <table class="ms-table audit-table">
+    <table class="ms-table2">
       <thead>
         <tr>
-          <th style="width:150px" @click="sortBy('created_at')">
-            Время
-            <span v-if="sortKey === 'created_at'" class="sort-arrow">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
-          </th>
-          <th style="width:230px" @click="sortBy('user')">
-            Сотрудник
-            <span v-if="sortKey === 'user'" class="sort-arrow">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
-          </th>
+          <th class="col-date" @click="sortBy('created_at')">Время<span v-if="sortKey === 'created_at'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+          <th style="width:230px" @click="sortBy('user')">Сотрудник<span v-if="sortKey === 'user'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
           <th>Событие</th>
         </tr>
       </thead>
       <tbody>
-        <tr v-if="loading">
-          <td colspan="3" class="muted" style="text-align:center;padding:24px">Загрузка...</td>
-        </tr>
-        <tr v-else-if="filtered.length === 0">
-          <td colspan="3" class="muted" style="text-align:center;padding:24px">Нет событий</td>
-        </tr>
-        <tr v-else v-for="l in paginated" :key="l.id">
-          <td class="muted">{{ formatDate(l.created_at) }}</td>
+        <tr v-if="loading"><td colspan="3" class="empty">Загрузка...</td></tr>
+        <tr v-else-if="filtered.length === 0"><td colspan="3" class="empty">Нет событий</td></tr>
+        <tr v-else v-for="l in paginated" :key="l.id" class="row">
+          <td class="col-date muted">{{ formatDate(l.created_at) }}</td>
           <td>
             <div class="user-cell">
               <div class="avatar">{{ initials(userById(l.user_id)) }}</div>
@@ -75,36 +61,31 @@
           </td>
           <td>
             <span v-if="describeParts(l).prefix" class="event-prefix">{{ describeParts(l).prefix }}</span>
-            <a
-              v-if="describeParts(l).link"
-              class="event-link"
-              href="#"
-              @click.prevent
-            >{{ describeParts(l).link }}</a>
+            <a v-if="describeParts(l).link" class="event-link" href="#" @click.prevent>{{ describeParts(l).link }}</a>
             <span v-if="describeParts(l).suffix" class="event-suffix"> {{ describeParts(l).suffix }}</span>
           </td>
         </tr>
       </tbody>
     </table>
 
-    <!-- Футер -->
-    <div class="ms-footer">
-      <div class="ms-pager">
-        <button :disabled="page === 1" @click="page--">◀</button>
-        <button :disabled="page === 1" @click="page = 1">↤</button>
-        <span>{{ rangeFrom }}–{{ rangeTo }} из {{ filtered.length }}</span>
-        <button :disabled="rangeTo >= filtered.length" @click="page = Math.ceil(filtered.length / perPage)">↦</button>
-        <button :disabled="rangeTo >= filtered.length" @click="page++">▶</button>
+    <div class="ms-footer2">
+      <div class="pager">
+        <button :disabled="page === 1" @click="page = 1">«</button>
+        <button :disabled="page === 1" @click="page--">‹</button>
+        <span class="range">{{ rangeFrom }}-{{ rangeTo }} из {{ filtered.length }}</span>
+        <button :disabled="rangeTo >= filtered.length" @click="page++">›</button>
+        <button :disabled="rangeTo >= filtered.length" @click="page = Math.ceil(filtered.length / perPage)">»</button>
       </div>
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { listAudit, type AuditLog } from '../api/audit'
 import { listUsers, type User } from '../api/users'
 import { apiErrorMessage } from '../api/client'
+import MsButton from '../components/MsButton.vue'
+import MsIcon from '../components/MsIcon.vue'
 
 const items = ref<AuditLog[]>([])
 const users = ref<User[]>([])
@@ -383,48 +364,44 @@ onMounted(load)
 </script>
 
 <style scoped>
-.info-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px; height: 22px;
-  border: 1.5px solid #2c5d9c;
-  border-radius: 50%;
-  color: #2c5d9c;
-  font-size: 14px;
-  font-weight: 700;
-  margin-right: 6px;
-}
+.page { font-size: 13px; }
+.ms-title { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 600; color: #1f2328; margin-bottom: 12px; }
+.ms-help { width: 20px; height: 20px; border-radius: 50%; border: 1px solid #b8c0c8; background: transparent; color: #57606a; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.ms-help:hover { background: #f0f2f5; }
+.ms-refresh { width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; color: #57606a; cursor: pointer; }
+.ms-refresh:hover { color: #2c5d9c; }
+.ms-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.toolbar-spacer { flex: 1; }
+.ms-input { flex: 1; max-width: 320px; height: 30px; padding: 0 10px; font-size: 13px; border: 1px solid #d0d7de; border-radius: 4px; background: #fff; color: #1f2328; }
+.ms-counter { min-width: 40px; height: 30px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #d0d7de; border-radius: 4px; background: #fff; color: #8c959f; font-variant-numeric: tabular-nums; font-size: 13px; }
+.ms-filter { background: #eef1f5; border: 1px solid #d8dee4; border-radius: 4px; padding: 10px 14px 12px; margin-bottom: 12px; }
+.filter-actions { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.filter-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 14px; }
+.filter-field { display: flex; flex-direction: column; gap: 3px; }
+.filter-label { font-size: 12px; color: #57606a; display: flex; align-items: center; gap: 5px; }
+.filter-label .dot { width: 8px; height: 8px; border-radius: 50%; background: #2c5d9c; flex-shrink: 0; }
+.filter-field input, .filter-field select { height: 28px; padding: 0 8px; font-size: 12px; border: 1px solid #d0d7de; border-radius: 3px; background: #fff; color: #1f2328; }
 
-.audit-table tbody td { vertical-align: middle; }
-.audit-table tbody tr { cursor: default; }
+.ms-table2 { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; }
+.ms-table2 thead th { background: #fff; color: #2c5d9c; font-weight: 500; padding: 8px 10px; text-align: left; border-bottom: 1px solid #d8dee4; white-space: nowrap; font-size: 12px; cursor: pointer; user-select: none; }
+.ms-table2 thead th:hover { background: #f6f8fa; }
+.ms-table2 tbody td { padding: 7px 10px; border-bottom: 1px solid #eaeef2; vertical-align: middle; }
+.ms-table2 tbody tr.row:hover { background: #f6f8fa; }
+.ms-table2 .col-date { width: 150px; }
+.ms-table2 .sort { font-size: 9px; margin-left: 3px; }
+.ms-table2 .empty { text-align: center; padding: 24px; color: #8c959f; }
+.muted { color: #8c959f; }
 
-.user-cell {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.avatar {
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  background: #e6ebf2;
-  color: #6a7a8c;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.event-prefix { color: #1f2328; }
-.event-link {
-  color: #2c5d9c;
-  cursor: pointer;
-  text-decoration: none;
-}
+.user-cell { display: flex; align-items: center; gap: 8px; }
+.avatar { width: 24px; height: 24px; border-radius: 50%; background: #2c5d9c; color: #fff; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.event-prefix { color: #57606a; }
+.event-link { color: #2c5d9c; text-decoration: none; }
 .event-link:hover { text-decoration: underline; }
-.event-suffix { color: #1f2328; }
+.event-suffix { color: #57606a; }
 
-.sort-arrow { color: #2c5d9c; font-size: 11px; margin-left: 4px; }
+.ms-footer2 { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; font-size: 12px; color: #57606a; background: #fff; border-top: 1px solid #eaeef2; }
+.pager { display: flex; align-items: center; gap: 4px; }
+.pager button { width: 22px; height: 22px; padding: 0; border: 1px solid #d0d7de; background: #fff; border-radius: 3px; cursor: pointer; font-size: 12px; color: #1f2328; }
+.pager button:disabled { opacity: 0.4; cursor: default; }
+.pager .range { margin: 0 6px; font-variant-numeric: tabular-nums; }
 </style>

@@ -1,64 +1,56 @@
 <template>
-  <div>
-    <!-- Заголовок -->
-    <div class="page-title-bar">
-      <div class="page-title">
-        <span>Инвентаризация</span>
-        <span v-if="rows.length" class="refresh" @click="load" title="Обновить">↻</span>
-      </div>
-      <div class="page-actions">
-        <select v-model="warehouseId" class="role-filter" @change="onWarehouseChange">
-          <option value="">— выберите склад —</option>
-          <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
-        </select>
-        <button class="btn" @click="load" :disabled="!warehouseId">Загрузить остатки</button>
-        <button
-          class="btn primary"
-          :disabled="!canSave"
-          @click="save"
-        >
-          {{ saving ? 'Сохранение...' : 'Создать документ' }}
-        </button>
-      </div>
+  <div class="page">
+    <div class="ms-title">
+      <button class="ms-help" title="Справка"><MsIcon name="help" :size="14" /></button>
+      <span>Инвентаризация</span>
+      <button v-if="warehouseId" class="ms-refresh" @click="load" title="Обновить"><MsIcon name="refresh" :size="14" /></button>
+    </div>
+
+    <div class="ms-toolbar">
+      <select class="ms-select" v-model="warehouseId" @change="onWarehouseChange">
+        <option value="">— выберите склад —</option>
+        <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
+      </select>
+      <MsButton icon="refresh" @click="load" :disabled="!warehouseId">Загрузить остатки</MsButton>
+      <MsButton variant="primary" icon="save" :disabled="!canSave" @click="save">
+        {{ saving ? 'Сохранение...' : 'Создать документ' }}
+      </MsButton>
+      <div class="toolbar-spacer"></div>
+      <MsButton variant="icon" icon="gear" title="Настройки" />
     </div>
 
     <div v-if="error" class="error-box">{{ error }}</div>
 
-    <!-- Пояснение -->
-    <div v-if="!warehouseId" class="empty-state">
-      <div style="font-size:48px">📋</div>
+    <div v-if="!warehouseId" class="empty-block">
       <h2>Выберите склад для инвентаризации</h2>
       <p class="muted">Будут загружены все товары, числящиеся на складе. Введите фактическое количество — система рассчитает расхождения и создаст документ.</p>
     </div>
 
-    <div v-else-if="loading" class="empty-state">
-      <p class="muted">Загрузка остатков...</p>
+    <div v-else-if="loading" class="empty-block">Загрузка остатков...</div>
+
+    <div v-else-if="rows.length === 0" class="empty-block">
+      На этом складе нет товаров с ненулевым остатком.
     </div>
 
-    <div v-else-if="rows.length === 0" class="empty-state">
-      <p class="muted">На этом складе нет товаров с ненулевым остатком.</p>
-    </div>
-
-    <!-- Таблица для ввода фактов -->
-    <table v-else class="ms-table">
+    <table v-else class="ms-table2">
       <thead>
         <tr>
           <th>Наименование</th>
           <th>Артикул</th>
-          <th class="num">Учётный остаток</th>
-          <th class="num" style="width:140px">Факт</th>
+          <th class="col-num-right">Учётный остаток</th>
+          <th class="col-num-right" style="width:140px">Факт</th>
           <th>Ед.</th>
-          <th class="num">Расхождение</th>
-          <th class="num">Себестоимость</th>
-          <th class="num">Сумма расхождения</th>
+          <th class="col-num-right">Расхождение</th>
+          <th class="col-num-right">Себестоимость</th>
+          <th class="col-num-right">Сумма расхождения</th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="r in rows" :key="r.product_id">
+        <tr v-for="r in rows" :key="r.product_id" class="row">
           <td>{{ r.product_name }}</td>
           <td class="muted mono">{{ r.sku || '—' }}</td>
-          <td class="num">{{ formatQty(r.book_quantity) }}</td>
-          <td class="num">
+          <td class="col-num-right">{{ formatQty(r.book_quantity) }}</td>
+          <td class="col-num-right">
             <input
               type="number"
               step="0.001"
@@ -69,38 +61,38 @@
             />
           </td>
           <td>{{ r.unit_short }}</td>
-          <td class="num" :class="diffClass(r)">
+          <td class="col-num-right" :class="diffClass(r)">
             {{ diffLabel(r) }}
           </td>
-          <td class="num">{{ formatMoney(r.cost_price) }}</td>
-          <td class="num" :class="diffClass(r)">
+          <td class="col-num-right">{{ formatMoney(r.cost_price) }}</td>
+          <td class="col-num-right" :class="diffClass(r)">
             {{ formatMoney(diffAmount(r)) }}
           </td>
         </tr>
       </tbody>
     </table>
 
-    <!-- Итоги -->
-    <div v-if="rows.length" class="ms-footer">
-      <div class="ms-pager">
-        <span>Позиций: {{ rows.length }}</span>
-        <span style="margin-left:16px">Изменено: {{ changedCount }}</span>
+    <div v-if="rows.length" class="ms-footer2">
+      <div class="pager">
+        <span class="range">Позиций: {{ rows.length }}</span>
+        <span class="range">Изменено: {{ changedCount }}</span>
       </div>
-      <div class="ms-totals">
+      <div class="totals-inline">
         <span :class="totalDiffAmount > 0 ? 'danger-text' : ''">
-          Расхождение: {{ formatMoney(totalDiffAmount) }}
+          Расхождение: <b>{{ formatMoney(totalDiffAmount) }}</b>
         </span>
       </div>
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { prepareInventory, type InventoryPrepareRow } from '../api/inventory'
 import { listWarehouses, type Warehouse } from '../api/warehouses'
 import { createDocument } from '../api/documents'
 import { apiErrorMessage } from '../api/client'
+import MsButton from '../components/MsButton.vue'
+import MsIcon from '../components/MsIcon.vue'
 import { useRouter } from 'vue-router'
 
 interface Row extends InventoryPrepareRow {
@@ -194,35 +186,47 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.empty-state {
-  background: #fff;
-  border: 1px solid #d8dee4;
-  border-radius: 6px;
-  padding: 48px 24px;
-  text-align: center;
-}
-.empty-state h2 { margin: 12px 0 8px; font-size: 18px; }
-.empty-state p { max-width: 480px; margin: 0 auto; }
+.page { font-size: 13px; }
+.ms-title { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 600; color: #1f2328; margin-bottom: 12px; }
+.ms-help { width: 20px; height: 20px; border-radius: 50%; border: 1px solid #b8c0c8; background: transparent; color: #57606a; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.ms-help:hover { background: #f0f2f5; }
+.ms-refresh { width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; color: #57606a; cursor: pointer; }
+.ms-refresh:hover { color: #2c5d9c; }
+
+.ms-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.toolbar-spacer { flex: 1; }
+.ms-select { height: 30px; padding: 0 8px; font-size: 13px; border: 1px solid #d0d7de; border-radius: 4px; background: #fff; color: #1f2328; min-width: 220px; }
+
+.ms-table2 { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; }
+.ms-table2 thead th { background: #fff; color: #2c5d9c; font-weight: 500; padding: 8px 10px; text-align: left; border-bottom: 1px solid #d8dee4; white-space: nowrap; font-size: 12px; }
+.ms-table2 tbody td { padding: 7px 10px; border-bottom: 1px solid #eaeef2; vertical-align: middle; }
+.ms-table2 tbody tr.row:hover { background: #f6f8fa; }
+.ms-table2 .col-num-right { text-align: right; font-variant-numeric: tabular-nums; }
+.mono { font-family: monospace; font-size: 12px; }
+.muted { color: #8c959f; }
 
 .fact-input {
-  width: 100%;
-  padding: 5px 8px;
+  width: 110px;
+  padding: 4px 8px;
   font-size: 13px;
   border: 1px solid #d0d7de;
   border-radius: 3px;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-.fact-input:focus {
-  outline: 2px solid rgba(9, 105, 218, 0.3);
-  border-color: #2c5d9c;
-}
-.fact-input.changed {
-  background: #fff8e1;
-  border-color: #f0c040;
-  font-weight: 600;
-}
+.fact-input:focus { outline: 2px solid rgba(44,93,156,0.3); border-color: #2c5d9c; }
+.fact-input.changed { background: #fff8e1; border-color: #f0c040; font-weight: 600; }
 
 .diff-plus  { color: #1a7f37; font-weight: 600; }
 .diff-minus { color: #cf222e; font-weight: 600; }
+.danger-text { color: #cf222e; }
+
+.ms-footer2 { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; font-size: 12px; color: #57606a; background: #fff; border-top: 1px solid #eaeef2; }
+.pager { display: flex; gap: 16px; align-items: center; }
+.pager .range { font-variant-numeric: tabular-nums; }
+.totals-inline { font-variant-numeric: tabular-nums; }
+
+.empty-block { padding: 48px 24px; text-align: center; background: #fff; border: 1px solid #eaeef2; border-radius: 6px; color: #57606a; font-size: 13px; }
+.empty-block h2 { margin: 12px 0 8px; font-size: 18px; color: #1f2328; }
+.empty-block p { max-width: 480px; margin: 0 auto; }
 </style>

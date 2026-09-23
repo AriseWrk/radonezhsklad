@@ -77,6 +77,8 @@ func main() {
 		api.Any("/suppliers/*path", warehouseProxy)
 		api.Any("/organizations", warehouseProxy)
 		api.Any("/organizations/*path", warehouseProxy)
+		api.Any("/projects", warehouseProxy)
+		api.Any("/projects/*path", warehouseProxy)
 		api.Any("/internal-orders", warehouseProxy)
 		api.Any("/internal-orders/*path", warehouseProxy)
 		api.Any("/sync", warehouseProxy)

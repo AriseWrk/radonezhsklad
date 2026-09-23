@@ -1,46 +1,43 @@
 <template>
-  <div>
-    <div class="page-title-bar">
-      <div class="page-title">
-        <span>Аналитика продаж</span>
-        <span class="refresh" @click="load" title="Обновить">↻</span>
-      </div>
-      <div class="page-actions">
-        <button class="btn" @click="showFilter = !showFilter">Фильтр</button>
-        <button class="btn" @click="exportCsv">Экспорт CSV</button>
-        <div class="days-switch">
-          <span class="lbl">Период:</span>
-          <select v-model.number="days" @change="load" class="days-select">
-            <option :value="7">7 дней</option>
-            <option :value="14">14 дней</option>
-            <option :value="30">30 дней</option>
-            <option :value="90">90 дней</option>
-            <option :value="180">180 дней</option>
-            <option :value="365">365 дней</option>
-          </select>
-        </div>
-      </div>
+  <div class="page">
+    <div class="ms-title">
+      <button class="ms-help" title="Справка"><MsIcon name="help" :size="14" /></button>
+      <span>Аналитика продаж</span>
+      <button class="ms-refresh" @click="load" title="Обновить"><MsIcon name="refresh" :size="14" /></button>
     </div>
 
-    <div v-if="showFilter" class="filter-panel">
-      <div class="filter-row">
-        <div class="filter-actions">
-          <button class="btn-find" @click="page = 1">Найти</button>
-          <button class="btn-clear" @click="clearFilters">Очистить</button>
-        </div>
+    <div class="ms-toolbar">
+      <MsButton icon="filter" @click="showFilter = !showFilter">Фильтр</MsButton>
+      <input v-model="filters.search" class="ms-input" placeholder="Название, SKU" />
+      <div class="ms-counter">{{ filtered.length }}</div>
+      <select v-model.number="days" @change="load" class="ms-select">
+        <option :value="7">7 дней</option>
+        <option :value="14">14 дней</option>
+        <option :value="30">30 дней</option>
+        <option :value="90">90 дней</option>
+        <option :value="180">180 дней</option>
+        <option :value="365">365 дней</option>
+      </select>
+      <MsButton icon="excel" @click="exportCsv">Экспорт</MsButton>
+      <div class="toolbar-spacer"></div>
+      <MsButton variant="icon" icon="gear" title="Настройки" />
+    </div>
+
+    <div v-if="showFilter" class="ms-filter">
+      <div class="filter-actions">
+        <MsButton variant="green" @click="page = 1">Найти</MsButton>
+        <MsButton @click="clearFilters">Очистить</MsButton>
+      </div>
+      <div class="filter-grid">
         <div class="filter-field">
-          <label>Товар</label>
-          <input v-model="filters.search" placeholder="Название, SKU" />
-        </div>
-        <div class="filter-field">
-          <label>Только проданные</label>
+          <label class="filter-label"><span class="dot"></span>Только проданные</label>
           <select v-model="filters.onlySold">
             <option value="yes">Да</option>
             <option value="no">Все</option>
           </select>
         </div>
         <div class="filter-field">
-          <label>Сортировка</label>
+          <label class="filter-label"><span class="dot"></span>Сортировка</label>
           <select v-model="sortByField">
             <option value="sold_sum">По сумме</option>
             <option value="sold_qty">По количеству</option>
@@ -54,7 +51,6 @@
 
     <div v-if="error" class="error-box">{{ error }}</div>
 
-    <!-- KPI карточки -->
     <div class="kpi-grid">
       <div class="kpi-card">
         <div class="kpi-label">Всего продано</div>
@@ -80,7 +76,6 @@
       </div>
     </div>
 
-    <!-- График по дням -->
     <div class="chart-card">
       <div class="chart-header">
         <span>Продажи по дням</span>
@@ -96,70 +91,62 @@
       </div>
     </div>
 
-    <!-- Таблица по товарам -->
-    <table class="ms-table">
+    <table class="ms-table2">
       <thead>
         <tr>
           <th>Наименование</th>
-          <th style="width:100px">Артикул</th>
-          <th style="width:70px">Ед.</th>
-          <th class="num" @click="sortBy('sold_qty')">Продано <span v-if="sortKey === 'sold_qty'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span></th>
-          <th class="num">Сумма</th>
-          <th class="num">Средняя цена</th>
-          <th class="num">Себестоимость</th>
-          <th class="num">Прибыль</th>
-          <th class="num">Рент.</th>
-          <th class="num">Заказов</th>
-          <th style="width:130px">Последняя продажа</th>
+          <th class="col-num">Артикул</th>
+          <th class="col-num">Ед.</th>
+          <th class="col-num-right" @click="sortBy('sold_qty')">Продано<span v-if="sortKey === 'sold_qty'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+          <th class="col-num-right">Сумма</th>
+          <th class="col-num-right">Ср. цена</th>
+          <th class="col-num-right">Себест.</th>
+          <th class="col-num-right">Прибыль</th>
+          <th class="col-num-right">Рент.</th>
+          <th class="col-num-right">Заказов</th>
+          <th class="col-date">Последняя продажа</th>
         </tr>
       </thead>
       <tbody>
-        <tr v-if="loading">
-          <td colspan="11" class="muted" style="text-align:center;padding:24px">Загрузка...</td>
-        </tr>
-        <tr v-else-if="filtered.length === 0">
-          <td colspan="11" class="muted" style="text-align:center;padding:24px">Нет продаж за период</td>
-        </tr>
-        <tr v-else v-for="r in paginated" :key="r.product_id">
+        <tr v-if="loading"><td colspan="11" class="empty">Загрузка...</td></tr>
+        <tr v-else-if="filtered.length === 0"><td colspan="11" class="empty">Нет продаж за период</td></tr>
+        <tr v-else v-for="r in paginated" :key="r.product_id" class="row">
           <td class="link">{{ r.product_name }}</td>
           <td class="muted mono">{{ r.sku || '—' }}</td>
           <td>{{ r.unit_short || '—' }}</td>
-          <td class="num">{{ formatQty(r.sold_qty) }}</td>
-          <td class="num"><strong>{{ formatMoney(r.sold_sum) }}</strong></td>
-          <td class="num muted">{{ formatMoney(r.avg_price) }}</td>
-          <td class="num muted">{{ formatMoney(r.cost_sum) }}</td>
-          <td class="num" :class="r.profit >= 0 ? 'diff-plus' : 'diff-minus'">
-            {{ formatMoney(r.profit) }}
-          </td>
-          <td class="num">{{ r.margin.toFixed(1) }}%</td>
-          <td class="num muted">{{ r.orders_count }}</td>
-          <td class="muted">{{ r.last_sold_at ? formatShortDate(r.last_sold_at) : '—' }}</td>
+          <td class="col-num-right">{{ formatQty(r.sold_qty) }}</td>
+          <td class="col-num-right"><b>{{ formatMoney(r.sold_sum) }}</b></td>
+          <td class="col-num-right muted">{{ formatMoney(r.avg_price) }}</td>
+          <td class="col-num-right muted">{{ formatMoney(r.cost_sum) }}</td>
+          <td class="col-num-right" :class="r.profit >= 0 ? 'diff-plus' : 'diff-minus'">{{ formatMoney(r.profit) }}</td>
+          <td class="col-num-right">{{ r.margin.toFixed(1) }}%</td>
+          <td class="col-num-right muted">{{ r.orders_count }}</td>
+          <td class="col-date muted">{{ r.last_sold_at ? formatShortDate(r.last_sold_at) : '—' }}</td>
         </tr>
       </tbody>
     </table>
 
-    <div class="ms-footer">
-      <div class="ms-pager">
-        <button :disabled="page === 1" @click="page--">◀</button>
-        <span>{{ rangeFrom }}–{{ rangeTo }} из {{ filtered.length }}</span>
-        <button :disabled="rangeTo >= filtered.length" @click="page++">▶</button>
+    <div class="ms-footer2">
+      <div class="pager">
+        <button :disabled="page === 1" @click="page--">‹</button>
+        <span class="range">{{ rangeFrom }}-{{ rangeTo }} из {{ filtered.length }}</span>
+        <button :disabled="rangeTo >= filtered.length" @click="page++">›</button>
       </div>
-      <div class="ms-totals">
+      <div class="totals-inline">
         <span>{{ formatQty(totalQtyFiltered) }} ед.</span>
-        <span>{{ formatMoney(totalSumFiltered) }}</span>
-        <span :class="totalProfitFiltered >= 0 ? 'diff-plus' : 'diff-minus'">
-          {{ formatMoney(totalProfitFiltered) }}
-        </span>
+        <span><b>{{ formatMoney(totalSumFiltered) }}</b></span>
+        <span :class="totalProfitFiltered >= 0 ? 'diff-plus' : 'diff-minus'">{{ formatMoney(totalProfitFiltered) }}</span>
       </div>
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { listProducts, type Product } from '../api/products'
 import { salesAnalytics, salesDaily, type SalesAnalyticsRow, type SalesDailyRow } from '../api/analytics'
 import { apiErrorMessage } from '../api/client'
+import MsButton from '../components/MsButton.vue'
+import MsIcon from '../components/MsIcon.vue'
 
 interface Row extends SalesAnalyticsRow {
   product_name: string
@@ -358,78 +345,65 @@ onMounted(load)
 </script>
 
 <style scoped>
-.days-switch { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #57606a; }
-.days-select {
-  padding: 5px 8px;
-  border: 1px solid #d0d7de;
-  border-radius: 4px;
-  background: #fff;
-  color: #1f2328;
-  font-size: 13px;
-}
-.lbl { white-space: nowrap; }
+.page { font-size: 13px; }
+.ms-title { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 600; color: #1f2328; margin-bottom: 12px; }
+.ms-help { width: 20px; height: 20px; border-radius: 50%; border: 1px solid #b8c0c8; background: transparent; color: #57606a; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.ms-help:hover { background: #f0f2f5; }
+.ms-refresh { width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; color: #57606a; cursor: pointer; }
+.ms-refresh:hover { color: #2c5d9c; }
+.ms-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.toolbar-spacer { flex: 1; }
+.ms-input { flex: 1; max-width: 260px; height: 30px; padding: 0 10px; font-size: 13px; border: 1px solid #d0d7de; border-radius: 4px; background: #fff; color: #1f2328; }
+.ms-counter { min-width: 40px; height: 30px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #d0d7de; border-radius: 4px; background: #fff; color: #8c959f; font-variant-numeric: tabular-nums; font-size: 13px; }
+.ms-select { height: 30px; padding: 0 8px; font-size: 13px; border: 1px solid #d0d7de; border-radius: 4px; background: #fff; color: #1f2328; min-width: 120px; }
+.ms-filter { background: #eef1f5; border: 1px solid #d8dee4; border-radius: 4px; padding: 10px 14px 12px; margin-bottom: 12px; }
+.filter-actions { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.filter-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 14px; }
+.filter-field { display: flex; flex-direction: column; gap: 3px; }
+.filter-label { font-size: 12px; color: #57606a; display: flex; align-items: center; gap: 5px; }
+.filter-label .dot { width: 8px; height: 8px; border-radius: 50%; background: #2c5d9c; flex-shrink: 0; }
+.filter-field input, .filter-field select { height: 28px; padding: 0 8px; font-size: 12px; border: 1px solid #d0d7de; border-radius: 3px; background: #fff; color: #1f2328; }
+
+.kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.kpi-card { background: #fff; border: 1px solid #eaeef2; border-radius: 4px; padding: 12px 16px; }
+.kpi-label { font-size: 11px; color: #8c959f; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; }
+.kpi-value { font-size: 20px; font-weight: 600; color: #1f2328; font-variant-numeric: tabular-nums; }
+.kpi-value.small { font-size: 14px; }
+.kpi-value.green { color: #1a7f37; }
+.kpi-value.red { color: #cf222e; }
+.kpi-sub { font-size: 12px; color: #8c959f; margin-top: 2px; }
+
+.chart-card { background: #fff; border: 1px solid #eaeef2; border-radius: 4px; padding: 12px 16px; margin-bottom: 14px; }
+.chart-header { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 500; color: #1f2328; margin-bottom: 10px; }
+.chart-header .muted { color: #8c959f; font-weight: 400; }
+.chart-empty { padding: 32px; text-align: center; font-size: 13px; }
+.chart { display: flex; align-items: flex-end; gap: 4px; height: 140px; padding-bottom: 20px; position: relative; }
+.bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; position: relative; }
+.bar-value { position: absolute; top: -2px; font-size: 9px; color: #8c959f; transform: translateY(-100%); white-space: nowrap; }
+.bar { width: 100%; background: #2c5d9c; border-radius: 2px 2px 0 0; min-height: 2px; transition: background 0.1s; }
+.bar:hover { background: #234a7d; }
+.bar-label { position: absolute; bottom: -18px; font-size: 10px; color: #8c959f; white-space: nowrap; }
+
+.ms-table2 { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; }
+.ms-table2 thead th { background: #fff; color: #2c5d9c; font-weight: 500; padding: 8px 10px; text-align: left; border-bottom: 1px solid #d8dee4; white-space: nowrap; font-size: 12px; cursor: pointer; user-select: none; }
+.ms-table2 thead th:hover { background: #f6f8fa; }
+.ms-table2 tbody td { padding: 7px 10px; border-bottom: 1px solid #eaeef2; vertical-align: middle; }
+.ms-table2 tbody tr.row:hover { background: #f6f8fa; }
+.ms-table2 .col-num { width: 80px; }
+.ms-table2 .col-date { width: 140px; }
+.ms-table2 .col-num-right { text-align: right; font-variant-numeric: tabular-nums; }
+.ms-table2 .link { color: #2c5d9c; font-weight: 500; }
+.ms-table2 .sort { font-size: 9px; margin-left: 3px; }
+.ms-table2 .empty { text-align: center; padding: 24px; color: #8c959f; }
 .mono { font-family: monospace; font-size: 12px; }
-.diff-plus  { color: #1a7f37; font-weight: 600; }
+.muted { color: #8c959f; }
+.diff-plus { color: #1a7f37; font-weight: 600; }
 .diff-minus { color: #cf222e; font-weight: 600; }
-.green { color: #1a7f37; }
-.red { color: #cf222e; }
 
-.kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.kpi-card {
-  background: #fff;
-  border: 1px solid #d8dee4;
-  border-radius: 6px;
-  padding: 14px 16px;
-}
-.kpi-label { font-size: 12px; color: #57606a; text-transform: uppercase; letter-spacing: 0.5px; }
-.kpi-value { font-size: 24px; font-weight: 700; margin-top: 6px; color: #1f2328; }
-.kpi-value.small { font-size: 16px; }
-.kpi-sub { font-size: 12px; color: #8c959f; margin-top: 4px; }
-
-.chart-card {
-  background: #fff;
-  border: 1px solid #d8dee4;
-  border-radius: 6px;
-  padding: 16px;
-  margin-bottom: 16px;
-}
-.chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-weight: 600; }
-.chart-empty { padding: 32px; text-align: center; }
-.chart {
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  height: 180px;
-  padding: 8px 0;
-  overflow-x: auto;
-}
-.bar-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  min-width: 28px;
-  height: 100%;
-  flex-shrink: 0;
-}
-.bar-value {
-  font-size: 10px;
-  color: #8c959f;
-  margin-bottom: 4px;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-.bar {
-  width: 20px;
-  background: linear-gradient(180deg, #4a7cc7 0%, #2c5d9c 100%);
-  border-radius: 3px 3px 0 0;
-  transition: background 0.15s;
-}
-.bar:hover { background: linear-gradient(180deg, #2c5d9c 0%, #1e4070 100%); }
-.bar-label { font-size: 10px; color: #57606a; margin-top: 4px; white-space: nowrap; }
+.ms-footer2 { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; font-size: 12px; color: #57606a; background: #fff; border-top: 1px solid #eaeef2; }
+.pager { display: flex; align-items: center; gap: 4px; }
+.pager button { width: 22px; height: 22px; padding: 0; border: 1px solid #d0d7de; background: #fff; border-radius: 3px; cursor: pointer; font-size: 12px; color: #1f2328; }
+.pager button:disabled { opacity: 0.4; cursor: default; }
+.pager .range { margin: 0 6px; font-variant-numeric: tabular-nums; }
+.totals-inline { display: flex; gap: 16px; font-variant-numeric: tabular-nums; }
 </style>

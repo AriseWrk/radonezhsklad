@@ -1,42 +1,46 @@
 <template>
   <div>
     <!-- Заголовок -->
-    <div class="page-title-bar">
-      <div class="page-title">
-        <span>Сотрудники</span>
-        <span class="refresh" @click="load" title="Обновить">↻</span>
-      </div>
-      <div class="page-actions">
-        <button class="btn primary" @click="openCreate">👤 Сотрудник</button>
-        <button class="btn" @click="showFilter = !showFilter">Фильтр</button>
-        <select class="role-filter" v-model="filterRole" @change="page = 1">
-          <option value="">Все роли</option>
-          <option value="admin">Администратор</option>
-          <option value="manager">Менеджер</option>
-          <option value="warehouse">Кладовщик</option>
-          <option value="user">Пользователь</option>
-        </select>
-        <a class="link-help" href="#" @click.prevent>Как настроить права доступа</a>
-      </div>
+    <div class="ms-title">
+      <button class="ms-help" title="Справка"><MsIcon name="help" :size="14" /></button>
+      <span>Сотрудники</span>
+      <button class="ms-refresh" @click="load" title="Обновить"><MsIcon name="refresh" :size="14" /></button>
+    </div>
+
+    <!-- Тулбар -->
+    <div class="ms-toolbar">
+      <MsButton variant="primary" icon="user" @click="openCreate">Сотрудник</MsButton>
+      <MsButton icon="filter" @click="showFilter = !showFilter">Фильтр</MsButton>
+      <select class="ms-select" v-model="filterRole" @change="page = 1">
+        <option value="">Все роли</option>
+        <option value="admin">Администратор</option>
+        <option value="manager">Менеджер</option>
+        <option value="warehouse">Кладовщик</option>
+        <option value="user">Пользователь</option>
+      </select>
+      <div class="ms-counter">{{ filtered.length }}</div>
+      <MsButton icon="print">Печать</MsButton>
+      <MsButton variant="icon" icon="gear" title="Настройки" />
     </div>
 
     <!-- Фильтр-панель -->
-    <div v-if="showFilter" class="filter-panel">
-      <div class="filter-row">
+    <div v-if="showFilter" class="ms-filter">
+      <div class="filter-actions">
+        <MsButton variant="green" @click="page = 1">Найти</MsButton>
+        <MsButton @click="clearFilters">Очистить</MsButton>
+      </div>
+      <div class="filter-grid">
         <div class="filter-field">
-          <label>ФИО, e-mail, телефон или логин</label>
+          <label class="filter-label"><span class="dot"></span>ФИО, e-mail, телефон или логин</label>
           <input v-model="filterSearch" placeholder="Начните вводить" @input="page = 1" />
         </div>
         <div class="filter-field">
-          <label>Активен</label>
+          <label class="filter-label"><span class="dot"></span>Активен</label>
           <select v-model="filterActive" @change="page = 1">
-            <option value="">Все</option>
+            <option value="">—</option>
             <option value="yes">Да</option>
             <option value="no">Нет</option>
           </select>
-        </div>
-        <div class="filter-actions">
-          <button class="btn-clear" @click="clearFilters">Очистить</button>
         </div>
       </div>
     </div>
@@ -165,6 +169,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { listUsers, createUser, updateUser, updateActive, type User, type UserInput } from '../api/users'
 import { apiErrorMessage } from '../api/client'
+import MsButton from '../components/MsButton.vue'
+import MsIcon from '../components/MsIcon.vue'
 
 const items = ref<User[]>([])
 const loading = ref(false)
@@ -374,4 +380,21 @@ onMounted(load)
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 label.chk { flex-direction: row; align-items: center; gap: 8px; color: #1f2328; }
 label.chk input { width: auto; }
+
+/* === МойСклад-стиль === */
+.ms-title { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 600; color: #1f2328; margin-bottom: 12px; }
+.ms-help { width: 20px; height: 20px; border-radius: 50%; border: 1px solid #b8c0c8; background: transparent; color: #57606a; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.ms-help:hover { background: #f0f2f5; }
+.ms-refresh { width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; color: #57606a; cursor: pointer; }
+.ms-refresh:hover { color: #2c5d9c; }
+.ms-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.ms-select { height: 30px; padding: 0 8px; font-size: 13px; border: 1px solid #d0d7de; border-radius: 4px; background: #fff; color: #1f2328; max-width: 180px; }
+.ms-counter { min-width: 40px; height: 30px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #d0d7de; border-radius: 4px; background: #fff; color: #8c959f; font-variant-numeric: tabular-nums; font-size: 13px; }
+.ms-filter { background: #eef1f5; border: 1px solid #d8dee4; border-radius: 4px; padding: 10px 14px 12px; margin-bottom: 12px; }
+.filter-actions { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.filter-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 14px; }
+.filter-field { display: flex; flex-direction: column; gap: 3px; }
+.filter-label { font-size: 12px; color: #57606a; display: flex; align-items: center; gap: 5px; }
+.filter-label .dot { width: 8px; height: 8px; border-radius: 50%; background: #2c5d9c; flex-shrink: 0; }
+.filter-field input, .filter-field select { height: 28px; padding: 0 8px; font-size: 12px; border: 1px solid #d0d7de; border-radius: 3px; background: #fff; color: #1f2328; }
 </style>

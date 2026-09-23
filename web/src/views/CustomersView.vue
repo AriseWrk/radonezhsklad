@@ -1,36 +1,50 @@
 <template>
-  <div>
-    <div class="head">
-      <h1>Покупатели</h1>
-      <button class="primary" @click="showCreate = true">+ Новый покупатель</button>
+  <div class="page">
+    <div class="ms-title">
+      <button class="ms-help" title="Справка"><MsIcon name="help" :size="14" /></button>
+      <span>Покупатели</span>
+      <button class="ms-refresh" @click="load" title="Обновить"><MsIcon name="refresh" :size="14" /></button>
+    </div>
+
+    <div class="ms-toolbar">
+      <MsButton variant="primary" icon="plus" @click="showCreate = true">Покупатель</MsButton>
+      <MsButton icon="filter">Фильтр</MsButton>
+      <input v-model="search" class="ms-input" placeholder="Наименование, телефон, email" />
+      <div class="ms-counter">{{ filtered.length }}</div>
+      <MsButton icon="print">Печать</MsButton>
+      <MsButton variant="icon" icon="gear" title="Настройки" />
     </div>
 
     <div v-if="error" class="error-box">{{ error }}</div>
 
-    <table>
+    <table class="ms-table2">
       <thead>
         <tr>
           <th>Название</th>
-          <th>Телефон</th>
-          <th>Email</th>
+          <th class="col-phone">Телефон</th>
+          <th class="col-email">Email</th>
           <th>Адрес</th>
-          <th style="width: 100px"></th>
+          <th class="col-actions"></th>
         </tr>
       </thead>
       <tbody>
-        <tr v-if="loading"><td colspan="5" class="muted">Загрузка...</td></tr>
-        <tr v-else-if="items.length === 0"><td colspan="5" class="muted">Нет покупателей</td></tr>
-        <tr v-for="c in items" :key="c.id">
-          <td>{{ c.name }}</td>
+        <tr v-if="loading"><td colspan="5" class="empty">Загрузка...</td></tr>
+        <tr v-else-if="filtered.length === 0"><td colspan="5" class="empty">Нет покупателей</td></tr>
+        <tr v-else v-for="c in filtered" :key="c.id" class="row">
+          <td class="link">{{ c.name }}</td>
           <td>{{ c.phone || '—' }}</td>
           <td>{{ c.email || '—' }}</td>
           <td class="muted">{{ c.address || '—' }}</td>
-          <td>
-            <button class="danger" @click="onDelete(c)">Удалить</button>
+          <td class="col-actions" @click.stop>
+            <button class="btn-link-ms danger" @click="onDelete(c)">Удалить</button>
           </td>
         </tr>
       </tbody>
     </table>
+
+    <div class="ms-footer2">
+      <div class="pager"><span class="range">Всего: {{ filtered.length }}</span></div>
+    </div>
 
     <div v-if="showCreate" class="modal-backdrop" @click.self="showCreate = false">
       <form class="card modal" @submit.prevent="onCreate">
@@ -62,9 +76,11 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { listCustomers, createCustomer, deleteCustomer, type Customer } from '../api/customers'
 import { apiErrorMessage } from '../api/client'
+import MsButton from '../components/MsButton.vue'
+import MsIcon from '../components/MsIcon.vue'
 
 const items = ref<Customer[]>([])
 const loading = ref(false)
@@ -72,56 +88,82 @@ const error = ref<string | null>(null)
 const showCreate = ref(false)
 const saving = ref(false)
 const createError = ref<string | null>(null)
+const search = ref('')
 const form = reactive({ name: '', phone: '', email: '', address: '' })
+
+const filtered = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q) return items.value
+  return items.value.filter((c) =>
+    (c.name ?? '').toLowerCase().includes(q) ||
+    (c.phone ?? '').toLowerCase().includes(q) ||
+    (c.email ?? '').toLowerCase().includes(q)
+  )
+})
 
 async function load() {
   loading.value = true
   error.value = null
-  try {
-    items.value = await listCustomers()
-  } catch (e) {
-    error.value = apiErrorMessage(e)
-  } finally {
-    loading.value = false
-  }
+  try { items.value = await listCustomers() }
+  catch (e) { error.value = apiErrorMessage(e) }
+  finally { loading.value = false }
 }
 
 async function onCreate() {
   createError.value = null
   saving.value = true
   try {
-    await createCustomer({
-      name: form.name,
-      phone: form.phone || undefined,
-      email: form.email || undefined,
-      address: form.address || undefined,
-    })
+    await createCustomer(form)
     showCreate.value = false
     form.name = ''; form.phone = ''; form.email = ''; form.address = ''
     await load()
-  } catch (e) {
-    createError.value = apiErrorMessage(e)
-  } finally {
-    saving.value = false
-  }
+  } catch (e) { createError.value = apiErrorMessage(e) }
+  finally { saving.value = false }
 }
 
 async function onDelete(c: Customer) {
-  if (!confirm(`Удалить «${c.name}»?`)) return
-  try { await deleteCustomer(c.id); await load() } catch (e) { error.value = apiErrorMessage(e) }
+  if (!confirm(`Удалить покупателя «${c.name}»?`)) return
+  try { await deleteCustomer(c.id); await load() }
+  catch (e) { error.value = apiErrorMessage(e) }
 }
 
 onMounted(load)
 </script>
 
 <style scoped>
-.head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-h1 { margin: 0; }
-.muted { color: var(--muted); }
+.page { font-size: 13px; }
+.ms-title { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 600; color: #1f2328; margin-bottom: 12px; }
+.ms-help { width: 20px; height: 20px; border-radius: 50%; border: 1px solid #b8c0c8; background: transparent; color: #57606a; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.ms-help:hover { background: #f0f2f5; }
+.ms-refresh { width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; color: #57606a; cursor: pointer; }
+.ms-refresh:hover { color: #2c5d9c; }
+.ms-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.ms-input { flex: 1; max-width: 320px; height: 30px; padding: 0 10px; font-size: 13px; border: 1px solid #d0d7de; border-radius: 4px; background: #fff; color: #1f2328; }
+.ms-input::placeholder { color: #8c959f; }
+.ms-counter { min-width: 40px; height: 30px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #d0d7de; border-radius: 4px; background: #fff; color: #8c959f; font-variant-numeric: tabular-nums; font-size: 13px; }
+
+.ms-table2 { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; }
+.ms-table2 thead th { background: #fff; color: #2c5d9c; font-weight: 500; padding: 8px 10px; text-align: left; border-bottom: 1px solid #d8dee4; white-space: nowrap; font-size: 12px; }
+.ms-table2 tbody td { padding: 7px 10px; border-bottom: 1px solid #eaeef2; vertical-align: middle; }
+.ms-table2 tbody tr.row:hover { background: #f6f8fa; }
+.ms-table2 .col-phone { width: 160px; }
+.ms-table2 .col-email { width: 200px; }
+.ms-table2 .col-actions { width: 120px; text-align: right; }
+.ms-table2 .link { color: #2c5d9c; font-weight: 500; }
+.ms-table2 .muted { color: #8c959f; }
+.ms-table2 .empty { text-align: center; padding: 24px; color: #8c959f; }
+
+.btn-link-ms { border: none; background: transparent; color: #2c5d9c; cursor: pointer; font-size: 12px; padding: 4px 8px; border-radius: 3px; }
+.btn-link-ms:hover { background: #f0f2f5; }
+.btn-link-ms.danger { color: #cf222e; }
+.btn-link-ms.danger:hover { background: #ffecec; }
+
+.ms-footer2 { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; font-size: 12px; color: #57606a; background: #fff; border-top: 1px solid #eaeef2; }
+.pager .range { font-variant-numeric: tabular-nums; }
+
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
-.modal { width: 480px; max-width: 100%; display: flex; flex-direction: column; gap: 12px; }
-.modal h2 { margin: 0; font-size: 18px; }
-label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
-label input { color: var(--text); }
+.modal { background: #fff; border-radius: 4px; width: 420px; max-width: 100%; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.modal h2 { margin: 0 0 4px; font-size: 18px; }
+.modal label { font-size: 13px; color: #444; display: flex; flex-direction: column; gap: 4px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
 </style>

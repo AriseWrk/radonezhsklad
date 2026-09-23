@@ -126,13 +126,15 @@
         <MsButton @click="importCsv">Импорт</MsButton>
         <div v-if="showSuggest && suggestions.length" class="suggest">
           <div v-for="p in suggestions" :key="p.id" class="suggest-item" @mousedown.prevent="addItem(p)">
-            <div class="suggest-name">{{ p.name }}</div>
+            <div class="suggest-row">
+              <div class="suggest-name">{{ p.name }}</div>
+              <div class="suggest-stock" :class="{ 'out': availableFor(p.id) <= 0 }">
+                {{ availableFor(p.id) > 0 ? 'Остаток: ' + formatQty(availableFor(p.id)) : 'Нет в наличии' }}
+              </div>
+            </div>
             <div class="suggest-meta muted">
               <span v-if="p.sku">Арт. {{ p.sku }}</span>
               <span style="margin-left:12px">{{ p.price.toFixed(2) }} ₽</span>
-            </div>
-            <div class="suggest-stock" :class="{ 'out': availableFor(p.id) <= 0 }">
-              {{ availableFor(p.id) > 0 ? 'Остаток: ' + formatQty(availableFor(p.id)) : 'Нет в наличии' }}
             </div>
           </div>
         </div>
@@ -726,9 +728,10 @@ async function submitCreateProject() {
 }
 .suggest-item:hover { background: #f6f8fa; }
 .suggest-item:last-child { border-bottom: none; }
+.suggest-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .suggest-name { font-size: 13px; color: #1f2328; }
 .suggest-meta { font-size: 11px; }
-.suggest-stock { font-size: 11px; color: #6b7280; margin-top: 2px; }
+.suggest-stock { font-size: 12px; color: #15803d; white-space: nowrap; }
 .suggest-stock.out { color: #b91c1c; }
 
 .items-table {
@@ -1003,9 +1006,10 @@ async function submitCreateProject() {
   border-bottom: 1px solid #f0f2f5;
 }
 .suggest-item:hover { background: #f6f8fa; }
+.suggest-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .suggest-name { font-size: 13px; color: #1f2328; }
 .suggest-meta { font-size: 11px; margin-top: 2px; }
-.suggest-stock { font-size: 11px; color: #6b7280; margin-top: 2px; }
+.suggest-stock { font-size: 12px; color: #15803d; white-space: nowrap; }
 .suggest-stock.out { color: #b91c1c; }
 
 /* Таблица позиций */

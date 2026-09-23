@@ -3,7 +3,6 @@
     <header class="topbar">
       <div class="logo" @click="go('/')">
         <img src="/logo.png" alt="Радонеж" class="logo-image" />
-        <span class="logo-text">RadonezhSklad</span>
       </div>
 
       <nav class="top-nav">
@@ -14,23 +13,28 @@
           class="top-nav-item"
           :class="{ active: currentSection === s.key }"
         >
-          <span class="top-nav-icon">{{ s.icon }}</span>
+          <MsIcon :name="s.icon" :size="22" />
           <span class="top-nav-label">{{ s.label }}</span>
         </router-link>
       </nav>
 
       <div class="top-right">
         <button class="sync-btn" @click="openSync" title="Синхронизировать с МойСклад">
-          <span class="sync-btn-icon">🔄</span>
-          <span class="sync-btn-label">Синхронизировать с МойСклад</span>
+          <MsIcon name="refresh" :size="16" />
+          <span>Синхронизировать</span>
         </button>
-        <span class="top-icon" title="Чат">💬</span>
-        <span class="top-icon" title="Уведомления">🔔</span>
-        <span class="top-icon" title="Помощь">❓</span>
+        <button class="top-icon" title="Чат"><MsIcon name="chat" :size="18" /></button>
+        <button class="top-icon" title="Уведомления"><MsIcon name="bell" :size="18" /></button>
+        <button class="top-icon" title="Помощь"><MsIcon name="help" :size="18" /></button>
         <div class="user-block">
-          <div class="user-name">{{ auth.userId ? shortId(auth.userId) : 'Пользователь' }}</div>
-          <div class="user-role" :class="'role-' + auth.role">{{ roleLabel(auth.role) }}</div>
-          <button class="logout-btn" @click="onLogout">Выйти</button>
+          <div class="avatar">{{ avatarLetter }}</div>
+          <div class="user-info">
+            <div class="user-name">{{ auth.userId ? shortId(auth.userId) : 'Пользователь' }}</div>
+            <div class="user-role" :class="'role-' + auth.role">{{ roleLabel(auth.role) }}</div>
+          </div>
+          <button class="logout-btn" @click="onLogout" title="Выйти">
+            <MsIcon name="close" :size="14" />
+          </button>
         </div>
       </div>
     </header>
@@ -56,11 +60,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore, type Role } from '../stores/auth'
-	import SyncModal from '../components/SyncModal.vue'
-	import { ref } from 'vue'
+import SyncModal from '../components/SyncModal.vue'
+import MsIcon from '../components/MsIcon.vue'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -76,7 +80,6 @@ interface Section {
   path: string
   roles?: Role[]
 }
-
 interface SubTab {
   name: string
   label: string
@@ -87,12 +90,12 @@ interface SubTab {
 }
 
 const sections: Section[] = [
-  { key: 'company',   label: 'Компания', icon: '🏢', path: '/' },
-  { key: 'purchases', label: 'Закупки',  icon: '🛒', path: '/purchases/planning', roles: ['admin', 'manager', 'warehouse'] },
-  { key: 'sales',     label: 'Продажи',  icon: '💰', path: '/orders',             roles: ['admin', 'manager'] },
-  { key: 'crm',       label: 'CRM',      icon: '👥', path: '/counterparties' },
-  { key: 'products',  label: 'Товары',   icon: '📦', path: '/products' },
-  { key: 'stock',     label: 'Склад',    icon: '🏬', path: '/stock',              roles: ['admin', 'manager', 'warehouse'] },
+  { key: 'company',   label: 'Компания', icon: 'building', path: '/' },
+  { key: 'purchases', label: 'Закупки',  icon: 'cart',     path: '/purchases/planning', roles: ['admin', 'manager', 'warehouse'] },
+  { key: 'sales',     label: 'Продажи',  icon: 'send',     path: '/orders',             roles: ['admin', 'manager'] },
+  { key: 'crm',       label: 'CRM',      icon: 'user',     path: '/counterparties' },
+  { key: 'products',  label: 'Товары',   icon: 'package',  path: '/products' },
+  { key: 'stock',     label: 'Склад',    icon: 'building', path: '/stock',              roles: ['admin', 'manager', 'warehouse'] },
 ]
 
 const subTabsMap: Record<string, SubTab[]> = {
@@ -156,6 +159,7 @@ function isTabActive(t: SubTab): boolean {
 }
 
 function shortId(id: string) { return id.slice(0, 8) }
+const avatarLetter = computed(() => (auth.userId ? auth.userId.slice(0, 1).toUpperCase() : '?'))
 function roleLabel(r: Role | null) {
   if (!r) return ''
   return { admin: 'Админ', manager: 'Менеджер', warehouse: 'Кладовщик', user: 'Пользователь' }[r]
@@ -169,10 +173,10 @@ function onLogout() {
 
 <style scoped>
 * { box-sizing: border-box; }
-.app { min-height: 100vh; display: flex; flex-direction: column; background: #f4f6f8; }
+.app { min-height: 100vh; display: flex; flex-direction: column; background: #f4f5f6; }
 
 .topbar {
-  height: 52px;
+  height: 48px;
   background: #2c5d9c;
   display: flex;
   align-items: center;
@@ -182,17 +186,13 @@ function onLogout() {
 }
 .logo {
   display: flex; align-items: center; gap: 8px;
-  font-weight: 700; font-size: 15px;
-  margin-right: 20px;
+  margin-right: 16px;
   cursor: pointer;
 }
 .logo-image {
-  height: 34px;
-  width: auto;
-  display: block;
+  height: 32px; width: auto; display: block;
   filter: brightness(0) invert(1);
 }
-.logo-text { letter-spacing: 0.3px; }
 
 .top-nav {
   display: flex;
@@ -205,7 +205,7 @@ function onLogout() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 6px 14px;
+  padding: 4px 14px;
   color: rgba(255,255,255,0.85);
   font-size: 11px;
   text-decoration: none;
@@ -215,50 +215,64 @@ function onLogout() {
 }
 .top-nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; text-decoration: none; }
 .top-nav-item.active { background: rgba(255,255,255,0.18); color: #fff; }
-.top-nav-icon { font-size: 18px; }
-.top-nav-label { font-size: 11px; }
+.top-nav-label { font-size: 11px; line-height: 1; }
 
 .top-right {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 4px;
   margin-left: 12px;
 }
 .sync-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  background: #f6f8fa;
-  border: 1px solid #d0d7de;
-  border-radius: 6px;
+  padding: 5px 10px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 13px;
-  color: #24292f;
-  margin-right: 8px;
+  font-size: 12px;
+  color: #fff;
+  margin-right: 4px;
 }
-.sync-btn:hover { background: #eaeef2; }
-.sync-btn-icon { font-size: 14px; }
-.sync-btn-label { font-weight: 500; }
+.sync-btn:hover { background: rgba(255,255,255,0.22); }
 
+.top-icon {
+  width: 32px; height: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; background: transparent;
+  color: #fff; cursor: pointer;
+  border-radius: 4px;
+}
+.top-icon:hover { background: rgba(255,255,255,0.12); }
 
-.top-icon { font-size: 18px; cursor: pointer; opacity: 0.85; }
-.top-icon:hover { opacity: 1; }
 .user-block {
   display: flex; align-items: center; gap: 8px;
   padding-left: 12px;
+  margin-left: 6px;
   border-left: 1px solid rgba(255,255,255,0.2);
 }
-.user-name { font-size: 13px; font-weight: 600; }
-.user-role { font-size: 11px; opacity: 0.85; }
-.logout-btn {
-  background: rgba(255,255,255,0.15);
+.avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.22);
   color: #fff;
-  border: 1px solid rgba(255,255,255,0.3);
-  padding: 4px 10px;
-  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
+.user-info { display: flex; flex-direction: column; line-height: 1.2; }
+.user-name { font-size: 12px; font-weight: 600; }
+.user-role { font-size: 10px; opacity: 0.85; }
+.logout-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px;
+  background: transparent;
+  color: rgba(255,255,255,0.8);
+  border: none;
   border-radius: 4px;
   cursor: pointer;
 }
-.logout-btn:hover { background: rgba(255,255,255,0.25); }
+.logout-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
 
 .subtabs {
   background: #fff;
@@ -270,7 +284,7 @@ function onLogout() {
   flex-shrink: 0;
 }
 .subtab {
-  padding: 12px 14px;
+  padding: 11px 14px;
   font-size: 13px;
   color: #57606a;
   text-decoration: none;

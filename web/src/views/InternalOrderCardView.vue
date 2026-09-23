@@ -728,10 +728,10 @@ async function submitCreateProject() {
 }
 .suggest-item:hover { background: #f6f8fa; }
 .suggest-item:last-child { border-bottom: none; }
-.suggest-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.suggest-name { font-size: 13px; color: #1f2328; }
+.suggest-row { display: block; }
+.suggest-name { font-size: 13px; color: #1f2328; display: inline; }
 .suggest-meta { font-size: 11px; }
-.suggest-stock { font-size: 12px; color: #15803d; white-space: nowrap; }
+.suggest-stock { font-size: 12px; color: #15803d; white-space: nowrap; display: inline; margin-left: 12px; }
 .suggest-stock.out { color: #b91c1c; }
 
 .items-table {
@@ -1006,10 +1006,10 @@ async function submitCreateProject() {
   border-bottom: 1px solid #f0f2f5;
 }
 .suggest-item:hover { background: #f6f8fa; }
-.suggest-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.suggest-name { font-size: 13px; color: #1f2328; }
+.suggest-row { display: block; }
+.suggest-name { font-size: 13px; color: #1f2328; display: inline; }
 .suggest-meta { font-size: 11px; margin-top: 2px; }
-.suggest-stock { font-size: 12px; color: #15803d; white-space: nowrap; }
+.suggest-stock { font-size: 12px; color: #15803d; white-space: nowrap; display: inline; margin-left: 12px; }
 .suggest-stock.out { color: #b91c1c; }
 
 /* Таблица позиций */

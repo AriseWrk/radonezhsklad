@@ -1,33 +1,33 @@
 <template>
-  <div>
-    <div class="page-title-bar">
-      <div class="page-title">
-        <span>Управление закупками</span>
-        <span class="refresh" @click="load" title="Обновить">↻</span>
-      </div>
-      <div class="page-actions">
-        <button class="btn" @click="showFilter = !showFilter">Фильтр</button>
-        <button class="btn" @click="print">Печать</button>
-        <div class="days-switch">
-          <span class="lbl">Прогноз на</span>
-          <input v-model.number="days" type="number" min="1" max="365" @change="load" class="days-input" />
-          <span class="lbl">дней</span>
-        </div>
-      </div>
+  <div class="page">
+    <div class="ms-title">
+      <button class="ms-help" title="Справка"><MsIcon name="help" :size="14" /></button>
+      <span>Управление закупками</span>
+      <button class="ms-refresh" @click="load" title="Обновить"><MsIcon name="refresh" :size="14" /></button>
     </div>
 
-    <div v-if="showFilter" class="filter-panel">
-      <div class="filter-row">
-        <div class="filter-actions">
-          <button class="btn-find" @click="page = 1">Найти</button>
-          <button class="btn-clear" @click="clearFilters">Очистить</button>
-        </div>
+    <div class="ms-toolbar">
+      <MsButton icon="filter" @click="showFilter = !showFilter">Фильтр</MsButton>
+      <input v-model="filters.search" class="ms-input" placeholder="Название, SKU" />
+      <div class="ms-counter">{{ filtered.length }}</div>
+      <div class="days-switch">
+        <span class="lbl">Прогноз на</span>
+        <input v-model.number="days" type="number" min="1" max="365" @change="load" class="days-input" />
+        <span class="lbl">дней</span>
+      </div>
+      <MsButton icon="print" @click="print">Печать</MsButton>
+      <div class="toolbar-spacer"></div>
+      <MsButton variant="icon" icon="gear" title="Настройки" />
+    </div>
+
+    <div v-if="showFilter" class="ms-filter">
+      <div class="filter-actions">
+        <MsButton variant="green" @click="page = 1">Найти</MsButton>
+        <MsButton @click="clearFilters">Очистить</MsButton>
+      </div>
+      <div class="filter-grid">
         <div class="filter-field">
-          <label>Товар</label>
-          <input v-model="filters.search" placeholder="Название, SKU" />
-        </div>
-        <div class="filter-field">
-          <label>Остаток</label>
+          <label class="filter-label"><span class="dot"></span>Остаток</label>
           <select v-model="filters.stockMode">
             <option value="any">Любой</option>
             <option value="positive">Положительный</option>
@@ -35,7 +35,7 @@
           </select>
         </div>
         <div class="filter-field">
-          <label>Заказать</label>
+          <label class="filter-label"><span class="dot"></span>Заказать</label>
           <select v-model="filters.toOrderMode">
             <option value="any">Все</option>
             <option value="only">Только с рекомендацией</option>
@@ -46,86 +46,71 @@
 
     <div v-if="error" class="error-box">{{ error }}</div>
 
-    <table class="ms-table">
+    <table class="ms-table2">
       <thead>
         <tr>
-          <th @click="sortBy('product_name')">Наименование <span v-if="sortKey === 'product_name'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span></th>
-          <th style="width:80px">Код</th>
-          <th style="width:100px">Артикул</th>
-          <th style="width:70px">Ед. изм.</th>
-          <th class="num" style="width:90px" @click="sortBy('sold_qty')">Кол-во <span v-if="sortKey === 'sold_qty'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span></th>
-          <th class="num" style="width:100px">Сумма</th>
-          <th class="num" style="width:100px">Себестоимость</th>
-          <th class="num" style="width:100px">Прибыль</th>
-          <th class="num" style="width:90px">Рентабельн.</th>
-          <th class="num" style="width:100px">Продаж в зак.</th>
-          <th class="num" style="width:90px">Остаток</th>
-          <th class="num" style="width:80px">Резерв</th>
-          <th class="num" style="width:90px">Ожидание</th>
-          <th class="num" style="width:90px">Доступно</th>
-          <th class="num" style="width:100px">Дней на скл.</th>
-          <th class="num" style="width:100px">Дней запаса</th>
-          <th class="num" style="width:100px">Запас</th>
-          <th class="num" style="width:100px" @click="sortBy('to_order')">Заказать <span v-if="sortKey === 'to_order'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span></th>
+          <th @click="sortBy('product_name')">Наименование<span v-if="sortKey === 'product_name'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+          <th class="col-num">Артикул</th>
+          <th class="col-num">Ед.</th>
+          <th class="col-num-right" @click="sortBy('sold_qty')">Кол-во<span v-if="sortKey === 'sold_qty'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+          <th class="col-num-right">Сумма</th>
+          <th class="col-num-right">Себест.</th>
+          <th class="col-num-right">Прибыль</th>
+          <th class="col-num-right">Рент.</th>
+          <th class="col-num-right">Остаток</th>
+          <th class="col-num-right">Ожид.</th>
+          <th class="col-num-right">Доступно</th>
+          <th class="col-num-right">Дней зап.</th>
+          <th class="col-num-right">Запас</th>
+          <th class="col-num-right" @click="sortBy('to_order')">Заказать<span v-if="sortKey === 'to_order'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
         </tr>
       </thead>
       <tbody>
-        <tr v-if="loading">
-          <td colspan="18" class="muted" style="text-align:center;padding:24px">Загрузка...</td>
-        </tr>
-        <tr v-else-if="filtered.length === 0">
-          <td colspan="18" class="muted" style="text-align:center;padding:24px">Нет данных</td>
-        </tr>
-        <tr v-else v-for="r in paginated" :key="r.product_id">
+        <tr v-if="loading"><td colspan="14" class="empty">Загрузка...</td></tr>
+        <tr v-else-if="filtered.length === 0"><td colspan="14" class="empty">Нет данных</td></tr>
+        <tr v-else v-for="r in paginated" :key="r.product_id" class="row">
           <td class="link">{{ r.product_name }}</td>
-          <td class="muted mono">{{ r.product_id.slice(0, 6) }}</td>
-          <td class="muted mono">{{ r.sku || '—' }}</td>
-          <td>{{ r.unit_short || '—' }}</td>
-          <td class="num">{{ formatQty(r.sold_qty) }}</td>
-          <td class="num">{{ formatMoney(r.sold_sum) }}</td>
-          <td class="num">{{ formatMoney(r.cost_sum) }}</td>
-          <td class="num" :class="r.profit > 0 ? 'diff-plus' : (r.profit < 0 ? 'diff-minus' : 'muted')">
-            {{ formatMoney(r.profit) }}
-          </td>
-          <td class="num">{{ r.margin.toFixed(1) }}%</td>
-          <td class="num muted">{{ r.orders_count }}</td>
-          <td class="num">{{ formatQty(r.stock) }}</td>
-          <td class="num muted">{{ formatQty(0) }}</td>
-          <td class="num">{{ formatQty(r.incoming) }}</td>
-          <td class="num"><strong>{{ formatQty(r.available) }}</strong></td>
-          <td class="num muted">{{ r.days_on_stock ?? '—' }}</td>
-          <td class="num">{{ r.days_of_stock == null ? '—' : r.days_of_stock.toFixed(0) }}</td>
-          <td class="num" :class="r.supply < 0 ? 'diff-minus' : (r.supply > 0 ? 'diff-plus' : 'muted')">
-            {{ formatQty(r.supply) }}
-          </td>
-          <td class="num">
+          <td class="col-num muted mono">{{ r.sku || '—' }}</td>
+          <td class="col-num">{{ r.unit_short || '—' }}</td>
+          <td class="col-num-right">{{ formatQty(r.sold_qty) }}</td>
+          <td class="col-num-right">{{ formatMoney(r.sold_sum) }}</td>
+          <td class="col-num-right">{{ formatMoney(r.cost_sum) }}</td>
+          <td class="col-num-right" :class="r.profit > 0 ? 'diff-plus' : (r.profit < 0 ? 'diff-minus' : 'muted')">{{ formatMoney(r.profit) }}</td>
+          <td class="col-num-right">{{ r.margin.toFixed(1) }}%</td>
+          <td class="col-num-right">{{ formatQty(r.stock) }}</td>
+          <td class="col-num-right">{{ formatQty(r.incoming) }}</td>
+          <td class="col-num-right"><b>{{ formatQty(r.available) }}</b></td>
+          <td class="col-num-right">{{ r.days_of_stock == null ? '—' : r.days_of_stock.toFixed(0) }}</td>
+          <td class="col-num-right" :class="r.supply < 0 ? 'diff-minus' : (r.supply > 0 ? 'diff-plus' : 'muted')">{{ formatQty(r.supply) }}</td>
+          <td class="col-num-right">
             <strong :class="r.to_order > 0 ? 'red' : 'muted'">{{ formatQty(r.to_order) }}</strong>
           </td>
         </tr>
       </tbody>
     </table>
 
-    <div class="ms-footer">
-      <div class="ms-pager">
-        <button :disabled="page === 1" @click="page--">◀</button>
-        <span>{{ rangeFrom }}–{{ rangeTo }} из {{ filtered.length }}</span>
-        <button :disabled="rangeTo >= filtered.length" @click="page++">▶</button>
+    <div class="ms-footer2">
+      <div class="pager">
+        <button :disabled="page === 1" @click="page--">‹</button>
+        <span class="range">{{ rangeFrom }}-{{ rangeTo }} из {{ filtered.length }}</span>
+        <button :disabled="rangeTo >= filtered.length" @click="page++">›</button>
       </div>
-      <div class="ms-totals">
-        <span>Продано: {{ formatMoney(totalSold) }}</span>
-        <span>Прибыль: {{ formatMoney(totalProfit) }}</span>
-        <span>К заказу: {{ formatQty(totalToOrder) }} ед.</span>
+      <div class="totals-inline">
+        <span>Продано: <b>{{ formatMoney(totalSold) }}</b></span>
+        <span>Прибыль: <b>{{ formatMoney(totalProfit) }}</b></span>
+        <span>К заказу: <b>{{ formatQty(totalToOrder) }}</b></span>
       </div>
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { listProducts, type Product } from '../api/products'
 import { listStockExtended, type StockExtendedRow } from '../api/stock'
 import { salesAnalytics, type SalesAnalyticsRow } from '../api/analytics'
 import { apiErrorMessage } from '../api/client'
+import MsButton from '../components/MsButton.vue'
+import MsIcon from '../components/MsIcon.vue'
 
 interface PlanningRow {
   product_id: string
@@ -310,24 +295,46 @@ onMounted(load)
 </script>
 
 <style scoped>
-.days-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #57606a;
-}
-.days-input {
-  width: 60px;
-  padding: 5px 8px;
-  border: 1px solid #d0d7de;
-  border-radius: 4px;
-  text-align: center;
-  font-size: 13px;
-}
-.lbl { white-space: nowrap; }
-.diff-plus  { color: #1a7f37; font-weight: 600; }
+.page { font-size: 13px; }
+.ms-title { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 600; color: #1f2328; margin-bottom: 12px; }
+.ms-help { width: 20px; height: 20px; border-radius: 50%; border: 1px solid #b8c0c8; background: transparent; color: #57606a; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.ms-help:hover { background: #f0f2f5; }
+.ms-refresh { width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; color: #57606a; cursor: pointer; }
+.ms-refresh:hover { color: #2c5d9c; }
+.ms-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.toolbar-spacer { flex: 1; }
+.ms-input { flex: 1; max-width: 260px; height: 30px; padding: 0 10px; font-size: 13px; border: 1px solid #d0d7de; border-radius: 4px; background: #fff; color: #1f2328; }
+.ms-counter { min-width: 40px; height: 30px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #d0d7de; border-radius: 4px; background: #fff; color: #8c959f; font-variant-numeric: tabular-nums; font-size: 13px; }
+.days-switch { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #57606a; margin: 0 6px; }
+.days-input { width: 64px; height: 30px; padding: 0 8px; font-size: 13px; border: 1px solid #d0d7de; border-radius: 4px; }
+.ms-filter { background: #eef1f5; border: 1px solid #d8dee4; border-radius: 4px; padding: 10px 14px 12px; margin-bottom: 12px; }
+.filter-actions { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.filter-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 14px; }
+.filter-field { display: flex; flex-direction: column; gap: 3px; }
+.filter-label { font-size: 12px; color: #57606a; display: flex; align-items: center; gap: 5px; }
+.filter-label .dot { width: 8px; height: 8px; border-radius: 50%; background: #2c5d9c; flex-shrink: 0; }
+.filter-field input, .filter-field select { height: 28px; padding: 0 8px; font-size: 12px; border: 1px solid #d0d7de; border-radius: 3px; background: #fff; color: #1f2328; }
+
+.ms-table2 { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; }
+.ms-table2 thead th { background: #fff; color: #2c5d9c; font-weight: 500; padding: 8px 10px; text-align: left; border-bottom: 1px solid #d8dee4; white-space: nowrap; font-size: 12px; cursor: pointer; user-select: none; }
+.ms-table2 thead th:hover { background: #f6f8fa; }
+.ms-table2 tbody td { padding: 7px 10px; border-bottom: 1px solid #eaeef2; vertical-align: middle; }
+.ms-table2 tbody tr.row:hover { background: #f6f8fa; }
+.ms-table2 .col-num { width: 80px; }
+.ms-table2 .col-num-right { text-align: right; font-variant-numeric: tabular-nums; }
+.ms-table2 .link { color: #2c5d9c; font-weight: 500; }
+.ms-table2 .sort { font-size: 9px; margin-left: 3px; }
+.ms-table2 .empty { text-align: center; padding: 24px; color: #8c959f; }
+.mono { font-family: monospace; font-size: 12px; }
+.muted { color: #8c959f; }
+.diff-plus { color: #1a7f37; font-weight: 600; }
 .diff-minus { color: #cf222e; font-weight: 600; }
 .red { color: #cf222e; }
-.mono { font-family: monospace; font-size: 12px; }
+
+.ms-footer2 { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; font-size: 12px; color: #57606a; background: #fff; border-top: 1px solid #eaeef2; }
+.pager { display: flex; align-items: center; gap: 4px; }
+.pager button { width: 22px; height: 22px; padding: 0; border: 1px solid #d0d7de; background: #fff; border-radius: 3px; cursor: pointer; font-size: 12px; color: #1f2328; }
+.pager button:disabled { opacity: 0.4; cursor: default; }
+.pager .range { margin: 0 6px; font-variant-numeric: tabular-nums; }
+.totals-inline { display: flex; gap: 16px; font-variant-numeric: tabular-nums; }
 </style>

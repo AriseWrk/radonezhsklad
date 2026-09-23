@@ -375,7 +375,7 @@ async function load() {
       // новосоздаваемый — получаем следующий номер и дефолтные значения
       try { form.number = await nextInternalOrderNumber() } catch { /* ignore */ }
       form.organization_id = organizations.value.find((x) => x.is_default)?.id ?? ''
-      form.warehouse_id = warehouses.value[0]?.id ?? ''
+      form.warehouse_id = (warehouses.value.find((w) => w.name.trim().toLowerCase() === 'основной склад') ?? warehouses.value[0])?.id ?? ''
       syncWarehouseSearch()
       syncOrganizationSearch()
       syncProjectSearch()
@@ -576,7 +576,7 @@ const projectError = ref<string | null>(null)
 
 const projectSuggestions = computed(() => {
   const q = projectSearch.value.trim().toLowerCase()
-  const list = projects.value
+  const list = projects.value.slice().sort((a, b) => a.name.localeCompare(b.name, 'ru'))
   if (!q) return list.slice(0, 8)
   return list.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 10)
 })

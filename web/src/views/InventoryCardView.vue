@@ -1,85 +1,82 @@
 <template>
   <div class="card-page">
-    <div class="toolbar">
-      <button class="btn" @click="close">Закрыть</button>
-      <button class="btn" @click="print">Печать</button>
-      <button class="btn" :disabled="!prevId" @click="prev">‹</button>
-      <span class="muted" style="font-size:12px">{{ position }} из {{ total }}</span>
-      <button class="btn" :disabled="!nextId" @click="next">›</button>
-      <button class="btn primary" @click="showCreateDialog = true">Создать документ</button>
-      <div class="toolbar-info">
-        <span>{{ userLabel }}</span>
+    <div class="ms-doc-head">
+      <div class="ms-title">
+        <button class="ms-help" title="Справка"><MsIcon name="help" :size="14" /></button>
+        <span>Инвентаризация</span>
+        <button class="ms-refresh" @click="load" title="Обновить"><MsIcon name="refresh" :size="14" /></button>
       </div>
+      <div class="ms-status">
+        <span class="st st-posted">Проведён</span>
+      </div>
+    </div>
+
+    <div class="ms-toolbar">
+      <MsButton variant="primary" icon="plus" @click="showCreateDialog = true">Создать документ</MsButton>
+      <MsButton icon="print" @click="print">Печать</MsButton>
+      <div class="pager-nav">
+        <button class="pg" :disabled="!prevId" @click="prev">‹</button>
+        <span class="pg-info">{{ position }} из {{ total }}</span>
+        <button class="pg" :disabled="!nextId" @click="next">›</button>
+      </div>
+      <div class="toolbar-spacer"></div>
+      <MsButton variant="icon" icon="close" @click="close" title="Закрыть" />
     </div>
 
     <div v-if="error" class="error-box">{{ error }}</div>
 
-    <div class="doc-header">
-      <div class="doc-title">
-        <span class="muted">Инвентаризация</span>
-        <span class="doc-number">№</span>
-        <input v-model="doc.number" class="num-input" disabled />
-        <span class="muted">от</span>
-        <input :value="formatDateTime(doc.doc_date)" class="date-input" disabled />
-        <span class="status-label">Статус:</span>
-        <select class="status-select" disabled>
-          <option>Проведён</option>
-        </select>
+    <div class="ms-doc-fields">
+      <div class="doc-left">
+        <div class="row">
+          <label>Номер</label>
+          <input :value="doc.number" disabled />
+        </div>
+        <div class="row">
+          <label>Дата</label>
+          <input :value="formatDateTime(doc.doc_date)" disabled />
+        </div>
       </div>
-      <div class="toolbar-info">
-        <span>Автор: {{ userLabel }}</span>
-        <span style="margin-left:12px">Изменён: {{ formatDateTime(doc.updated_at) }}</span>
-      </div>
-    </div>
-
-    <div class="fields-grid">
-      <div class="field">
-        <label>Организация</label>
-        <input :value="organizationName(doc.organization_id)" disabled />
-      </div>
-      <div class="field">
-        <label>Склад</label>
-        <input :value="doc.warehouse_name" disabled />
+      <div class="doc-right">
+        <div class="row">
+          <label>Организация</label>
+          <span class="ro">{{ organizationName(doc.organization_id) }}</span>
+        </div>
+        <div class="row">
+          <label>Склад</label>
+          <span class="ro">{{ doc.warehouse_name || '—' }}</span>
+        </div>
       </div>
     </div>
 
-    <div class="doc-tabs">
-      <button class="doc-tab" :class="{ active: tab === 'main' }" @click="tab = 'main'">Главная</button>
-      <button class="doc-tab" :class="{ active: tab === 'related' }" @click="tab = 'related'">Связанные документы</button>
+    <div class="ms-tabs">
+      <button class="tab" :class="{ active: tab === 'main' }" @click="tab = 'main'">Главная</button>
+      <button class="tab" :class="{ active: tab === 'related' }" @click="tab = 'related'">Связанные документы</button>
     </div>
 
     <template v-if="tab === 'main'">
-      <div class="add-row">
-        <input disabled placeholder="Добавьте позицию — введите наименование, код, штрихкод или артикул" class="add-input" />
-        <button class="btn" disabled>Добавить из справочника</button>
-        <button class="btn" disabled>Дополнить из остатков</button>
-        <button class="btn" disabled>Дополнить из номенклатуры</button>
-        <button class="btn" disabled>Импорт</button>
-      </div>
-
-      <table class="items-table">
+      <table class="ms-items">
         <thead>
           <tr>
-            <th style="width:36px">№</th>
+            <th class="col-num">№</th>
             <th>Наименование</th>
-            <th class="num" style="width:120px">Расчётный остаток</th>
-            <th class="num" style="width:120px">Фактический остаток</th>
-            <th class="num" style="width:90px">Разница</th>
-            <th class="num" style="width:110px">Цена</th>
-            <th class="num" style="width:130px">Избыток/недостача</th>
+            <th class="col-num-right">Расчётный</th>
+            <th class="col-num-right">Фактический</th>
+            <th class="col-num-right">Разница</th>
+            <th class="col-num-right">Цена</th>
+            <th class="col-num-right">Избыток/недостача</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-if="loading"><td colspan="7" class="muted" style="text-align:center;padding:24px">Загрузка…</td></tr>
-          <tr v-else-if="items.length === 0"><td colspan="7" class="muted" style="text-align:center;padding:24px">Нет позиций</td></tr>
+          <tr v-if="loading"><td colspan="7" class="empty">Загрузка…</td></tr>
+          <tr v-else-if="items.length === 0"><td colspan="7" class="empty">Нет позиций</td></tr>
           <tr v-else v-for="(it, idx) in items" :key="it.id">
-            <td class="muted num">{{ idx + 1 }}</td>
+            <td class="col-num">{{ idx + 1 }}</td>
             <td>{{ it.product_name || it.product_id }}</td>
-            <td class="num">{{ formatQty(it.calculated_quantity) }}</td>
-            <td class="num">{{ formatQty(it.quantity) }}</td>
-            <td class="num" :class="{ neg: it.correction_amount < 0 }">{{ formatQty(it.correction_amount) }}</td>
-            <td class="num">{{ formatMoney(it.price) }}</td>
-            <td class="num" :class="{ neg: it.correction_sum < 0 }">{{ formatMoney(it.correction_sum) }}</td>
+            <td class="col-num-right">{{ formatQty(it.calculated_quantity) }}</td>
+            <td class="col-num-right">{{ formatQty(it.quantity) }}</td>
+            <td class="col-num-right" :class="{ neg: it.correction_amount < 0 }">{{ formatQty(it.correction_amount) }}</td>
+            <td class="col-num-right">{{ formatMoney(it.price) }}</td>
+            <td class="col-num-right" :class="{ neg: it.correction_sum < 0 }">{{ formatMoney(it.correction_sum) }}</td>
           </tr>
         </tbody>
       </table>
@@ -87,62 +84,54 @@
       <div class="bottom-row">
         <div class="comment-box">
           <label class="lbl">Комментарий</label>
-          <textarea :value="doc.comment" rows="6" disabled></textarea>
+          <div class="comment-body">{{ doc.comment || '—' }}</div>
         </div>
         <div class="totals-box">
+          <div class="total-row">
+            <span>Позиций:</span>
+            <span class="total-num">{{ items.length }}</span>
+          </div>
           <div class="total-row big">
             <span>Итого:</span>
             <span class="total-num">{{ formatMoney(doc.total) }}</span>
-          </div>
-          <div class="total-row small">
-            <span>Кол-во:</span>
-            <span class="total-num">{{ items.length }}</span>
           </div>
         </div>
       </div>
     </template>
 
     <template v-else>
-      <div class="card muted" style="padding:24px;text-align:center">
-        Связанных документов пока нет
-      </div>
+      <div class="empty-block">Связанных документов пока нет</div>
     </template>
 
-  </div>
-
-  <div v-if="showCreateDialog" class="modal-backdrop" @click.self="showCreateDialog = false">
-    <div class="modal-box">
-      <h3>Создать корректирующий документ</h3>
-      <p class="muted" style="font-size:13px;margin:8px 0 16px">
-        Из инвентаризации №{{ doc.number }} от {{ formatDateTime(doc.doc_date) }}
-      </p>
-      <div class="dialog-actions">
-        <button class="btn" :disabled="creating" @click="createCorrection('shortage')">
-          Списать недостачи
-        </button>
-        <button class="btn" :disabled="creating" @click="createCorrection('surplus')">
-          Оприходовать избытки
-        </button>
-      </div>
-      <div v-if="createError" class="error-box" style="margin-top:12px">{{ createError }}</div>
-      <div class="dialog-footer">
-        <button class="btn" @click="showCreateDialog = false">Отмена</button>
+    <div v-if="showCreateDialog" class="modal-backdrop" @click.self="showCreateDialog = false">
+      <div class="card modal">
+        <h2>Создать корректирующий документ</h2>
+        <p class="muted" style="font-size:13px;margin:8px 0 16px">
+          Из инвентаризации №{{ doc.number }} от {{ formatDateTime(doc.doc_date) }}
+        </p>
+        <div class="dialog-actions">
+          <MsButton :disabled="creating" @click="createCorrection('shortage')">Списать недостачи</MsButton>
+          <MsButton :disabled="creating" @click="createCorrection('surplus')">Оприходовать избытки</MsButton>
+        </div>
+        <div v-if="createError" class="error-box" style="margin-top:12px">{{ createError }}</div>
+        <div class="modal-actions">
+          <button type="button" @click="showCreateDialog = false">Отмена</button>
+        </div>
       </div>
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getInventory, getInventoryNeighbors, createInventoryCorrection, type Inventory, type InventoryItem } from '../api/inventories'
 import { listOrganizations, type Organization } from '../api/suppliers'
 import { apiErrorMessage } from '../api/client'
-import { useAuthStore } from '../stores/auth'
+import MsButton from '../components/MsButton.vue'
+import MsIcon from '../components/MsIcon.vue'
 
 const route = useRoute()
 const router = useRouter()
-const auth = useAuthStore()
 
 const doc = ref<Inventory>({
   id: '', number: '', doc_date: '', total: 0, items_count: 0, created_at: '', updated_at: '',
@@ -156,7 +145,6 @@ const showCreateDialog = ref(false)
 const creating = ref(false)
 const createError = ref<string | null>(null)
 
-const userLabel = computed(() => auth.userId ? auth.userId.slice(0, 8) : '')
 
 function formatDateTime(s: string) {
   if (!s) return ''
@@ -231,94 +219,60 @@ watch(() => route.params.id, load)
 </script>
 
 <style scoped>
-.card-page { padding: 0; }
-.toolbar {
-  display: flex; gap: 8px; align-items: center;
-  padding: 8px 0 12px;
-  border-bottom: 1px solid #e1e4e8;
-  margin-bottom: 12px;
-}
-.toolbar-info { margin-left: auto; font-size: 12px; color: #8c959f; display: flex; gap: 4px; }
-.doc-header {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 14px;
-}
-.doc-title { display: flex; align-items: center; gap: 8px; font-size: 16px; }
-.doc-number { font-weight: 600; }
-.num-input {
-  width: 100px; padding: 4px 8px;
-  border: 1px solid transparent; border-radius: 4px;
-  font-size: 15px; font-weight: 600; background: transparent;
-}
-.date-input {
-  width: 180px; padding: 4px 8px;
-  border: 1px solid transparent; border-radius: 4px;
-  font-size: 13px; background: transparent;
-}
-.status-label { margin-left: 12px; color: #57606a; font-size: 13px; }
-.status-select {
-  padding: 4px 8px; font-size: 13px;
-  border: 1px solid #d0d7de; border-radius: 4px;
-  background: #fff;
-}
-.fields-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 12px 20px;
-  margin-bottom: 16px;
-}
-.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #57606a; }
-.field label { font-weight: 500; }
-.field input {
-  padding: 5px 8px; font-size: 13px;
-  border: 1px solid #d0d7de; border-radius: 3px;
-  background: #f6f8fa;
-}
-.doc-tabs { display: flex; gap: 4px; border-bottom: 1px solid #e1e4e8; margin-bottom: 12px; }
-.doc-tab {
-  padding: 8px 16px; background: none; border: none;
-  font-size: 13px; cursor: pointer; color: #57606a;
-  border-bottom: 2px solid transparent;
-}
-.doc-tab.active { color: #1f2328; font-weight: 600; border-bottom-color: #2c5d9c; }
-.add-row { display: flex; gap: 8px; margin-bottom: 12px; }
-.add-input { flex: 1; padding: 6px 10px; border: 1px solid #d0d7de; border-radius: 4px; background: #f6f8fa; }
-.items-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.items-table th {
-  text-align: left; padding: 8px; border-bottom: 1px solid #d0d7de;
-  font-weight: 500; color: #57606a; font-size: 12px;
-}
-.items-table td { padding: 8px; border-bottom: 1px solid #eaeef2; }
-.items-table th.num, .items-table td.num { text-align: right; }
-.neg { color: #c00; }
-.bottom-row { display: grid; grid-template-columns: 1fr 320px; gap: 20px; margin-top: 16px; }
-.comment-box { display: flex; flex-direction: column; gap: 4px; }
-.lbl { font-size: 12px; color: #57606a; }
-.comment-box textarea {
-  padding: 8px; border: 1px solid #d0d7de; border-radius: 4px;
-  font-family: inherit; font-size: 13px; resize: vertical;
-  background: #f6f8fa;
-}
-.totals-box { display: flex; flex-direction: column; gap: 6px; }
-.total-row { display: flex; justify-content: space-between; font-size: 13px; }
-.total-row.big { font-size: 16px; font-weight: 600; padding-top: 6px; border-top: 1px solid #d0d7de; }
-.total-row.small { font-size: 12px; color: #57606a; }
-.total-num { font-variant-numeric: tabular-nums; }
-.section-block { margin-top: 24px; border-top: 1px solid #e1e4e8; padding-top: 12px; }
-.section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-weight: 600; font-size: 13px; }
-.btn-link { background: none; border: none; color: #2c5d9c; cursor: pointer; font-size: 13px; }
-.btn-link:disabled { color: #8c959f; cursor: default; }
+/* === МойСклад-стиль === */
+.card-page { font-size: 13px; }
+.ms-doc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.ms-title { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 600; color: #1f2328; }
+.ms-help { width: 20px; height: 20px; border-radius: 50%; border: 1px solid #b8c0c8; background: transparent; color: #57606a; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.ms-help:hover { background: #f0f2f5; }
+.ms-refresh { width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; color: #57606a; cursor: pointer; }
+.ms-refresh:hover { color: #2c5d9c; }
+.ms-status { display: flex; align-items: center; gap: 12px; }
+.st { display: inline-block; padding: 3px 12px; border-radius: 3px; font-size: 12px; font-weight: 500; }
+.st-posted { background: #d8e8c8; color: #2d6a1e; }
 
-.modal-backdrop {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
-  display: flex; align-items: center; justify-content: center; z-index: 50;
-}
-.modal-box {
-  background: #fff; padding: 20px; border-radius: 6px; min-width: 420px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-}
-.modal-box h3 { margin: 0; font-size: 16px; }
-.dialog-actions { display: flex; gap: 8px; }
-.dialog-actions .btn { flex: 1; }
-.dialog-footer { margin-top: 16px; text-align: right; }
+.ms-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; padding-bottom: 10px; border-bottom: 1px solid #eaeef2; }
+.toolbar-spacer { flex: 1; }
+.pager-nav { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
+.pg { width: 24px; height: 24px; border: 1px solid #d0d7de; background: #fff; border-radius: 3px; cursor: pointer; font-size: 12px; color: #1f2328; }
+.pg:disabled { opacity: 0.4; cursor: default; }
+.pg-info { font-size: 12px; color: #57606a; margin: 0 6px; }
+
+.ms-doc-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 40px; margin-bottom: 14px; max-width: 1100px; }
+.doc-left, .doc-right { display: flex; flex-direction: column; gap: 6px; }
+.row { display: grid; grid-template-columns: 160px 1fr; align-items: center; gap: 10px; }
+.row > label { font-size: 13px; color: #57606a; }
+.row > input, .row > .ro { height: 28px; padding: 0 8px; font-size: 13px; line-height: 28px; border: 1px solid #d0d7de; border-radius: 3px; background: #fff; color: #1f2328; width: 100%; }
+.row > input:disabled { background: #f6f8fa; color: #57606a; }
+.row > .ro { border-color: transparent; background: transparent; }
+
+.ms-tabs { display: flex; gap: 2px; border-bottom: 1px solid #d8dee4; margin-bottom: 12px; }
+.tab { border: none; background: transparent; padding: 10px 16px; font-size: 13px; color: #57606a; cursor: pointer; border-bottom: 2px solid transparent; }
+.tab:hover { color: #2c5d9c; }
+.tab.active { color: #2c5d9c; border-bottom-color: #2c5d9c; font-weight: 600; }
+
+.ms-items { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; margin-bottom: 14px; }
+.ms-items thead th { background: #fff; color: #2c5d9c; font-weight: 500; padding: 8px 10px; text-align: left; border-bottom: 1px solid #d8dee4; white-space: nowrap; font-size: 12px; }
+.ms-items tbody td { padding: 6px 10px; border-bottom: 1px solid #eaeef2; vertical-align: middle; }
+.ms-items .col-num { width: 40px; color: #57606a; text-align: center; }
+.ms-items .col-num-right { text-align: right; font-variant-numeric: tabular-nums; }
+.ms-items .empty { text-align: center; padding: 24px; color: #8c959f; }
+.neg { color: #c00; }
+
+.bottom-row { display: grid; grid-template-columns: 1fr 380px; gap: 24px; align-items: start; margin-top: 12px; }
+.comment-box { display: flex; flex-direction: column; gap: 4px; }
+.comment-box .lbl { font-size: 12px; color: #57606a; }
+.comment-body { background: #f6f8fa; border: 1px solid #eaeef2; border-radius: 3px; padding: 8px 10px; font-size: 13px; color: #1f2328; min-height: 60px; }
+.totals-box { background: #f6f8fa; border: 1px solid #eaeef2; border-radius: 4px; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px; }
+.total-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.total-row.big { font-size: 15px; font-weight: 600; border-top: 1px solid #d8dee4; padding-top: 8px; margin-top: 4px; }
+.total-num { font-variant-numeric: tabular-nums; }
+.empty-block { padding: 40px; text-align: center; color: #8c959f; font-size: 13px; background: #fff; border: 1px solid #eaeef2; border-radius: 4px; }
+
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
+.modal { background: #fff; border-radius: 4px; width: 480px; max-width: 100%; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.modal h2 { margin: 0 0 4px; font-size: 18px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+.dialog-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.muted { color: #8c959f; }
 </style>

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -42,6 +43,52 @@ func main() {
 	r.GET("/api/v1/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "gateway"})
 	})
+
+	 r.GET("/api/v1/health/all", func(c *gin.Context) {
+		 type target struct{ name, url string }
+		 targets := []target{
+			 {"gateway", ""},
+			 {"auth", cfg.AuthURL},
+			 {"product", cfg.ProductURL},
+			 {"warehouse", cfg.WarehouseURL},
+			 {"order", cfg.OrderURL},
+			 {"audit", cfg.AuditURL},
+		 }
+		 type result struct {
+			 Name      string `json:"name"`
+			 Status    string `json:"status"`
+			 LatencyMs int64  `json:"latency_ms"`
+		 }
+		 out := make([]result, len(targets))
+		 var wg sync.WaitGroup
+		 client := &http.Client{Timeout: 1500 * time.Millisecond}
+		 for i, t := range targets {
+			 wg.Add(1)
+			 go func(i int, name, url string) {
+				 defer wg.Done()
+				 out[i].Name = name
+				 if url == "" {
+					 out[i].Status = "ok"
+					 return
+				 }
+				 start := time.Now()
+				 resp, err := client.Get(url + "/api/v1/health")
+				 out[i].LatencyMs = time.Since(start).Milliseconds()
+				 if err != nil {
+					 out[i].Status = "down"
+					 return
+				 }
+				 defer resp.Body.Close()
+				 if resp.StatusCode == 200 {
+					 out[i].Status = "ok"
+				 } else {
+					 out[i].Status = "degraded"
+				 }
+			 }(i, t.name, t.url)
+		 }
+		 wg.Wait()
+		 c.JSON(http.StatusOK, gin.H{"services": out})
+	 })
 
 	authProxy := proxy.New(cfg.AuthURL)
 	productProxy := proxy.New(cfg.ProductURL)

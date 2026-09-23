@@ -1,96 +1,113 @@
 <template>
   <div class="card-page">
-    <!-- Верхняя панель -->
-    <div class="toolbar">
-      <button class="btn primary" @click="save" :disabled="saving || !canEdit">{{ saving ? 'Сохранение...' : 'Сохранить' }}</button>
-      <button class="btn" @click="close">Закрыть</button>
-      <button class="btn" @click="print">Печать</button>
-      <button class="btn" @click="onSend" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отправить</button>
-      <button class="btn" @click="onCancel" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отменить</button>
-      <button class="btn danger" @click="onDelete" :disabled="(!currentId && !isNew) || (currentId !== null && form.status !== 'draft')">Удалить</button>
-      <div class="toolbar-info">
-        <span>{{ userLabel }}</span>
+    <!-- Заголовок -->
+    <div class="ms-doc-head">
+      <div class="ms-title">
+        <button class="ms-help" title="Справка"><MsIcon name="help" :size="14" /></button>
+        <span>Внутренний заказ</span>
+        <button class="ms-refresh" @click="close" title="Обновить"><MsIcon name="refresh" :size="14" /></button>
+        <span v-if="externalId" class="ext-badge" title="Импортирован из МойСклад">МойСклад</span>
       </div>
+      <div class="ms-status">
+        <span class="st" :class="'st-' + form.status">{{ statusLabel(form.status) }}</span>
+        <label class="posted-check">
+          <input type="checkbox" :checked="form.status === 'posted'" :disabled="!canEdit || form.status === 'cancelled'" @change="onTogglePosted" />
+          Проведено
+        </label>
+      </div>
+    </div>
+
+    <!-- Тулбар -->
+    <div class="ms-toolbar">
+      <MsButton variant="primary" icon="plus" @click="close">Создать</MsButton>
+      <MsButton icon="save" @click="save" :disabled="saving || !canEdit">{{ saving ? 'Сохранение...' : 'Сохранить' }}</MsButton>
+      <MsButton icon="post" @click="onTogglePosted" :disabled="!canEdit || form.status === 'cancelled'">Провести</MsButton>
+      <MsButton icon="print" @click="print">Печать</MsButton>
+      <MsButton icon="send" @click="onSend" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отправить</MsButton>
+      <MsButton icon="close" @click="onCancel" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отменить</MsButton>
+      <MsButton variant="icon" icon="trash" title="Удалить" @click="onDelete" :disabled="(!currentId && !isNew) || (currentId !== null && form.status !== 'draft')" />
+      <div class="toolbar-spacer"></div>
+      <MsButton variant="icon" icon="close" @click="close" title="Закрыть" />
     </div>
 
     <div v-if="error" class="error-box">{{ error }}</div>
 
-    <!-- Заголовок документа -->
-    <div class="doc-header">
-      <div class="doc-title">
-        <span class="muted">Внутренний заказ</span>
-        <span v-if="externalId" class="ext-badge" title="Импортирован из МойСклад — только просмотр">МойСклад</span>
-        <span class="doc-number">№</span>
-        <input v-model="form.number" class="num-input" :disabled="!canEdit" placeholder="авто" />
-        <span class="muted">от</span>
-        <input v-model="form.doc_date" type="datetime-local" class="date-input" :disabled="!canEdit" />
-        <span class="status-label">Статус:</span>
-        <select v-model="form.status" class="status-select" disabled>
-          <option value="draft">Черновик</option>
-          <option value="posted">Проведён</option>
-          <option value="cancelled">Отменён</option>
-        </select>
-      </div>
-      <label class="posted-check">
-        <input type="checkbox" :checked="form.status === 'posted'" :disabled="!canEdit || form.status === 'cancelled'" @change="onTogglePosted" />
-        Проведено
-      </label>
-    </div>
-
-    <!-- Поля -->
-    <div class="fields-grid">
-      <div class="field">
-        <label>Организация</label>
-                <input
-          v-model="organizationSearch"
-          :disabled="!canEdit"
-          placeholder="Начните вводить название..."
-          @focus="showOrganizationSuggest = true"
-          @blur="hideOrganizationSuggestSoon"
-        />
-        <div v-if="showOrganizationSuggest && organizationSuggestions.length" class="ac-dropdown">
-          <div v-for="o in organizationSuggestions" :key="o.id" class="ac-item" @mousedown.prevent="selectOrganization(o)">{{ o.name }}</div>
+    <!-- Реквизиты -->
+    <div class="ms-doc-fields">
+      <div class="doc-left">
+        <div class="row">
+          <label>Номер</label>
+          <input v-model="form.number" class="num-input" :disabled="!canEdit" placeholder="авто" />
         </div>
-      </div>
-      <div class="field">
-        <label>Склад</label>
-                <input
-          v-model="warehouseSearch"
-          :disabled="!canEdit"
-          placeholder="Начните вводить название..."
-          @focus="showWarehouseSuggest = true"
-          @blur="hideWarehouseSuggestSoon"
-        />
-        <div v-if="showWarehouseSuggest && warehouseSuggestions.length" class="ac-dropdown">
-          <div v-for="w in warehouseSuggestions" :key="w.id" class="ac-item" @mousedown.prevent="selectWarehouse(w)">{{ w.name }}</div>
+        <div class="row">
+          <label>Дата</label>
+          <input v-model="form.doc_date" type="datetime-local" class="date-input" :disabled="!canEdit" />
         </div>
-      </div>
-      <div class="field">
-        <label>План. дата приёмки</label>
-        <input v-model="form.plan_date" type="date" :disabled="!canEdit" />
-      </div>
-      <div class="field">
-        <label>Проект</label>
-        <div class="ac-wrap">
-          <input
-            v-model="projectSearch"
-            :disabled="!canEdit"
-            placeholder="Начните вводить название..."
-            @focus="showProjectSuggest = true"
-            @blur="hideProjectSuggestSoon"
-          />
-          <button v-if="canEdit" type="button" class="ac-add" title="Создать проект" @mousedown.prevent="openCreateProject">+</button>
-          <button v-if="canEdit && form.project" type="button" class="ac-clear" title="Очистить" @mousedown.prevent="clearProject">×</button>
-          <div v-if="showProjectSuggest && projectSuggestions.length" class="ac-dropdown">
-            <div v-for="p in projectSuggestions" :key="p.id" class="ac-item" @mousedown.prevent="selectProject(p)">{{ p.name }}</div>
+        <div class="row">
+          <label>Организация</label>
+          <div class="ac-wrap">
+            <input
+              v-model="organizationSearch"
+              :disabled="!canEdit"
+              placeholder="Начните вводить название..."
+              @focus="showOrganizationSuggest = true"
+              @blur="hideOrganizationSuggestSoon"
+            />
+            <div v-if="showOrganizationSuggest && organizationSuggestions.length" class="ac-dropdown">
+              <div v-for="o in organizationSuggestions" :key="o.id" class="ac-item" @mousedown.prevent="selectOrganization(o)">{{ o.name }}</div>
+            </div>
           </div>
         </div>
-      </div>    </div>
+        <div class="row">
+          <label>Склад</label>
+          <div class="ac-wrap">
+            <input
+              v-model="warehouseSearch"
+              :disabled="!canEdit"
+              placeholder="Начните вводить название..."
+              @focus="showWarehouseSuggest = true"
+              @blur="hideWarehouseSuggestSoon"
+            />
+            <div v-if="showWarehouseSuggest && warehouseSuggestions.length" class="ac-dropdown">
+              <div v-for="w in warehouseSuggestions" :key="w.id" class="ac-item" @mousedown.prevent="selectWarehouse(w)">{{ w.name }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="doc-right">
+        <div class="row">
+          <label>План. дата приёмки</label>
+          <input v-model="form.plan_date" type="date" :disabled="!canEdit" />
+        </div>
+        <div class="row">
+          <label>Проект</label>
+          <div class="ac-wrap">
+            <input
+              v-model="projectSearch"
+              :disabled="!canEdit"
+              placeholder="Начните вводить название..."
+              @focus="showProjectSuggest = true"
+              @blur="hideProjectSuggestSoon"
+            />
+            <button v-if="canEdit" type="button" class="ac-add" title="Создать проект" @mousedown.prevent="openCreateProject">+</button>
+            <button v-if="canEdit && form.project" type="button" class="ac-clear" title="Очистить" @mousedown.prevent="clearProject">×</button>
+            <div v-if="showProjectSuggest && projectSuggestions.length" class="ac-dropdown">
+              <div v-for="p in projectSuggestions" :key="p.id" class="ac-item" @mousedown.prevent="selectProject(p)">{{ p.name }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <label>Владелец</label>
+          <span class="muted">{{ userLabel }}</span>
+        </div>
+      </div>
+    </div>
 
     <!-- Вкладки -->
-    <div class="doc-tabs">
-      <button class="doc-tab" :class="{ active: tab === 'main' }" @click="tab = 'main'">Главная</button>
-      <button class="doc-tab" :class="{ active: tab === 'related' }" @click="tab = 'related'">Связанные документы</button>
+    <div class="ms-tabs">
+      <button class="tab" :class="{ active: tab === 'main' }" @click="tab = 'main'">Главная</button>
+      <button class="tab" :class="{ active: tab === 'related' }" @click="tab = 'related'">Связанные документы</button>
     </div>
 
     <template v-if="tab === 'main'">
@@ -104,11 +121,9 @@
           @focus="showSuggest = true"
           @blur="hideSuggestSoon"
         />
-        <button class="btn" @click="focusCatalog">Добавить из справочника</button>
-        <button class="btn" @click="checkStock">Проверить комплектацию</button>
-        <button class="btn" @click="importCsv">Импорт</button>
-
-        <!-- Список подсказок -->
+        <MsButton @click="focusCatalog">Из справочника</MsButton>
+        <MsButton @click="checkStock">Проверить</MsButton>
+        <MsButton @click="importCsv">Импорт</MsButton>
         <div v-if="showSuggest && suggestions.length" class="suggest">
           <div v-for="p in suggestions" :key="p.id" class="suggest-item" @mousedown.prevent="addItem(p)">
             <div class="suggest-name">{{ p.name }}</div>
@@ -121,38 +136,38 @@
       </div>
 
       <!-- Таблица позиций -->
-      <table class="items-table">
+      <table class="ms-items">
         <thead>
           <tr>
-            <th style="width:32px"></th>
+            <th class="col-num">#</th>
             <th>Наименование</th>
-            <th class="num" style="width:100px">Кол-во</th>
-            <th class="num" style="width:100px">Доступно</th>
-            <th class="num" style="width:120px">Цена</th>
-            <th class="num" style="width:90px">НДС</th>
-            <th class="num" style="width:120px">Сумма</th>
-            <th style="width:40px"></th>
+            <th class="col-num-right">Кол-во</th>
+            <th class="col-num-right">Доступно</th>
+            <th class="col-num-right">Цена</th>
+            <th class="col-num-right">НДС</th>
+            <th class="col-num-right">Сумма</th>
+            <th class="col-x"></th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="form.items.length === 0">
-            <td colspan="8" class="muted" style="text-align:center;padding:24px">Добавьте позиции</td>
+            <td colspan="8" class="empty">Добавьте позиции</td>
           </tr>
           <tr v-else v-for="(it, idx) in form.items" :key="it.product_id">
-            <td class="muted num">{{ idx + 1 }}</td>
+            <td class="col-num">{{ idx + 1 }}</td>
             <td>{{ productName(it.product_id) }}</td>
-            <td class="num">
+            <td class="col-num-right">
               <input v-model.number="it.quantity" type="number" min="0" step="0.001" class="cell-input" :disabled="!canEdit" />
             </td>
-            <td class="num muted">{{ formatQty(availableFor(it.product_id)) }}</td>
-            <td class="num">
+            <td class="col-num-right muted">{{ formatQty(availableFor(it.product_id)) }}</td>
+            <td class="col-num-right">
               <input v-model.number="it.price" type="number" min="0" step="0.01" class="cell-input" :disabled="!canEdit" />
             </td>
-            <td class="num">
+            <td class="col-num-right">
               <input v-model.number="it.vat_rate" type="number" min="0" max="100" step="1" class="cell-input" :disabled="!canEdit" />
             </td>
-            <td class="num">{{ formatMoney(it.quantity * it.price) }}</td>
-            <td><button v-if="canEdit" class="x-btn" @click="removeItem(idx)">×</button></td>
+            <td class="col-num-right">{{ formatMoney(it.quantity * it.price) }}</td>
+            <td class="col-x"><button v-if="canEdit" class="x-btn" @click="removeItem(idx)">×</button></td>
           </tr>
         </tbody>
       </table>
@@ -190,22 +205,8 @@
     </template>
 
     <template v-else>
-      <div class="card muted" style="padding:24px;text-align:center">
-        Связанных документов пока нет
-      </div>
+      <div class="empty-block">Связанных документов пока нет</div>
     </template>
-
-    <!-- Задачи -->
-    <div class="section-block">
-      <div class="section-head"><span>Задачи</span><button class="btn-link">+ Задача</button></div>
-      <div class="muted" style="font-size:12px">Нет задач</div>
-    </div>
-
-    <!-- Файлы -->
-    <div class="section-block">
-      <div class="section-head"><span>Файлы</span><button class="btn-link">+ Файл</button></div>
-      <div class="muted" style="font-size:12px">Нет файлов</div>
-    </div>
 
     <!-- Модалка: новый проект -->
     <div v-if="showCreateProject" class="modal-backdrop" @click.self="showCreateProject = false">
@@ -244,6 +245,8 @@ import { listProjects, createProject, type Project } from '../api/projects'
 import { listStockExtended } from '../api/stock'
 import { apiErrorMessage } from '../api/client'
 import { useAuthStore } from '../stores/auth'
+import MsButton from '../components/MsButton.vue'
+import MsIcon from '../components/MsIcon.vue'
 
 interface FormItem {
   product_id: string
@@ -441,6 +444,10 @@ async function onTogglePosted(e: Event) {
   } catch (err) {
     error.value = apiErrorMessage(err)
   }
+}
+
+function statusLabel(s: string) {
+  return { draft: 'Черновик', posted: 'Проведён', cancelled: 'Отменён' }[s] || s
 }
 
 function close() { router.push('/internal-orders') }
@@ -869,5 +876,205 @@ async function submitCreateProject() {
   background: #ffecec; color: #cf222e;
   border: 1px solid #ffb3b3; border-radius: 4px;
   padding: 6px 10px; font-size: 13px;
+}
+
+/* === Карточка внутреннего заказа (МойСклад-стиль) === */
+.card-page { font-size: 13px; }
+
+.ms-doc-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.ms-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 20px; font-weight: 600; color: #1f2328;
+}
+.ms-help {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1px solid #b8c0c8; background: transparent;
+  color: #57606a; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
+}
+.ms-help:hover { background: #f0f2f5; }
+.ms-refresh {
+  width: 24px; height: 24px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; background: transparent; color: #57606a; cursor: pointer;
+}
+.ms-refresh:hover { color: #2c5d9c; }
+.ext-badge {
+  background: #eaf3ff; color: #2c5d9c; border: 1px solid #c8dcf0;
+  font-size: 11px; padding: 1px 8px; border-radius: 3px;
+  font-weight: 500;
+}
+.ms-status { display: flex; align-items: center; gap: 12px; }
+.st {
+  display: inline-block; padding: 3px 12px;
+  border-radius: 3px; font-size: 12px; font-weight: 500;
+}
+.st-draft     { background: #eef1f5; color: #57606a; }
+.st-posted    { background: #d8e8c8; color: #2d6a1e; }
+.st-cancelled { background: #f5d5d5; color: #a01c1c; }
+.posted-check {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; color: #57606a; cursor: pointer;
+}
+.posted-check input { width: 14px; height: 14px; }
+
+.ms-toolbar {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 12px; flex-wrap: wrap;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eaeef2;
+}
+.toolbar-spacer { flex: 1; }
+
+/* Реквизиты документа */
+.ms-doc-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 40px;
+  margin-bottom: 14px;
+  max-width: 1100px;
+}
+.doc-left, .doc-right { display: flex; flex-direction: column; gap: 6px; }
+.row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+.row > label { font-size: 13px; color: #57606a; }
+.row > input,
+.row > .ac-wrap > input,
+.row > select {
+  height: 28px; padding: 0 8px; font-size: 13px;
+  border: 1px solid #d0d7de; border-radius: 3px;
+  background: #fff; color: #1f2328; width: 100%;
+}
+.row > input:disabled,
+.row > .ac-wrap > input:disabled { background: #f6f8fa; color: #57606a; cursor: not-allowed; }
+.num-input { max-width: 140px; }
+.date-input { max-width: 200px; }
+
+/* Вкладки */
+.ms-tabs {
+  display: flex; gap: 2px;
+  border-bottom: 1px solid #d8dee4;
+  margin-bottom: 12px;
+}
+.tab {
+  border: none; background: transparent;
+  padding: 10px 16px;
+  font-size: 13px; color: #57606a;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.tab:hover { color: #2c5d9c; }
+.tab.active { color: #2c5d9c; border-bottom-color: #2c5d9c; font-weight: 600; }
+
+/* Добавление позиции */
+.add-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px; position: relative;
+}
+.add-input {
+  flex: 1; height: 30px; padding: 0 10px;
+  font-size: 13px;
+  border: 1px solid #d0d7de; border-radius: 4px;
+  background: #fff; color: #1f2328;
+}
+.add-input::placeholder { color: #8c959f; }
+.add-input:focus { outline: 2px solid rgba(44,93,156,0.3); border-color: #2c5d9c; }
+.suggest {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 20;
+  background: #fff; border: 1px solid #d0d7de;
+  border-radius: 0 0 4px 4px;
+  max-height: 260px; overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.suggest-item {
+  padding: 8px 12px; cursor: pointer;
+  border-bottom: 1px solid #f0f2f5;
+}
+.suggest-item:hover { background: #f6f8fa; }
+.suggest-name { font-size: 13px; color: #1f2328; }
+.suggest-meta { font-size: 11px; margin-top: 2px; }
+
+/* Таблица позиций */
+.ms-items {
+  width: 100%; border-collapse: collapse;
+  background: #fff; font-size: 13px;
+  margin-bottom: 14px;
+}
+.ms-items thead th {
+  background: #fff; color: #2c5d9c;
+  font-weight: 500; padding: 8px 10px;
+  text-align: left; border-bottom: 1px solid #d8dee4;
+  white-space: nowrap; font-size: 12px;
+}
+.ms-items tbody td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #eaeef2;
+  vertical-align: middle;
+}
+.ms-items .col-num { width: 40px; color: #57606a; text-align: center; }
+.ms-items .col-num-right { text-align: right; font-variant-numeric: tabular-nums; }
+.ms-items .col-x { width: 32px; text-align: center; }
+.ms-items .cell-input {
+  width: 90px; height: 26px; padding: 0 6px;
+  font-size: 13px; text-align: right;
+  border: 1px solid #d0d7de; border-radius: 3px;
+  background: #fff;
+}
+.ms-items .cell-input:disabled { background: #f6f8fa; color: #8c959f; }
+.ms-items .empty { text-align: center; padding: 24px; color: #8c959f; }
+.x-btn {
+  width: 22px; height: 22px; padding: 0;
+  border: none; background: transparent;
+  color: #8c959f; cursor: pointer;
+  font-size: 16px; line-height: 1;
+  border-radius: 3px;
+}
+.x-btn:hover { background: #ffecec; color: #cf222e; }
+
+/* Комментарий + итоги */
+.bottom-row {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 24px;
+  align-items: start;
+  margin-top: 12px;
+}
+.comment-box { display: flex; flex-direction: column; gap: 4px; }
+.comment-box .lbl { font-size: 12px; color: #57606a; }
+.comment-box textarea {
+  font-family: inherit; font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid #d0d7de; border-radius: 3px;
+  background: #fff; color: #1f2328;
+  resize: vertical;
+}
+.totals-box {
+  background: #f6f8fa; border: 1px solid #eaeef2;
+  border-radius: 4px; padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.total-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; color: #1f2328;
+}
+.total-row.small { font-size: 12px; color: #57606a; }
+.total-row.small label { display: inline-flex; align-items: center; gap: 6px; }
+.total-row.big {
+  font-size: 15px; font-weight: 600;
+  border-top: 1px solid #d8dee4;
+  padding-top: 8px; margin-top: 4px;
+}
+.total-num { font-variant-numeric: tabular-nums; }
+.empty-block {
+  padding: 40px; text-align: center;
+  color: #8c959f; font-size: 13px;
+  background: #fff; border: 1px solid #eaeef2; border-radius: 4px;
 }
 </style>

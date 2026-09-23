@@ -1,88 +1,78 @@
 <template>
-  <div>
-    <!-- Верхний тулбар -->
-    <div class="page-title-bar">
-      <div class="page-title">
-        <span>Внутренние заказы</span>
-        <span class="refresh" @click="load" title="Обновить">↻</span>
-      </div>
-      <div class="page-actions">
-        <button class="btn primary icon-btn" @click="create">
-          <span class="plus">+</span> Заказ
-        </button>
-        <button class="btn" @click="showFilter = !showFilter">Фильтр</button>
-        <input v-model="search" class="search-input" placeholder="Номер или комментарий" />
-        <div class="counter" :class="{ active: selected.size > 0 }">{{ selected.size }}</div>
-        <select class="mini-select">
-          <option>Изменить</option>
-          <option>Удалить</option>
-        </select>
-        <select class="mini-select" v-model="filterStatus" @change="load">
-          <option value="">Статус</option>
-          <option value="draft">Черновик</option>
-          <option value="posted">Проведён</option>
-          <option value="cancelled">Отменён</option>
-        </select>
-        <button class="btn" disabled>Создать</button>
-        <div class="print-dropdown">
-          <button class="btn" @click="printSelected">
-            🖨 Печать
-          </button>
-        </div>
-        <button class="btn danger" @click="deleteSelected" :disabled="selected.size === 0">
-          Удалить
-        </button>
-        <button class="btn icon-only" title="Настройки">⚙</button>
-      </div>
+  <div class="page">
+    <!-- Заголовок -->
+    <div class="ms-title">
+      <button class="ms-help" title="Справка"><MsIcon name="help" :size="14" /></button>
+      <span>Внутренние заказы</span>
+      <button class="ms-refresh" @click="load" title="Обновить"><MsIcon name="refresh" :size="14" /></button>
+    </div>
+
+    <!-- Тулбар -->
+    <div class="ms-toolbar">
+      <MsButton variant="primary" icon="plus" @click="create">Заказ</MsButton>
+      <MsButton icon="filter" @click="showFilter = !showFilter">Фильтр</MsButton>
+      <input v-model="search" class="ms-input" placeholder="Номер или комментарий" />
+      <div class="ms-counter" :class="{ active: selected.size > 0 }">{{ selected.size }}</div>
+      <select class="ms-select" @change="onBulkAction">
+        <option value="">Изменить</option>
+        <option value="delete">Удалить</option>
+      </select>
+      <select v-model="filterStatus" class="ms-select" @change="load">
+        <option value="">Статус</option>
+        <option value="draft">Черновик</option>
+        <option value="posted">Проведён</option>
+        <option value="cancelled">Отменён</option>
+      </select>
+      <MsButton icon="print" @click="printSelected">Печать</MsButton>
+      <MsButton variant="icon" icon="gear" title="Настройки" />
     </div>
 
     <!-- Фильтр-панель -->
-    <div v-if="showFilter" class="filter-panel">
+    <div v-if="showFilter" class="ms-filter">
+      <div class="filter-actions">
+        <MsButton variant="green" @click="page = 1">Найти</MsButton>
+        <MsButton @click="clearFilters">Очистить</MsButton>
+        <MsButton variant="icon" icon="chevron-up" title="Свернуть" />
+        <MsButton variant="icon" icon="chevron-down" title="Развернуть" />
+        <MsButton variant="icon" icon="gear" title="Настройки" />
+      </div>
+
       <div class="filter-grid">
-        <!-- Ряд 1 -->
-        <div class="filter-actions-cell">
-          <button class="btn-find" @click="page = 1">Найти</button>
-          <button class="btn-clear" @click="clearFilters">Очистить</button>
-          <div class="arrow-buttons">
-            <button class="arrow-btn" title="Свернуть">▴</button>
-            <button class="arrow-btn" title="Развернуть">▾</button>
-            <button class="arrow-btn" title="Настройки">⚙</button>
-          </div>
-        </div>
         <div class="filter-field">
-          <label><input type="radio" name="period" /> Период</label>
+          <label class="filter-label"><span class="dot"></span>Период <span class="hint">вч · с · нед · мес</span></label>
           <div class="date-range">
             <input v-model="filterDateFrom" type="date" />
             <input v-model="filterDateTo" type="date" />
-            <span class="hint">вч · с · нед · мес</span>
           </div>
         </div>
         <div class="filter-field">
-          <label><input type="radio" name="period" /> Товар или группа</label>
+          <label class="filter-label"><span class="dot"></span>Товар или группа</label>
           <select><option>—</option></select>
         </div>
         <div class="filter-field">
-          <label><input type="radio" name="period" /> Склад</label>
+          <label class="filter-label"><span class="dot"></span>Склад</label>
           <select v-model="filterWarehouse" @change="load">
             <option value="">—</option>
             <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
           </select>
         </div>
         <div class="filter-field">
-          <label><input type="radio" name="period" /> Проект</label>
-          <select><option>—</option></select>
+          <label class="filter-label"><span class="dot"></span>Проект</label>
+          <select v-model="filterProject" @change="load">
+            <option value="">—</option>
+            <option v-for="pr in projects" :key="pr.id" :value="pr.external_id || ''">{{ pr.name }}</option>
+          </select>
         </div>
         <div class="filter-field">
-          <label><input type="radio" name="period" /> Организация</label>
+          <label class="filter-label"><span class="dot"></span>Организация</label>
           <select v-model="filterOrg" @change="load">
             <option value="">—</option>
             <option v-for="o in organizations" :key="o.id" :value="o.id">{{ o.name }}</option>
           </select>
         </div>
 
-        <!-- Ряд 2 -->
         <div class="filter-field">
-          <label>Статус</label>
+          <label class="filter-label"><span class="dot"></span>Статус</label>
           <select v-model="filterStatus2" @change="load">
             <option value="">—</option>
             <option value="draft">Черновик</option>
@@ -91,128 +81,120 @@
           </select>
         </div>
         <div class="filter-field">
-          <label>Проведено</label>
+          <label class="filter-label"><span class="dot"></span>Проведено</label>
           <select><option>—</option><option>Да</option><option>Нет</option></select>
         </div>
         <div class="filter-field">
-          <label>Напечатано</label>
+          <label class="filter-label"><span class="dot"></span>Напечатано</label>
           <select><option>—</option><option>Да</option><option>Нет</option></select>
         </div>
         <div class="filter-field">
-          <label>Отправлено</label>
+          <label class="filter-label"><span class="dot"></span>Отправлено</label>
           <select><option>—</option><option>Да</option><option>Нет</option></select>
         </div>
         <div class="filter-field">
-          <label>Владелец-сотрудник</label>
+          <label class="filter-label"><span class="dot"></span>Владелец-сотрудник</label>
           <select><option>—</option></select>
         </div>
         <div class="filter-field">
-          <label>Владелец-отдел</label>
+          <label class="filter-label"><span class="dot"></span>Владелец-отдел</label>
           <select><option>—</option></select>
         </div>
 
-        <!-- Ряд 3 -->
         <div class="filter-field">
-          <label>Общий доступ</label>
+          <label class="filter-label"><span class="dot"></span>Общий доступ</label>
           <select><option>—</option></select>
         </div>
         <div class="filter-field">
-          <label>Когда изменен</label>
+          <label class="filter-label"><span class="dot"></span>Когда изменен <span class="hint">вч · с · нед · мес</span></label>
           <div class="date-range">
             <input v-model="filterChangedFrom" type="date" />
             <input v-model="filterChangedTo" type="date" />
-            <span class="hint">вч · с · нед · мес</span>
           </div>
         </div>
         <div class="filter-field">
-          <label>Кто изменил</label>
+          <label class="filter-label"><span class="dot"></span>Кто изменил</label>
           <select><option>—</option></select>
         </div>
-        <div class="filter-field"></div>
-        <div class="filter-field"></div>
-        <div class="filter-field"></div>
       </div>
     </div>
 
     <div v-if="error" class="error-box">{{ error }}</div>
 
     <!-- Таблица -->
-    <table class="ms-table moysklad-orders">
+    <table class="ms-table2">
       <thead>
         <tr>
-          <th class="chk-col"><input type="checkbox" :checked="allChecked" @change="toggleAll" /></th>
-          <th style="width:90px" @click="sortBy('number')">№ <span v-if="sortKey === 'number'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span></th>
-          <th style="width:150px" @click="sortBy('doc_date')">Время <span v-if="sortKey === 'doc_date'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span></th>
+          <th class="col-chk"><input type="checkbox" :checked="allChecked" @change="toggleAll" /></th>
+          <th class="col-num" @click="sortBy('number')">№<span v-if="sortKey === 'number'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+          <th class="col-date" @click="sortBy('doc_date')">Время<span v-if="sortKey === 'doc_date'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
           <th>Организация</th>
-          <th class="num" style="width:130px" @click="sortBy('total')">Сумма <span v-if="sortKey === 'total'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span></th>
-          <th class="num" style="width:130px">Отгружено</th>
-          <th class="num" style="width:130px">Отправлено</th>
-          <th style="width:150px">Склад</th>
-          <th style="width:130px">Напечатано</th>
+          <th class="col-num-right" @click="sortBy('total')">Сумма<span v-if="sortKey === 'total'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+          <th class="col-num-right">Отгружено</th>
+          <th class="col-num-right">Отправлено</th>
+          <th class="col-status">Напечатано</th>
           <th>Комментарий</th>
+          <th class="col-actions"><MsIcon name="gear" :size="14" /></th>
         </tr>
       </thead>
       <tbody>
-        <tr v-if="loading"><td colspan="10" class="muted" style="text-align:center;padding:24px">Загрузка...</td></tr>
-        <tr v-else-if="filtered.length === 0"><td colspan="10" class="muted" style="text-align:center;padding:24px">Нет заказов</td></tr>
+        <tr v-if="loading"><td colspan="10" class="empty">Загрузка...</td></tr>
+        <tr v-else-if="filtered.length === 0"><td colspan="10" class="empty">Нет заказов</td></tr>
         <tr
           v-else
           v-for="o in paginated"
           :key="o.id"
-          class="clickable"
+          class="row"
           :class="{ selected: selected.has(o.id) }"
           @click="open(o)"
         >
-          <td class="chk-col" @click.stop>
+          <td class="col-chk" @click.stop>
             <input type="checkbox" :checked="selected.has(o.id)" @change="toggleSelect(o.id)" />
           </td>
-          <td class="link mono">{{ o.number }}</td>
-          <td class="muted">{{ formatDate(o.doc_date) }}</td>
+          <td class="col-num"><span class="link">{{ o.number }}</span></td>
+          <td class="col-date">{{ formatDate(o.doc_date) }}</td>
           <td>{{ organizationName(o.organization_id) }}</td>
-          <td class="num"><strong>{{ formatMoney(o.total) }}</strong></td>
-          <td class="num muted">{{ formatMoney(o.shipped_amount ?? 0) }}</td>
-          <td class="num">
-            <span v-if="o.sent_at" class="link">{{ formatMoney(o.total) }}</span>
-            <span v-else class="muted">0,00</span>
+          <td class="col-num-right"><b>{{ formatMoney(o.total) }}</b></td>
+          <td class="col-num-right">{{ formatMoney(o.shipped_amount ?? 0) }}</td>
+          <td class="col-num-right">
+            <span v-if="o.sent_at">{{ formatMoney(o.total) }}</span>
+            <span v-else>0,00</span>
           </td>
-          <td class="muted">{{ o.warehouse_name || '' }}</td>
-          <td>
-            <span v-if="o.is_printed || o.printed_at" class="badge badge-printed">Напечатан</span>
-            <span v-else-if="o.sent_at" class="badge badge-sent">Отправлен</span>
+          <td class="col-status">
+            <span v-if="o.sent_at" class="badge">Отправлен</span>
+            <span v-else-if="o.is_printed || o.printed_at" class="badge">Напечатан</span>
           </td>
-          <td class="muted">{{ o.comment || '' }}</td>
+          <td class="comment">{{ o.comment || '' }}</td>
+          <td class="col-actions" @click.stop>
+            <button class="row-menu" @click="open(o)"><MsIcon name="dots" :size="14" /></button>
+          </td>
         </tr>
       </tbody>
     </table>
 
     <!-- Футер -->
-    <div class="ms-footer moysklad-footer">
-      <div class="ms-pager">
-        <button :disabled="page === 1" @click="page--">◀</button>
-        <button :disabled="page === 1" @click="page = 1">↤</button>
-        <span>{{ rangeFrom }}–{{ rangeTo }} из {{ filtered.length }}</span>
-        <button :disabled="rangeTo >= filtered.length" @click="page = Math.ceil(filtered.length / perPage)">↦</button>
-        <button :disabled="rangeTo >= filtered.length" @click="page++">▶</button>
+    <div class="ms-footer2">
+      <div class="pager">
+        <button :disabled="page === 1" @click="page = 1" title="Первая">«</button>
+        <button :disabled="page === 1" @click="page--" title="Назад">‹</button>
+        <span class="range">{{ rangeFrom }}-{{ rangeTo }} из {{ filtered.length }}</span>
+        <button :disabled="rangeTo >= filtered.length" @click="page++" title="Вперёд">›</button>
+        <button :disabled="rangeTo >= filtered.length" @click="page = Math.ceil(filtered.length / perPage)" title="Последняя">»</button>
       </div>
       <button class="show-totals" @click="showTotals = !showTotals">
-        <span class="chev">{{ showTotals ? '▾' : '▸' }}</span>
-        {{ showTotals ? 'Скрыть итоги' : 'Показать итоги' }}
+        <span class="sigma">Σ</span> {{ showTotals ? 'Скрыть итоги' : 'Показать итоги' }}
       </button>
     </div>
 
-    <!-- Итоги -->
     <div v-if="showTotals" class="totals-panel">
       <div class="totals-row">
-        <span class="totals-label">Всего заказов:</span>
-        <span class="totals-val">{{ filtered.length }}</span>
+        <span>Всего заказов:</span><b>{{ filtered.length }}</b>
       </div>
       <div class="totals-row">
-        <span class="totals-label">Сумма:</span>
-        <span class="totals-val">{{ formatMoney(totalSum) }}</span>
+        <span>Сумма:</span><b>{{ formatMoney(totalSum) }}</b>
       </div>
       <div class="totals-row">
-        <span class="totals-label">Отгружено:</span>
-        <span class="totals-val">{{ formatMoney(totalShipped) }}</span>
+        <span>Отгружено:</span><b>{{ formatMoney(totalShipped) }}</b>
       </div>
     </div>
   </div>
@@ -224,11 +206,15 @@ import { useRouter } from 'vue-router'
 import { listInternalOrders, deleteInternalOrder, type InternalOrder } from '../api/internalOrders'
 import { listWarehouses, type Warehouse } from '../api/warehouses'
 import { listOrganizations, type Organization } from '../api/suppliers'
+import { listProjects, type Project } from '../api/projects'
 import { apiErrorMessage } from '../api/client'
+import MsButton from '../components/MsButton.vue'
+import MsIcon from '../components/MsIcon.vue'
 
 const items = ref<InternalOrder[]>([])
 const warehouses = ref<Warehouse[]>([])
 const organizations = ref<Organization[]>([])
+const projects = ref<Project[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const showFilter = ref(true)
@@ -241,6 +227,7 @@ const filterStatus = ref('')
 const filterStatus2 = ref('')
 const filterWarehouse = ref('')
 const filterOrg = ref('')
+const filterProject = ref('')
 const filterDateFrom = ref('')
 const filterDateTo = ref('')
 const filterChangedFrom = ref('')
@@ -258,15 +245,15 @@ function organizationName(id?: string) {
 }
 function formatDate(s: string) {
   const d = new Date(s)
-  const day = String(d.getDate()).padStart(2, '0')
-  const mon = String(d.getMonth() + 1).padStart(2, '0')
-  const yr = d.getFullYear()
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yy = d.getFullYear()
   const hh = String(d.getHours()).padStart(2, '0')
-  const mm = String(d.getMinutes()).padStart(2, '0')
-  return `${day}.${mon}.${yr} ${hh}:${mm}`
+  const mi = String(d.getMinutes()).padStart(2, '0')
+  return `${dd}.${mm}.${yy} ${hh}:${mi}`
 }
 function formatMoney(n: number) {
-  return n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return (n ?? 0).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function sortBy(k: typeof sortKey.value) {
@@ -288,6 +275,7 @@ const filtered = computed(() => {
   if (activeStatus) rows = rows.filter((o) => o.status === activeStatus)
   if (filterOrg.value) rows = rows.filter((o) => o.organization_id === filterOrg.value)
   if (filterWarehouse.value) rows = rows.filter((o) => o.warehouse_id === filterWarehouse.value)
+  if (filterProject.value) rows = rows.filter((o) => o.project === filterProject.value)
   if (filterDateFrom.value) {
     const t = new Date(filterDateFrom.value).getTime()
     rows = rows.filter((o) => new Date(o.doc_date).getTime() >= t)
@@ -343,23 +331,24 @@ function open(o: InternalOrder) { router.push(`/internal-orders/${o.id}`) }
 function create() { router.push('/internal-orders/new') }
 function printSelected() { window.print() }
 
+async function onBulkAction(e: Event) {
+  const v = (e.target as HTMLSelectElement).value
+  ;(e.target as HTMLSelectElement).value = ''
+  if (v === 'delete') await deleteSelected()
+}
+
 async function deleteSelected() {
   const ids = Array.from(selected.value)
-  if (ids.length === 0) return
+  if (ids.length === 0) { error.value = 'Не выбрано ни одного заказа'; return }
   if (!confirm(`Удалить выбранные заказы (${ids.length})? Действие необратимо.`)) return
   const failed: string[] = []
   for (const id of ids) {
-    try {
-      await deleteInternalOrder(id)
-    } catch (e) {
-      failed.push(`${id}: ${apiErrorMessage(e)}`)
-    }
+    try { await deleteInternalOrder(id) }
+    catch (e) { failed.push(`${id}: ${apiErrorMessage(e)}`) }
   }
   selected.value = new Set()
   await load()
-  if (failed.length > 0) {
-    error.value = `Не удалось удалить ${failed.length}: ` + failed.join('; ')
-  }
+  if (failed.length > 0) error.value = `Не удалось удалить ${failed.length}: ` + failed.join('; ')
 }
 
 function clearFilters() {
@@ -368,6 +357,7 @@ function clearFilters() {
   filterStatus2.value = ''
   filterWarehouse.value = ''
   filterOrg.value = ''
+  filterProject.value = ''
   filterDateFrom.value = ''
   filterDateTo.value = ''
   filterChangedFrom.value = ''
@@ -378,185 +368,210 @@ function clearFilters() {
 
 onMounted(async () => {
   try {
-    const [w, orgs] = await Promise.all([listWarehouses(), listOrganizations()])
+    const [w, orgs, prj] = await Promise.all([
+      listWarehouses(),
+      listOrganizations(),
+      listProjects().catch(() => [] as Project[]),
+    ])
     warehouses.value = w
     organizations.value = orgs
+    projects.value = prj
   } catch { /* ignore */ }
   await load()
 })
 </script>
 
 <style scoped>
-/* Toolbar */
-.icon-btn { display: inline-flex; align-items: center; gap: 6px; }
-.icon-btn .plus { font-size: 16px; font-weight: 700; line-height: 1; }
+.page { font-size: 13px; }
 
-.search-input {
-  padding: 6px 10px; font-size: 13px;
-  border: 1px solid #d0d7de; border-radius: 4px;
-  background: #fff; color: #1f2328; min-width: 240px;
+/* Заголовок */
+.ms-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 20px; font-weight: 600; color: #1f2328;
+  margin-bottom: 12px;
 }
-.counter {
-  display: inline-flex;
-  align-items: center; justify-content: center;
-  min-width: 40px; height: 30px; padding: 0 10px;
-  background: #fff; border: 1px solid #d0d7de; border-radius: 4px;
-  font-size: 13px; color: #8c959f;
-  font-variant-numeric: tabular-nums;
+.ms-help {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1px solid #b8c0c8; background: transparent;
+  color: #57606a; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0;
 }
-.counter.active { color: #2c5d9c; border-color: #2c5d9c; font-weight: 600; }
+.ms-help:hover { background: #f0f2f5; }
+.ms-refresh {
+  width: 24px; height: 24px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; background: transparent;
+  color: #57606a; cursor: pointer;
+}
+.ms-refresh:hover { color: #2c5d9c; }
 
-.mini-select {
-  padding: 6px 10px; font-size: 13px;
+/* Тулбар */
+.ms-toolbar {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.ms-input {
+  flex: 1; max-width: 320px;
+  height: 30px; padding: 0 10px;
+  font-size: 13px;
   border: 1px solid #d0d7de; border-radius: 4px;
   background: #fff; color: #1f2328;
-  max-width: 140px;
+}
+.ms-input::placeholder { color: #8c959f; }
+.ms-input:focus { outline: 2px solid rgba(44,93,156,0.3); border-color: #2c5d9c; }
+
+.ms-counter {
+  min-width: 40px; height: 30px; padding: 0 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid #d0d7de; border-radius: 4px;
+  background: #fff; color: #8c959f;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+.ms-counter.active { color: #2c5d9c; border-color: #2c5d9c; font-weight: 600; }
+
+.ms-select {
+  height: 30px; padding: 0 8px;
+  font-size: 13px;
+  border: 1px solid #d0d7de; border-radius: 4px;
+  background: #fff; color: #1f2328;
+  max-width: 160px;
 }
 
-.btn.icon-only { padding: 6px 10px; font-size: 15px; }
-.print-dropdown { display: inline-block; }
-
-/* Filter panel */
-.filter-panel {
+/* Фильтр-панель */
+.ms-filter {
   background: #eef1f5;
   border: 1px solid #d8dee4;
   border-radius: 4px;
-  padding: 12px 16px;
+  padding: 10px 14px 12px;
   margin-bottom: 12px;
+}
+.filter-actions {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 10px;
 }
 .filter-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px 14px;
 }
-.filter-actions-cell {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  padding-bottom: 4px;
+.filter-field { display: flex; flex-direction: column; gap: 3px; }
+.filter-label {
+  font-size: 12px; color: #57606a;
+  display: flex; align-items: center; gap: 5px;
 }
-.arrow-buttons {
-  display: inline-flex;
-  gap: 2px;
-  margin-left: 4px;
+.filter-label .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #2c5d9c; flex-shrink: 0;
 }
-.arrow-btn {
-  width: 28px; height: 28px;
-  padding: 0;
-  border: 1px solid #d0d7de;
-  background: #fff;
-  border-radius: 4px;
-  font-size: 12px;
-  color: #57606a;
-  cursor: pointer;
-  line-height: 1;
-}
-.arrow-btn:hover { background: #f6f8fa; }
-
-.filter-field {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  font-size: 12px;
-  color: #57606a;
-}
-.filter-field > label {
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 16px;
-}
-.filter-field > label input[type="radio"] {
-  margin: 0; width: auto; transform: scale(0.8);
+.filter-label .hint {
+  font-size: 10px; color: #8c959f; margin-left: 4px;
 }
 .filter-field input,
 .filter-field select {
-  padding: 5px 8px;
-  font-size: 13px;
-  border: 1px solid #d0d7de;
-  border-radius: 3px;
-  background: #fff;
-  color: #1f2328;
-  width: 100%;
+  height: 28px; padding: 0 8px;
+  font-size: 12px;
+  border: 1px solid #d0d7de; border-radius: 3px;
+  background: #fff; color: #1f2328;
 }
-.date-range {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  position: relative;
-}
+.date-range { display: flex; gap: 4px; }
 .date-range input { flex: 1; min-width: 0; }
-.date-range .hint {
-  font-size: 10px;
-  color: #8c959f;
-  white-space: nowrap;
-  position: absolute;
-  right: 4px;
-  bottom: -14px;
-}
 
-/* Table */
-.moysklad-orders tbody tr.selected { background: #eef4ff; }
-.moysklad-orders .mono { font-family: monospace; font-size: 12px; }
-.moysklad-orders .link { color: #2c5d9c; cursor: pointer; }
-.moysklad-orders .link:hover { text-decoration: underline; }
-tr.clickable { cursor: pointer; }
+/* Таблица */
+.ms-table2 {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  font-size: 13px;
+}
+.ms-table2 thead th {
+  background: #fff;
+  color: #2c5d9c;
+  font-weight: 500;
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid #d8dee4;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  font-size: 12px;
+}
+.ms-table2 thead th:hover { background: #f6f8fa; }
+.ms-table2 tbody td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #eaeef2;
+  color: #1f2328;
+  vertical-align: middle;
+}
+.ms-table2 tbody tr.row { cursor: pointer; }
+.ms-table2 tbody tr.row:hover { background: #f6f8fa; }
+.ms-table2 tbody tr.selected { background: #fffcc2 !important; }
+.ms-table2 .col-chk { width: 30px; text-align: center; }
+.ms-table2 .col-chk input { width: 13px; height: 13px; }
+.ms-table2 .col-num { width: 80px; }
+.ms-table2 .col-date { width: 130px; color: #57606a; }
+.ms-table2 .col-num-right { width: 120px; text-align: right; font-variant-numeric: tabular-nums; }
+.ms-table2 .col-status { width: 130px; }
+.ms-table2 .col-actions { width: 34px; text-align: center; }
+.ms-table2 .link { color: #2c5d9c; font-weight: 500; }
+.ms-table2 .link:hover { text-decoration: underline; }
+.ms-table2 .comment { color: #8c959f; max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ms-table2 .sort { font-size: 9px; margin-left: 3px; }
+.ms-table2 .empty { text-align: center; padding: 24px; color: #8c959f; }
 
 .badge {
   display: inline-block;
   padding: 2px 10px;
   border-radius: 3px;
+  background: #2196f3;
+  color: #fff;
   font-size: 11px;
   font-weight: 600;
-  color: #fff;
 }
-.badge-printed { background: #29aae1; }
-.badge-sent    { background: #f0a020; }
+.row-menu {
+  width: 22px; height: 22px; padding: 0;
+  border: none; background: transparent;
+  color: #57606a; cursor: pointer;
+  border-radius: 3px;
+}
+.row-menu:hover { background: #eaeef2; color: #1f2328; }
 
-/* Footer */
-.moysklad-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* Футер */
+.ms-footer2 {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 10px;
+  font-size: 12px; color: #57606a;
+  background: #fff;
+  border-top: 1px solid #eaeef2;
 }
+.pager { display: flex; align-items: center; gap: 4px; }
+.pager button {
+  width: 22px; height: 22px; padding: 0;
+  border: 1px solid #d0d7de; background: #fff;
+  border-radius: 3px; cursor: pointer;
+  font-size: 12px; color: #1f2328;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.pager button:disabled { opacity: 0.4; cursor: default; }
+.pager button:hover:not(:disabled) { background: #f6f8fa; }
+.pager .range { margin: 0 6px; font-variant-numeric: tabular-nums; }
 .show-totals {
-  border: none;
-  background: transparent;
-  color: #2c5d9c;
-  font-size: 13px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  border: none; background: transparent;
+  color: #2c5d9c; font-size: 12px;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
   padding: 4px 8px;
 }
 .show-totals:hover { text-decoration: underline; }
-.show-totals .chev { font-size: 10px; }
+.show-totals .sigma { font-weight: 700; }
 
 .totals-panel {
   background: #fff;
-  border: 1px solid #d8dee4;
-  border-top: none;
-  padding: 12px 20px;
+  border-top: 1px solid #eaeef2;
+  padding: 10px 16px;
   font-size: 13px;
 }
-.totals-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 4px 0;
-  max-width: 420px;
-}
-.totals-label { color: #57606a; }
-.totals-val { font-weight: 600; color: #1f2328; font-variant-numeric: tabular-nums; }
-.btn.danger {
-  background: #fff;
-  color: #cf222e;
-  border-color: #cf222e;
-}
-.btn.danger:hover:not(:disabled) {
-  background: #cf222e;
-  color: #fff;
-}
-
+.totals-row { display: flex; justify-content: space-between; max-width: 420px; padding: 3px 0; }
+.totals-row b { font-variant-numeric: tabular-nums; }
 </style>

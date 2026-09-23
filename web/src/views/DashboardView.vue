@@ -1,5 +1,7 @@
 <template>
   <div class="page">
+    <img src="/logo.png" class="page-watermark" alt="" aria-hidden="true" />
+    <div class="page-content">
     <div class="ms-title">
       <button class="ms-help" title="Справка"><MsIcon name="help" :size="14" /></button>
       <span>Показатели</span>
@@ -29,6 +31,7 @@
         </div>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
@@ -56,7 +59,18 @@ onMounted(reload)
 </script>
 
 <style scoped>
-.page { font-size: 13px; }
+.page { font-size: 13px; position: relative; min-height: calc(100vh - 120px); }
+.page-watermark {
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  width: 100vw; height: 100vh;
+  object-fit: contain;
+  opacity: 0.05;
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+}
+.page-content { position: relative; z-index: 1; }
 .ms-title { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 600; color: #1f2328; margin-bottom: 16px; }
 .ms-help { width: 20px; height: 20px; border-radius: 50%; border: 1px solid #b8c0c8; background: transparent; color: #57606a; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
 .ms-help:hover { background: #f0f2f5; }

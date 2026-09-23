@@ -1,24 +1,18 @@
 <template>
-  <div>
+  <div class="page">
     <!-- Заголовок -->
-    <div class="page-title-bar">
-      <div class="page-title">
-        <span>Документы</span>
-        <span class="refresh" @click="load" title="Обновить">↻</span>
-      </div>
-      <div class="page-actions">
-        <button class="btn primary" @click="openCreate">+ Документ</button>
-        <button class="btn" @click="showFilter = !showFilter">Фильтр</button>
-        <button class="btn" @click="print">Печать</button>
-      </div>
+    <div class="ms-title">
+      <button class="ms-help" title="Справка"><MsIcon name="help" :size="14" /></button>
+      <span>Документы</span>
+      <button class="ms-refresh" @click="load" title="Обновить"><MsIcon name="refresh" :size="14" /></button>
     </div>
 
-    <!-- Вкладки по типу / статусу -->
-    <div class="doc-tabs">
+    <!-- Вкладки типов -->
+    <div class="ms-tabs">
       <button
         v-for="t in tabs"
         :key="t.key"
-        class="doc-tab"
+        class="tab"
         :class="{ active: activeTab === t.key }"
         @click="setTab(t.key)"
       >
@@ -27,49 +21,53 @@
       </button>
     </div>
 
-    <!-- Панель фильтров -->
-    <div v-if="showFilter" class="filter-panel">
-      <div class="filter-row">
-        <div class="filter-actions">
-          <button class="btn-find" @click="page = 1">Найти</button>
-          <button class="btn-clear" @click="clearFilters">Очистить</button>
-        </div>
+    <!-- Тулбар -->
+    <div class="ms-toolbar">
+      <MsButton variant="primary" icon="plus" @click="openCreate">Документ</MsButton>
+      <MsButton icon="filter" @click="showFilter = !showFilter">Фильтр</MsButton>
+      <input v-model="filters.search" class="ms-input" placeholder="Номер или комментарий" />
+      <div class="ms-counter">{{ filtered.length }}</div>
+      <MsButton icon="print" @click="print">Печать</MsButton>
+      <MsButton variant="icon" icon="gear" title="Настройки" />
+    </div>
+
+    <!-- Фильтр-панель -->
+    <div v-if="showFilter" class="ms-filter">
+      <div class="filter-actions">
+        <MsButton variant="green" @click="page = 1">Найти</MsButton>
+        <MsButton @click="clearFilters">Очистить</MsButton>
+      </div>
+      <div class="filter-grid">
         <div class="filter-field">
-          <label>Период с</label>
+          <label class="filter-label"><span class="dot"></span>Период с</label>
           <input v-model="filters.dateFrom" type="date" />
         </div>
         <div class="filter-field">
-          <label>Период по</label>
+          <label class="filter-label"><span class="dot"></span>Период по</label>
           <input v-model="filters.dateTo" type="date" />
         </div>
         <div class="filter-field">
-          <label>Склад</label>
+          <label class="filter-label"><span class="dot"></span>Склад</label>
           <select v-model="filters.warehouseId" @change="page = 1">
-            <option value="">Все</option>
+            <option value="">—</option>
             <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
           </select>
         </div>
         <div class="filter-field">
-          <label>Статус</label>
+          <label class="filter-label"><span class="dot"></span>Статус</label>
           <select v-model="filters.status" @change="page = 1">
-            <option value="">Все</option>
+            <option value="">—</option>
             <option value="draft">Черновик</option>
             <option value="posted">Проведён</option>
             <option value="cancelled">Отменён</option>
           </select>
         </div>
-      </div>
-      <div class="filter-row wide">
         <div class="filter-field">
-          <label>Поиск</label>
-          <input v-model="filters.search" placeholder="Номер или комментарий" />
-        </div>
-        <div class="filter-field">
-          <label>Сумма от</label>
+          <label class="filter-label"><span class="dot"></span>Сумма от</label>
           <input v-model.number="filters.sumFrom" type="number" min="0" />
         </div>
         <div class="filter-field">
-          <label>Сумма до</label>
+          <label class="filter-label"><span class="dot"></span>Сумма до</label>
           <input v-model.number="filters.sumTo" type="number" min="0" />
         </div>
       </div>
@@ -78,57 +76,55 @@
     <div v-if="error" class="error-box">{{ error }}</div>
 
     <!-- Таблица -->
-    <table class="ms-table">
+    <table class="ms-table2">
       <thead>
         <tr>
-          <th class="num" @click="sortBy('number')">№ <span v-if="sortKey === 'number'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span></th>
-          <th @click="sortBy('created_at')">Дата <span v-if="sortKey === 'created_at'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span></th>
-          <th>Тип</th>
+          <th class="col-num" @click="sortBy('number')">№<span v-if="sortKey === 'number'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+          <th class="col-date" @click="sortBy('created_at')">Дата<span v-if="sortKey === 'created_at'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+          <th class="col-type">Тип</th>
           <th>Склад</th>
           <th>Комментарий</th>
-          <th class="num">Позиций</th>
-          <th class="num" @click="sortBy('total')">Сумма <span v-if="sortKey === 'total'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span></th>
-          <th>Статус</th>
-          <th class="actions-col"></th>
+          <th class="col-num-right">Позиций</th>
+          <th class="col-num-right" @click="sortBy('total')">Сумма<span v-if="sortKey === 'total'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+          <th class="col-status">Статус</th>
+          <th class="col-actions"></th>
         </tr>
       </thead>
       <tbody>
-        <tr v-if="loading">
-          <td colspan="9" class="muted" style="text-align:center;padding:24px">Загрузка...</td>
-        </tr>
-        <tr v-else-if="filtered.length === 0">
-          <td colspan="9" class="muted" style="text-align:center;padding:24px">Нет документов</td>
-        </tr>
-        <tr v-else v-for="d in paginated" :key="d.id">
-          <td class="num mono">{{ d.number }}</td>
-          <td>{{ formatDate(d.created_at) }}</td>
-          <td>{{ typeLabel(d.type) }}</td>
+        <tr v-if="loading"><td colspan="9" class="empty">Загрузка...</td></tr>
+        <tr v-else-if="filtered.length === 0"><td colspan="9" class="empty">Нет документов</td></tr>
+        <tr v-else v-for="d in paginated" :key="d.id" class="row" @click="openCard(d)">
+          <td class="col-num"><span class="link">{{ d.number }}</span></td>
+          <td class="col-date">{{ formatDate(d.created_at) }}</td>
+          <td class="col-type">{{ typeLabel(d.type) }}</td>
           <td>{{ warehouseName(d.warehouse_id) }}</td>
-          <td class="muted">{{ d.comment || '—' }}</td>
-          <td class="num">{{ d.items_count ?? 0 }}</td>
-          <td class="num">{{ formatMoney(d.total ?? 0) }}</td>
-          <td><span :class="['pill', d.status]">{{ statusLabel(d.status) }}</span></td>
-          <td class="actions-col">
-            <button v-if="d.status === 'draft'" class="btn-link" @click="onPost(d)">Провести</button>
-            <button v-if="d.status === 'posted'" class="btn-link danger-text" @click="onCancel(d)">Отменить</button>
-            <button class="btn-link" @click="openCard(d)">Открыть</button>
+          <td class="comment">{{ d.comment || '' }}</td>
+          <td class="col-num-right">{{ d.items_count ?? 0 }}</td>
+          <td class="col-num-right"><b>{{ formatMoney(d.total ?? 0) }}</b></td>
+          <td class="col-status">
+            <span class="badge" :class="'bg-' + d.status">{{ statusLabel(d.status) }}</span>
+          </td>
+          <td class="col-actions" @click.stop>
+            <button v-if="d.status === 'draft'" class="btn-link-ms" @click="onPost(d)">Провести</button>
+            <button v-if="d.status === 'posted'" class="btn-link-ms danger" @click="onCancel(d)">Отменить</button>
+            <button class="row-menu" @click="openCard(d)"><MsIcon name="dots" :size="14" /></button>
           </td>
         </tr>
       </tbody>
     </table>
 
     <!-- Футер -->
-    <div class="ms-footer">
-      <div class="ms-pager">
-        <button :disabled="page === 1" @click="page--">◀</button>
-        <button :disabled="page === 1" @click="page--">↤</button>
-        <span>{{ rangeFrom }}–{{ rangeTo }} из {{ filtered.length }}</span>
-        <button :disabled="rangeTo >= filtered.length" @click="page++">↦</button>
-        <button :disabled="rangeTo >= filtered.length" @click="page++">▶</button>
+    <div class="ms-footer2">
+      <div class="pager">
+        <button :disabled="page === 1" @click="page = 1">«</button>
+        <button :disabled="page === 1" @click="page--">‹</button>
+        <span class="range">{{ rangeFrom }}-{{ rangeTo }} из {{ filtered.length }}</span>
+        <button :disabled="rangeTo >= filtered.length" @click="page++">›</button>
+        <button :disabled="rangeTo >= filtered.length" @click="page = Math.ceil(filtered.length / perPage)">»</button>
       </div>
-      <div class="ms-totals">
+      <div class="totals-inline">
         <span>{{ filtered.length }} док.</span>
-        <span>{{ formatMoney(filteredTotal) }}</span>
+        <b>{{ formatMoney(filteredTotal) }}</b>
       </div>
     </div>
 
@@ -206,24 +202,24 @@
             <span class="lbl">Комментарий:</span> {{ detailDoc.comment }}
           </div>
         </div>
-        <table class="ms-table">
+        <table class="ms-table2">
           <thead>
             <tr>
               <th>Товар</th>
-              <th class="num">Кол-во</th>
-              <th class="num">Цена</th>
-              <th class="num">Сумма</th>
+              <th class="col-num-right">Кол-во</th>
+              <th class="col-num-right">Цена</th>
+              <th class="col-num-right">Сумма</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="it in detailDoc.items" :key="it.id">
               <td>{{ productName(it.product_id) }}</td>
-              <td class="num">{{ formatQty(it.quantity) }}</td>
-              <td class="num">{{ formatMoney(it.price) }}</td>
-              <td class="num">{{ formatMoney(it.quantity * it.price) }}</td>
+              <td class="col-num-right">{{ formatQty(it.quantity) }}</td>
+              <td class="col-num-right">{{ formatMoney(it.price) }}</td>
+              <td class="col-num-right">{{ formatMoney(it.quantity * it.price) }}</td>
             </tr>
             <tr v-if="!detailDoc.items || detailDoc.items.length === 0">
-              <td colspan="4" class="muted" style="text-align:center;padding:16px">Нет позиций</td>
+              <td colspan="4" class="empty">Нет позиций</td>
             </tr>
           </tbody>
         </table>
@@ -246,6 +242,8 @@ import {
 import { listWarehouses, type Warehouse } from '../api/warehouses'
 import { listProducts, type Product } from '../api/products'
 import { apiErrorMessage } from '../api/client'
+import MsButton from '../components/MsButton.vue'
+import MsIcon from '../components/MsIcon.vue'
 
 type TabKey = 'all' | 'receipt' | 'shipment' | 'transfer' | 'inventory' | 'draft' | 'posted' | 'cancelled'
 
@@ -488,5 +486,184 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* всё в style.css глобально */
+.page { font-size: 13px; }
+
+.ms-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 20px; font-weight: 600; color: #1f2328;
+  margin-bottom: 12px;
+}
+.ms-help {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1px solid #b8c0c8; background: transparent;
+  color: #57606a; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
+}
+.ms-help:hover { background: #f0f2f5; }
+.ms-refresh {
+  width: 24px; height: 24px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; background: transparent; color: #57606a; cursor: pointer;
+}
+.ms-refresh:hover { color: #2c5d9c; }
+
+.ms-tabs {
+  display: flex; gap: 2px;
+  border-bottom: 1px solid #d8dee4;
+  margin-bottom: 12px; overflow-x: auto;
+}
+.tab {
+  border: none; background: transparent;
+  padding: 10px 16px; font-size: 13px; color: #57606a;
+  cursor: pointer; border-bottom: 2px solid transparent;
+  white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
+}
+.tab:hover { color: #2c5d9c; }
+.tab.active { color: #2c5d9c; border-bottom-color: #2c5d9c; font-weight: 600; }
+.tab-count {
+  background: #eef1f5; color: #57606a;
+  font-size: 11px; padding: 1px 6px; border-radius: 8px; font-weight: 500;
+}
+.tab.active .tab-count { background: #d8e4f0; color: #2c5d9c; }
+
+.ms-toolbar {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 12px; flex-wrap: wrap;
+}
+.ms-input {
+  flex: 1; max-width: 320px; height: 30px; padding: 0 10px;
+  font-size: 13px; border: 1px solid #d0d7de; border-radius: 4px;
+  background: #fff; color: #1f2328;
+}
+.ms-input::placeholder { color: #8c959f; }
+.ms-input:focus { outline: 2px solid rgba(44,93,156,0.3); border-color: #2c5d9c; }
+.ms-counter {
+  min-width: 40px; height: 30px; padding: 0 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid #d0d7de; border-radius: 4px;
+  background: #fff; color: #8c959f;
+  font-variant-numeric: tabular-nums; font-size: 13px;
+}
+
+.ms-filter {
+  background: #eef1f5; border: 1px solid #d8dee4;
+  border-radius: 4px; padding: 10px 14px 12px; margin-bottom: 12px;
+}
+.filter-actions { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.filter-grid {
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+.filter-field { display: flex; flex-direction: column; gap: 3px; }
+.filter-label {
+  font-size: 12px; color: #57606a;
+  display: flex; align-items: center; gap: 5px;
+}
+.filter-label .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #2c5d9c; flex-shrink: 0;
+}
+.filter-field input, .filter-field select {
+  height: 28px; padding: 0 8px; font-size: 12px;
+  border: 1px solid #d0d7de; border-radius: 3px;
+  background: #fff; color: #1f2328;
+}
+
+.ms-table2 { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; }
+.ms-table2 thead th {
+  background: #fff; color: #2c5d9c; font-weight: 500;
+  padding: 8px 10px; text-align: left;
+  border-bottom: 1px solid #d8dee4; white-space: nowrap;
+  cursor: pointer; user-select: none; font-size: 12px;
+}
+.ms-table2 thead th:hover { background: #f6f8fa; }
+.ms-table2 tbody td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #eaeef2;
+  vertical-align: middle;
+}
+.ms-table2 tbody tr.row { cursor: pointer; }
+.ms-table2 tbody tr.row:hover { background: #f6f8fa; }
+.ms-table2 .col-num { width: 90px; }
+.ms-table2 .col-date { width: 140px; color: #57606a; }
+.ms-table2 .col-type { width: 130px; }
+.ms-table2 .col-num-right { text-align: right; font-variant-numeric: tabular-nums; }
+.ms-table2 .col-status { width: 130px; }
+.ms-table2 .col-actions { width: 150px; text-align: right; white-space: nowrap; }
+.ms-table2 .link { color: #2c5d9c; font-weight: 500; }
+.ms-table2 .link:hover { text-decoration: underline; }
+.ms-table2 .comment { color: #8c959f; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ms-table2 .sort { font-size: 9px; margin-left: 3px; }
+.ms-table2 .empty { text-align: center; padding: 24px; color: #8c959f; }
+
+.badge {
+  display: inline-block; padding: 2px 10px; border-radius: 3px;
+  font-size: 11px; font-weight: 600; color: #fff;
+}
+.bg-draft     { background: #8c959f; }
+.bg-posted    { background: #2196f3; }
+.bg-cancelled { background: #cf222e; }
+
+.btn-link-ms {
+  border: none; background: transparent;
+  color: #2c5d9c; cursor: pointer;
+  font-size: 12px; padding: 4px 8px; border-radius: 3px;
+}
+.btn-link-ms:hover { background: #f0f2f5; }
+.btn-link-ms.danger { color: #cf222e; }
+.btn-link-ms.danger:hover { background: #ffecec; }
+.row-menu {
+  width: 22px; height: 22px; padding: 0;
+  border: none; background: transparent;
+  color: #57606a; cursor: pointer; border-radius: 3px;
+  vertical-align: middle;
+}
+.row-menu:hover { background: #eaeef2; color: #1f2328; }
+
+.ms-footer2 {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 10px; font-size: 12px; color: #57606a;
+  background: #fff; border-top: 1px solid #eaeef2;
+}
+.pager { display: flex; align-items: center; gap: 4px; }
+.pager button {
+  width: 22px; height: 22px; padding: 0;
+  border: 1px solid #d0d7de; background: #fff; border-radius: 3px;
+  cursor: pointer; font-size: 12px; color: #1f2328;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.pager button:disabled { opacity: 0.4; cursor: default; }
+.pager button:hover:not(:disabled) { background: #f6f8fa; }
+.pager .range { margin: 0 6px; font-variant-numeric: tabular-nums; }
+.totals-inline { display: flex; gap: 16px; align-items: center; font-variant-numeric: tabular-nums; }
+.totals-inline b { color: #1f2328; }
+
+/* Модалки */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; z-index: 100;
+}
+.modal {
+  background: #fff; border-radius: 4px;
+  width: 480px; max-width: 100%; padding: 20px;
+  display: flex; flex-direction: column; gap: 10px;
+  max-height: 90vh; overflow-y: auto;
+}
+.modal.big { width: 720px; }
+.modal h2 { margin: 0 0 4px; font-size: 18px; }
+.modal label { font-size: 13px; color: #444; display: flex; flex-direction: column; gap: 4px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+.items-section { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.items-head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 500; }
+.item-row { display: grid; grid-template-columns: 1fr 90px 90px 30px; gap: 6px; align-items: center; }
+.item-row select, .item-row input {
+  height: 28px; padding: 0 8px; font-size: 13px;
+  border: 1px solid #d0d7de; border-radius: 3px; background: #fff;
+}
+.doc-info {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px 24px; font-size: 13px; margin-bottom: 12px;
+}
+.doc-info .lbl { color: #57606a; }
 </style>

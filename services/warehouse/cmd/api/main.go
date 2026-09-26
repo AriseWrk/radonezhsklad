@@ -103,6 +103,7 @@ func main() {
 			read.GET("/inventories", invH.List)
 			read.GET("/inventories/:id", invH.Get)
 			read.GET("/inventories/:id/neighbors", invH.Neighbors)
+			read.GET("/inventories/:id/export", invH.Export)
 			read.GET("/documents", h.ListDocuments)
 			read.GET("/documents/:id", h.GetDocument)
 

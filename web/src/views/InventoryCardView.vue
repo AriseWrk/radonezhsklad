@@ -134,7 +134,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getInventory, getInventoryNeighbors, createInventoryCorrection, type Inventory, type InventoryItem } from '../api/inventories'
+import { getInventory, getInventoryNeighbors, createInventoryCorrection, exportInventory, type Inventory, type InventoryItem } from '../api/inventories'
 import { listOrganizations, type Organization } from '../api/suppliers'
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
@@ -205,7 +205,25 @@ const position = ref(0)
 const total = ref(0)
 
 function close() { router.push('/inventories') }
-function print() { window.print() }
+async function print() {
+  if (!doc.value.id) {
+    error.value = 'Сначала сохраните документ'
+    return
+  }
+  try {
+    const { blob, filename } = await exportInventory(doc.value.id)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1500)
+  } catch (e) {
+    error.value = apiErrorMessage(e)
+  }
+}
 
 async function createCorrection(kind: 'shortage' | 'surplus') {
   if (!doc.value.id) return

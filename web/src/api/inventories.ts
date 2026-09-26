@@ -76,6 +76,14 @@ export interface CorrectionDocument {
   source_inventory_id?: string
 }
 
+export async function exportInventory(id: string): Promise<{ blob: Blob; filename: string }> {
+  const resp = await http.get(`/inventories/${id}/export`, { responseType: 'blob' })
+  const dispo = (resp.headers['content-disposition'] as string | undefined) || ''
+  let filename = `inventory-${id}.xls`
+  const m = /filename="?([^"]+)"?/.exec(dispo)
+  if (m && m[1]) filename = m[1]
+  return { blob: resp.data as Blob, filename }
+}
 export async function createInventoryCorrection(id: string, kind: CorrectionKind): Promise<CorrectionDocument> {
   const { data } = await http.post<CorrectionDocument>(`/inventories/${id}/create-correction`, { kind })
   return data

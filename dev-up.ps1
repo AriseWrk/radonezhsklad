@@ -1,4 +1,4 @@
-# dev-up.ps1 — поднять весь стек RadonezhSklad в фоне (Windows / PS 7 или 5.1)
+﻿# dev-up.ps1 — поднять весь стек RadonezhSklad в фоне (Windows / PS 7 или 5.1)
 #
 #   .\dev-up.ps1              — инфра + все бэкенды + фронт
 #   .\dev-up.ps1 -NoFront     — только инфра + бэкенды
@@ -12,7 +12,8 @@
 param(
     [switch]$NoFront,
     [switch]$Rebuild,
-    [string[]]$Only
+        [string[]]$Only,
+    [switch]$NoDocker
 )
 
 $ErrorActionPreference = 'Stop'
@@ -27,10 +28,14 @@ function Write-Step($msg) { Write-Host $msg -ForegroundColor Cyan }
 function Write-Ok($msg)   { Write-Host $msg -ForegroundColor Green }
 function Write-Warn($msg) { Write-Host $msg -ForegroundColor Yellow }
 
-# --- Docker-инфра ---
-Write-Step '==> Docker infra (postgres, redis, rabbitmq)...'
-docker compose up -d | Out-Null
-Start-Sleep -Seconds 2
+if (-not $NoDocker) {
+    # --- Docker-инфра ---
+    Write-Step '==> Docker infra (postgres, redis, rabbitmq)...'
+    docker compose up -d | Out-Null
+    Start-Sleep -Seconds 2
+} else {
+    Write-Step '==> Docker skipped (-NoDocker): используем нативный PostgreSQL'
+}
 
 # --- Go-сервисы ---
 $services = @('auth', 'product', 'warehouse', 'order', 'audit', 'gateway')

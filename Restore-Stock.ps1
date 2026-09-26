@@ -1,4 +1,4 @@
-# Restore-Stock.ps1 — восстановление остатков из XLS МойСклад
+﻿# Restore-Stock.ps1 — восстановление остатков из XLS МойСклад
 param(
     [Parameter(Mandatory=$true)] [string]$XlsPath,
     [string]$ApiBase     = "http://localhost:8080/api/v1",

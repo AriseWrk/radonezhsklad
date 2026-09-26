@@ -1,4 +1,4 @@
-# Import-Stock-Post.ps1 — только формирование и проводка документа «Ввод остатков»
+﻿# Import-Stock-Post.ps1 — только формирование и проводка документа «Ввод остатков»
 param(
     [Parameter(Mandatory=$true)] [string]$XlsPath,
     [string]$ApiBase = "http://localhost:8080/api/v1",

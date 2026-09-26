@@ -1,4 +1,4 @@
-param([switch]$SkipMovements, [switch]$SkipBalances)
+﻿param([switch]$SkipMovements, [switch]$SkipBalances)
 $ErrorActionPreference = 'Stop'
 [System.Threading.Thread]::CurrentThread.CurrentCulture = [System.Globalization.CultureInfo]::InvariantCulture
 

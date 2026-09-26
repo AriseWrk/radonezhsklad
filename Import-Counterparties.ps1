@@ -1,4 +1,4 @@
-# Import-Counterparties.ps1 — импорт контрагентов из Excel МойСклад
+﻿# Import-Counterparties.ps1 — импорт контрагентов из Excel МойСклад
 param(
     [Parameter(Mandatory=$true)] [string]$XlsPath,
     [string]$ApiBase = "http://localhost:8080/api/v1",

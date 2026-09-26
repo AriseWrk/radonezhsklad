@@ -1,4 +1,4 @@
-# Import-Contracts.ps1 — импорт договоров из Excel
+﻿# Import-Contracts.ps1 — импорт договоров из Excel
 param(
     [Parameter(Mandatory=$true)] [string]$XlsPath,
     [string]$ApiBase = "http://localhost:8080/api/v1",

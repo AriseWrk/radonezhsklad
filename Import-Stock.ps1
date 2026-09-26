@@ -1,4 +1,4 @@
-# Import-Stock.ps1 — импорт товаров и остатков из XLS МойСклад в RadonezhSklad
+﻿# Import-Stock.ps1 — импорт товаров и остатков из XLS МойСклад в RadonezhSklad
 param(
     [Parameter(Mandatory=$true)] [string]$XlsPath,
     [string]$ApiBase = "http://localhost:8080/api/v1",

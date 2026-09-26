@@ -6,6 +6,7 @@ export interface InventoryItem {
   product_id: string
   product_name?: string
   product_sku?: string
+  product_unit_short?: string
   quantity: number
   calculated_quantity: number
   correction_amount: number

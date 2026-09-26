@@ -160,6 +160,7 @@ type InventoryItem struct {
 	ProductID          uuid.UUID `json:"product_id"`
 	ProductName        string    `json:"product_name,omitempty"`
 	ProductSKU         string    `json:"product_sku,omitempty"`
+	ProductUnitShort   string    `json:"product_unit_short,omitempty"`
 	Quantity           float64   `json:"quantity"`
 	CalculatedQuantity float64   `json:"calculated_quantity"`
 	CorrectionAmount   float64   `json:"correction_amount"`

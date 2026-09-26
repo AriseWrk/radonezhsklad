@@ -57,10 +57,14 @@ func (h *InventoryHandler) Get(c *gin.Context) {
         if err == nil {
             pmap := make(map[uuid.UUID]product.Product, len(prods))
             for _, p := range prods { pmap[p.ID] = p }
+            units, _ := h.productCli.ListUnits(c.Request.Context(), token)
+            umap := make(map[uuid.UUID]string, len(units))
+            for _, u := range units { umap[u.ID] = u.ShortName }
             for i := range inv.Items {
                 if p, ok := pmap[inv.Items[i].ProductID]; ok {
                     inv.Items[i].ProductName = p.Name
                     if p.SKU != nil { inv.Items[i].ProductSKU = *p.SKU }
+                    if p.UnitID != nil { inv.Items[i].ProductUnitShort = umap[*p.UnitID] }
                 }
             }
         }

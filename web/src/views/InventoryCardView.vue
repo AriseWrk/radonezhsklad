@@ -25,6 +25,12 @@
 
     <div v-if="error" class="error-box">{{ error }}</div>
 
+    <div class="print-header">
+      <div class="ph-title">Инвентаризация: {{ doc.number }}</div>
+      <div class="ph-row"><span class="ph-lbl">Дата проведения:</span> <span>{{ formatDateTime(doc.doc_date) }}</span></div>
+      <div class="ph-row"><span class="ph-lbl">Склад:</span> <span>{{ doc.warehouse_name || '—' }}</span></div>
+    </div>
+
     <div class="ms-doc-fields">
       <div class="doc-left">
         <div class="row">
@@ -58,23 +64,27 @@
         <thead>
           <tr>
             <th class="col-num">№</th>
+            <th class="col-code">Код</th>
             <th>Наименование</th>
-            <th class="col-num-right">Расчётный</th>
-            <th class="col-num-right">Фактический</th>
+            <th class="col-num-right">Расчётный остаток</th>
+            <th class="col-num-right">Фактический остаток</th>
             <th class="col-num-right">Разница</th>
+            <th class="col-unit">Ед. изм.</th>
             <th class="col-num-right">Цена</th>
-            <th class="col-num-right">Избыток/недостача</th>
+            <th class="col-num-right">Избыток / недостача</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-if="loading"><td colspan="7" class="empty">Загрузка…</td></tr>
-          <tr v-else-if="items.length === 0"><td colspan="7" class="empty">Нет позиций</td></tr>
+          <tr v-if="loading"><td colspan="9" class="empty">Загрузка…</td></tr>
+          <tr v-else-if="items.length === 0"><td colspan="9" class="empty">Нет позиций</td></tr>
           <tr v-else v-for="(it, idx) in items" :key="it.id">
             <td class="col-num">{{ idx + 1 }}</td>
+            <td class="col-code">{{ it.product_sku || '' }}</td>
             <td>{{ it.product_name || it.product_id }}</td>
             <td class="col-num-right">{{ formatQty(it.calculated_quantity) }}</td>
             <td class="col-num-right">{{ formatQty(it.quantity) }}</td>
             <td class="col-num-right" :class="{ neg: it.correction_amount < 0 }">{{ formatQty(it.correction_amount) }}</td>
+            <td class="col-unit">{{ it.product_unit_short || '' }}</td>
             <td class="col-num-right">{{ formatMoney(it.price) }}</td>
             <td class="col-num-right" :class="{ neg: it.correction_sum < 0 }">{{ formatMoney(it.correction_sum) }}</td>
           </tr>
@@ -257,6 +267,8 @@ watch(() => route.params.id, load)
 .ms-items .col-num { width: 40px; color: #57606a; text-align: center; }
 .ms-items .col-num-right { text-align: right; font-variant-numeric: tabular-nums; }
 .ms-items .empty { text-align: center; padding: 24px; color: #8c959f; }
+.ms-items .col-code { width: 90px; color: #57606a; }
+.ms-items .col-unit { width: 70px; color: #57606a; text-align: center; }
 .neg { color: #c00; }
 
 .bottom-row { display: grid; grid-template-columns: 1fr 380px; gap: 24px; align-items: start; margin-top: 12px; }
@@ -275,4 +287,25 @@ watch(() => route.params.id, load)
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
 .dialog-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .muted { color: #8c959f; }
+/* === Печатная форма инвентаризации (по образцу МойСклад) === */
+.print-header { display: none; }
+
+@media print {
+  .ms-toolbar, .ms-tabs, .ms-doc-head, .ms-doc-fields,
+  .comment-box, .pager-nav, .modal-backdrop, .empty-block,
+  .ms-help, .ms-refresh { display: none !important; }
+
+  .card-page { font-size: 12px; padding: 0; }
+  .print-header { display: block !important; margin-bottom: 12px; }
+  .ph-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .ph-row { font-size: 13px; margin-bottom: 2px; }
+  .ph-lbl { color: #57606a; display: inline-block; min-width: 140px; }
+
+  .ms-items { font-size: 11px; margin-bottom: 0; }
+  .ms-items thead th { border-bottom: 1px solid #000; padding: 4px 6px; color: #000; }
+  .ms-items tbody td { border-bottom: 1px solid #ccc; padding: 3px 6px; }
+
+  .bottom-row { grid-template-columns: 1fr; gap: 0; }
+  .totals-box { background: transparent; border: none; padding: 8px 0 0; }
+}
 </style>

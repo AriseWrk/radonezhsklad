@@ -332,23 +332,32 @@ const vatAmount = computed(() => {
 
 const userLabel = computed(() => auth.userId ? auth.userId.slice(0, 8) : '')
 
+let stockReloadTimer: ReturnType<typeof setTimeout> | null = null
+async function reloadStockMap() {
+  const whId = form.warehouse_id || undefined
+  try {
+    const st = await listStockExtended(whId ? { warehouse_id: whId } : {})
+    const m = new Map<string, number>()
+    for (const r of st.items ?? []) m.set(r.product_id, r.quantity)
+    stockMap.value = m
+  } catch {
+    stockMap.value = new Map()
+  }
+}
+
 async function load() {
   loading.value = true; error.value = null
   try {
-    const [prods, w, orgs, stock, projs] = await Promise.all([
+    const [prods, w, orgs, projs] = await Promise.all([
       listProducts(true),
       listWarehouses(),
       listOrganizations(),
-      listStockExtended().catch(() => ({ items: [] as any[] })),
       listProjects().catch(() => [] as Project[]),
     ])
     products.value = prods
     warehouses.value = w
     organizations.value = orgs
     projects.value = projs
-    const m = new Map<string, number>()
-    for (const r of (stock as any).items ?? []) m.set(r.product_id, r.quantity)
-    stockMap.value = m
 
     if (!isNew.value && route.params.id) {
       currentId.value = route.params.id as string
@@ -380,6 +389,7 @@ async function load() {
       syncOrganizationSearch()
       syncProjectSearch()
     }
+    await reloadStockMap()
   } catch (e) {
     error.value = apiErrorMessage(e)
   } finally {
@@ -560,6 +570,11 @@ function syncOrganizationSearch() {
 watch(warehouseSearch, (val) => {
   const w = warehouses.value.find((x) => x.name === val)
   form.warehouse_id = w?.id ?? ''
+})
+
+watch(() => form.warehouse_id, () => {
+  if (stockReloadTimer) clearTimeout(stockReloadTimer)
+  stockReloadTimer = setTimeout(() => { reloadStockMap() }, 300)
 })
 watch(organizationSearch, (val) => {
   const o = organizations.value.find((x) => x.name === val)

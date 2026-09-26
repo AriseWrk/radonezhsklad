@@ -1,4 +1,4 @@
-# devtools.ps1 — хелперы RadonezhSklad
+﻿# devtools.ps1 — хелперы RadonezhSklad
 # ВАЖНО: обход бага Docker Desktop на Windows — все SQL идут через docker cp,
 # НЕ через pipe `docker exec -i`. Pipe теряет не-ASCII байты.
 

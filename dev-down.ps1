@@ -1,4 +1,4 @@
-# dev-down.ps1 — остановить всё, что поднял dev-up.ps1
+﻿# dev-down.ps1 — остановить всё, что поднял dev-up.ps1
 #
 #   .\dev-down.ps1              — только бэкенды + фронт (Docker оставить)
 #   .\dev-down.ps1 -Docker      — ещё и docker compose down

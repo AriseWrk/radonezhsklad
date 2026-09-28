@@ -20,7 +20,7 @@
     <!-- Тулбар -->
     <div class="ms-toolbar">
       <MsButton variant="primary" icon="plus" @click="close">Создать</MsButton>
-      <MsButton icon="save" @click="save" :disabled="saving || !canEdit">{{ saving ? 'Сохранение...' : 'Сохранить' }}</MsButton>
+      <MsButton icon="save" @click="save" :disabled="saving || !canEditQty">{{ saving ? 'Сохранение...' : 'Сохранить' }}</MsButton>
       <MsButton icon="post" @click="onTogglePosted" :disabled="!canEdit || form.status === 'cancelled'">Провести</MsButton>
       <MsButton icon="print" @click="print">Печать</MsButton>
       <MsButton icon="send" @click="onSend" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отправить</MsButton>
@@ -162,7 +162,7 @@
             <td class="col-num">{{ idx + 1 }}</td>
             <td>{{ productName(it.product_id) }}</td>
             <td class="col-num-right">
-              <input v-model.number="it.quantity" type="number" min="0" step="0.001" class="cell-input" :disabled="!canEdit" />
+              <input v-model.number="it.quantity" type="number" min="0" step="0.001" class="cell-input" :disabled="!canEditQty" />
             </td>
             <td class="col-num-right muted">{{ formatQty(availableFor(it.product_id)) }}</td>
             <td class="col-num-right">
@@ -295,6 +295,7 @@ const form = reactive({
 const currentId = ref<string | null>(null)
 const externalId = ref<string | null>(null)
 const canEdit = computed(() => isNew.value || (form.status === 'draft' && !externalId.value))
+const canEditQty = computed(() => isNew.value || form.status === 'draft')
 
 const newItemSearch = ref('')
 const showSuggest = ref(false)
@@ -1038,6 +1039,12 @@ async function submitCreateProject() {
   font-weight: 500; padding: 8px 10px;
   text-align: left; border-bottom: 1px solid #d8dee4;
   white-space: nowrap; font-size: 12px;
+}
+.ms-items tbody tr:hover > td {
+  background: #ffe97a;
+}
+.ms-items tbody tr:hover .cell-input:not(:focus) {
+  background: transparent;
 }
 .ms-items tbody td {
   padding: 6px 10px;

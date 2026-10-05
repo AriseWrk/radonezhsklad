@@ -8,25 +8,25 @@
 
     <div class="ms-toolbar">
       <MsButton icon="filter" @click="showFilter = !showFilter">Фильтр</MsButton>
-      <div class="ms-counter">{{ rows.length }}</div>
       <MsButton icon="print" @click="print">Печать</MsButton>
-      <MsButton variant="icon" icon="gear" title="Настройки" />
     </div>
 
     <div v-if="showFilter" class="ms-filter">
-      <div class="filter-actions">
-        <MsButton variant="green" @click="load">Найти</MsButton>
-        <MsButton @click="clearFilters">Очистить</MsButton>
-      </div>
       <div class="filter-grid">
-        <div class="filter-field">
-          <label class="filter-label"><span class="dot"></span>Период с</label>
-          <input v-model="filters.from" type="date" />
+        <div class="filter-actions">
+          <MsButton variant="green" @click="load">Найти</MsButton>
+          <MsButton @click="clearFilters">Очистить</MsButton>
         </div>
+
         <div class="filter-field">
-          <label class="filter-label"><span class="dot"></span>Период по</label>
-          <input v-model="filters.to" type="date" />
+          <label class="filter-label"><span class="dot"></span>Период:</label>
+          <div class="date-range">
+            <input v-model="filters.from" type="date" />
+            <span class="dash">—</span>
+            <input v-model="filters.to" type="date" />
+          </div>
         </div>
+
         <div class="filter-field">
           <label class="filter-label"><span class="dot"></span>Склад</label>
           <select v-model="filters.warehouse_id">
@@ -42,9 +42,10 @@
     <table class="ms-table2">
       <thead>
         <tr>
-          <th>Товар</th>
-          <th style="width:120px">Артикул</th>
-          <th style="width:80px">Ед.</th>
+          <th>Наименование</th>
+          <th style="width:110px">Код</th>
+          <th style="width:110px">Артикул</th>
+          <th style="width:70px">Ед. изм.</th>
           <th class="num">Начальный остаток</th>
           <th class="num">Приход</th>
           <th class="num">Расход</th>
@@ -53,13 +54,14 @@
       </thead>
       <tbody>
         <tr v-if="loading">
-          <td colspan="7" class="muted" style="text-align:center;padding:24px">Загрузка...</td>
+          <td colspan="8" class="muted" style="text-align:center;padding:24px">Загрузка...</td>
         </tr>
         <tr v-else-if="rows.length === 0">
-          <td colspan="7" class="muted" style="text-align:center;padding:24px">Нет данных за период</td>
+          <td colspan="8" class="muted" style="text-align:center;padding:24px">Нет данных за период</td>
         </tr>
         <tr v-for="r in rows" :key="r.product_id">
           <td>{{ r.product_name || r.product_id.slice(0, 8) }}</td>
+          <td class="muted mono">{{ r.product_id.slice(0, 8) }}</td>
           <td class="muted mono">{{ r.sku || '—' }}</td>
           <td class="muted">{{ r.unit_short || '—' }}</td>
           <td class="num">{{ fmt(r.opening) }}</td>
@@ -70,7 +72,7 @@
       </tbody>
       <tfoot v-if="rows.length > 0">
         <tr>
-          <td colspan="3" style="text-align:right"><b>Итого:</b></td>
+          <td colspan="4" style="text-align:right"><b>Итого:</b></td>
           <td class="num"><b>{{ fmt(totals.opening) }}</b></td>
           <td class="num"><b>{{ fmt(totals.income) }}</b></td>
           <td class="num"><b>{{ fmt(totals.outcome) }}</b></td>
@@ -78,6 +80,7 @@
         </tr>
       </tfoot>
     </table>
+    <div v-if="rows.length > 0" class="ms-footer-count">{{ rows.length }} записей</div>
   </div>
 </template>
 
@@ -152,3 +155,70 @@ onMounted(async () => {
   await load()
 })
 </script>
+
+<style scoped>
+.page { padding: 12px 16px; }
+
+.ms-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+
+.ms-filter {
+  background: #eef1f5; border: 1px solid #d8dee4;
+  border-radius: 4px; padding: 10px 14px 12px; margin-bottom: 12px;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns:
+    200px
+    minmax(220px, 1.4fr)
+    minmax(200px, 1fr)
+    minmax(160px, 1fr)
+    minmax(160px, 1fr)
+    minmax(160px, 1fr);
+  gap: 10px 14px;
+  align-items: start;
+}
+
+.filter-actions {
+  display: flex; align-items: center; gap: 6px;
+  grid-column: 1;
+  padding-top: 18px;
+}
+
+.filter-field { display: flex; flex-direction: column; gap: 3px; }
+.filter-field:nth-of-type(1) { grid-column: 2; }
+.filter-field:nth-of-type(2) { grid-column: 3 / span 2; }
+
+.filter-label {
+  font-size: 12px; color: #2c5d9c;
+  display: flex; align-items: center; gap: 5px;
+}
+.filter-label .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #2c5d9c; flex-shrink: 0;
+}
+
+.date-range { display: flex; align-items: center; gap: 6px; }
+.date-range .dash { color: #57606a; }
+.date-range input { flex: 1 1 0; min-width: 0; }
+
+.filter-field input, .filter-field select {
+  height: 28px; padding: 0 8px; font-size: 12px;
+  border: 1px solid #d0d7de; border-radius: 3px;
+  background: #fff; color: #1f2328;
+}
+
+.num { text-align: right; }
+.muted { color: #57606a; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+.error-box {
+  background: #ffebe9; border: 1px solid #ff8182; border-radius: 4px;
+  padding: 8px 12px; margin-bottom: 12px; color: #82071e; font-size: 13px;
+}
+
+.ms-footer-count {
+  font-size: 12px; color: #57606a;
+  padding: 8px 4px 0;
+}
+</style>

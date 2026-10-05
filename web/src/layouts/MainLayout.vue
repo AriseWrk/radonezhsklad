@@ -52,7 +52,7 @@
     </div>
 
     <main class="page-content">
-      <router-view />
+      <router-view :key="route.fullPath" />
     </main>
 
     <SyncModal ref="syncRef" />

@@ -3,12 +3,12 @@
     <!-- Заголовок -->
     <div class="ms-title">
       <button class="ms-help" title="Справка"><MsIcon name="help" :size="14" /></button>
-      <span>Документы</span>
+      <span>{{ pageTitle }}</span>
       <button class="ms-refresh" @click="load" title="Обновить"><MsIcon name="refresh" :size="14" /></button>
     </div>
 
     <!-- Вкладки типов -->
-    <div class="ms-tabs">
+    <div class="ms-tabs" v-if="!fixedType">
       <button
         v-for="t in tabs"
         :key="t.key"
@@ -285,6 +285,21 @@ const form = reactive({
 const detailDoc = ref<Document | null>(null)
 const route = useRoute()
 
+const fixedType = computed<string | null>(() => {
+  const dt = (route.meta as any).docType as string | undefined
+  return dt ?? null
+})
+const pageTitle = computed(() => {
+  switch (fixedType.value) {
+    case 'receipt':   return 'Оприходования'
+    case 'writeoff':  return 'Списания'
+    case 'transfer':  return 'Перемещения'
+    case 'shipment':  return 'Отгрузки'
+    case 'inventory': return 'Инвентаризации'
+    default:          return 'Документы'
+  }
+})
+
 const tabs: Array<{ key: TabKey; label: string }> = [
   { key: 'all',       label: 'Все' },
   { key: 'receipt',   label: 'Приёмки' },
@@ -421,7 +436,7 @@ async function load() {
 }
 
 function openCreate() {
-  form.type = 'receipt'
+  form.type = (fixedType.value ?? 'receipt') as DocType
   form.warehouse_id = ''
   form.target_warehouse_id = ''
   form.comment = ''
@@ -472,9 +487,13 @@ function openCard(d: Document) { router.push('/documents/' + d.id) }
 function print() { window.print() }
 
 onMounted(async () => {
-  const qtype = route.query.type as string | undefined
-  if (qtype && ['receipt','shipment','transfer','inventory'].includes(qtype)) {
-    activeTab.value = qtype as TabKey
+  if (fixedType.value) {
+    activeTab.value = fixedType.value as TabKey
+  } else {
+    const qtype = route.query.type as string | undefined
+    if (qtype && ['receipt','shipment','transfer','inventory'].includes(qtype)) {
+      activeTab.value = qtype as TabKey
+    }
   }
   try {
     const [w, p] = await Promise.all([listWarehouses(), listProducts(true)])

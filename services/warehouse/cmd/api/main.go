@@ -99,6 +99,7 @@ func main() {
 			read.GET("/stock", h.ListStock)
 			read.GET("/stock/extended", h.StockExtended)
 			read.GET("/stock/product/:id", h.ProductStockDetail)
+			read.GET("/reports/turnover", h.TurnoverReport)
 			read.GET("/inventory/prepare", h.InventoryPrepare)
 			read.GET("/inventories", invH.List)
 			read.GET("/inventories/:id", invH.Get)

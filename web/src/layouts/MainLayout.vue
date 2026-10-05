@@ -130,6 +130,7 @@ const subTabsMap: Record<string, SubTab[]> = {
     { name: 'stock-receipts',       label: 'Оприходования',         path: '/stock/receipts',       match: '/stock/receipts',       roles: ['admin','manager','warehouse'] },
     { name: 'stock-writeoffs',      label: 'Списания',             path: '/stock/writeoffs',      match: '/stock/writeoffs',      roles: ['admin','manager','warehouse'] },
     { name: 'stock-transfers',      label: 'Перемещения',          path: '/stock/transfers',      match: '/stock/transfers',      roles: ['admin','manager','warehouse'] },
+    { name: 'stock-turnover',       label: 'Обороты',              path: '/stock/turnover',       match: '/stock/turnover',       roles: ['admin','manager','warehouse'] },
     { name: 'inventories',     label: 'Инвентаризации',    path: '/inventories',     match: '/inventories',     roles: ['admin','manager','warehouse'] },
     { name: 'warehouses',      label: 'Склады',            path: '/warehouses',      match: '/warehouses',      roles: ['admin','warehouse'] },
   ],

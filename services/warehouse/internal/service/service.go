@@ -70,7 +70,7 @@ return s.repo.BookStockForInventory(ctx, warehouseID)
 
 // ---------- documents ----------
 
-var validTypes = map[string]bool{"receipt": true, "shipment": true, "transfer": true, "inventory": true}
+var validTypes = map[string]bool{"receipt": true, "shipment": true, "transfer": true, "writeoff": true, "inventory": true}
 
 func (s *Service) CreateDocument(ctx context.Context, in repository.DocumentInput) (*models.Document, error) {
 if !validTypes[in.Type] { return nil, apperr.BadRequest("invalid document type") }

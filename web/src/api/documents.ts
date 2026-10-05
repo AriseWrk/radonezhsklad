@@ -1,6 +1,6 @@
 import { http } from './client'
 
-export type DocType = 'receipt' | 'shipment' | 'transfer' | 'inventory'
+export type DocType = 'receipt' | 'shipment' | 'transfer' | 'writeoff' | 'inventory'
 export type DocStatus = 'draft' | 'posted' | 'cancelled'
 
 export interface DocItem {

@@ -245,7 +245,7 @@ import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
 import MsIcon from '../components/MsIcon.vue'
 
-type TabKey = 'all' | 'receipt' | 'shipment' | 'transfer' | 'inventory' | 'draft' | 'posted' | 'cancelled'
+type TabKey = 'all' | 'receipt' | 'shipment' | 'transfer' | 'writeoff' | 'inventory' | 'draft' | 'posted' | 'cancelled'
 
 const items = ref<Document[]>([])
 const warehouses = ref<Warehouse[]>([])
@@ -305,6 +305,7 @@ const tabs: Array<{ key: TabKey; label: string }> = [
   { key: 'receipt',   label: 'Приёмки' },
   { key: 'shipment',  label: 'Отгрузки' },
   { key: 'transfer',  label: 'Перемещения' },
+  { key: 'writeoff',  label: 'Списания' },
   { key: 'inventory', label: 'Инвентаризации' },
   { key: 'draft',     label: 'Черновики' },
   { key: 'posted',    label: 'Проведённые' },
@@ -312,7 +313,7 @@ const tabs: Array<{ key: TabKey; label: string }> = [
 ]
 
 function typeLabel(t: string) {
-  return { receipt: 'Приёмка', shipment: 'Отгрузка', transfer: 'Перемещение', inventory: 'Инвентаризация' }[t] ?? t
+  return { receipt: 'Приёмка', shipment: 'Отгрузка', transfer: 'Перемещение', writeoff: 'Списание', inventory: 'Инвентаризация' }[t] ?? t
 }
 function statusLabel(s: string) {
   return { draft: 'Черновик', posted: 'Проведён', cancelled: 'Отменён' }[s] ?? s
@@ -336,7 +337,7 @@ function formatQty(n: number) {
 
 function tabCount(key: TabKey): number {
   if (key === 'all') return items.value.length
-  if (key === 'receipt' || key === 'shipment' || key === 'transfer' || key === 'inventory') {
+  if (key === 'receipt' || key === 'shipment' || key === 'transfer' || key === 'writeoff' || key === 'inventory') {
     return items.value.filter((d) => d.type === key).length
   }
   return items.value.filter((d) => d.status === key).length
@@ -358,7 +359,7 @@ const filtered = computed(() => {
 
   // Вкладка
   if (activeTab.value !== 'all') {
-    if (['receipt', 'shipment', 'transfer', 'inventory'].includes(activeTab.value)) {
+    if (['receipt', 'shipment', 'transfer', 'writeoff', 'inventory'].includes(activeTab.value)) {
       rows = rows.filter((d) => d.type === activeTab.value)
     } else {
       rows = rows.filter((d) => d.status === activeTab.value)
@@ -491,7 +492,7 @@ onMounted(async () => {
     activeTab.value = fixedType.value as TabKey
   } else {
     const qtype = route.query.type as string | undefined
-    if (qtype && ['receipt','shipment','transfer','inventory'].includes(qtype)) {
+    if (qtype && ['receipt','shipment','transfer','writeoff','inventory'].includes(qtype)) {
       activeTab.value = qtype as TabKey
     }
   }

@@ -68,6 +68,7 @@ type Document struct {
 	MSSyncedAt        *time.Time `json:"ms_synced_at,omitempty"`
 	MSSyncError       *string    `json:"ms_sync_error,omitempty"`
 	SourceInventoryID *uuid.UUID `json:"source_inventory_id,omitempty"`
+	Source            string     `json:"source"`
 	Items             []DocItem  `json:"items,omitempty"`
 	ItemsCount        int        `json:"items_count"`
 	Total             float64    `json:"total"`

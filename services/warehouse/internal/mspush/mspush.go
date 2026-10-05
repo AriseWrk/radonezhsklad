@@ -41,14 +41,30 @@ type Pusher struct {
 	product *product.Client
 	repo    *repository.Repo
 	orders  *repository.InternalOrderRepo
+	errs    *repository.MsSyncErrorRepo
 	enabled bool
 }
 
-func New(ms *msapi.Client, pc *product.Client, repo *repository.Repo, orders *repository.InternalOrderRepo, enabled bool) *Pusher {
-	return &Pusher{ms: ms, product: pc, repo: repo, orders: orders, enabled: enabled}
+func New(ms *msapi.Client, pc *product.Client, repo *repository.Repo, orders *repository.InternalOrderRepo, errs *repository.MsSyncErrorRepo, enabled bool) *Pusher {
+	return &Pusher{ms: ms, product: pc, repo: repo, orders: orders, errs: errs, enabled: enabled}
 }
 
 func (p *Pusher) Enabled() bool { return p.enabled && p.ms != nil }
+
+// logError — пишет в ms_sync_errors, если repo задан. Best effort.
+func (p *Pusher) logError(ctx context.Context, entity string, localID uuid.UUID, extID *uuid.UUID, op string, err error) {
+	if p.errs == nil || err == nil {
+		return
+	}
+	_ = p.errs.Append(ctx, repository.MsSyncError{
+		Entity:       entity,
+		LocalID:      &localID,
+		MsExternalID: extID,
+		Op:           op,
+		Attempt:      1,
+		Error:        err.Error(),
+	})
+}
 
 // msMoment форматирует time в «MS-локальное» (МСК) без TZ.
 func msMoment(t time.Time) string {
@@ -169,7 +185,7 @@ func (p *Pusher) buildDocumentPayload(ctx context.Context, doc *models.Document,
 		Name:         doc.Number,
 		SyncID:       doc.ID.String(),
 		Moment:       msMoment(doc.CreatedAt),
-		Applicable:   true,
+		Applicable:   doc.Status == "posted",
 		Organization: p.ms.EntityMeta("organization", *refs.Organization.ExternalID),
 		Store:        p.ms.EntityMeta("store", *refs.Warehouse.ExternalID),
 		Positions:    positions,
@@ -190,8 +206,17 @@ func (p *Pusher) buildDocumentPayload(ctx context.Context, doc *models.Document,
 	return payload, nil
 }
 
-// PushDocument — отправить документ в МС. Ошибки также пишутся в ms_sync_error.
-// Возвращает nil, если push отключён, документ не posted или уже синхронизирован.
+// PushDocument — создать/обновить/отменить документ в МС.
+//
+//   - source == 'ms'                     → пропускаем (чужой документ)
+//   - status not in (posted, cancelled)  → пропускаем (draft / deleted)
+//   - posted   + external_id == nil      → POST (создание)
+//   - posted   + external_id != nil      → PUT  (обновление)
+//   - cancelled + external_id != nil     → PUT с applicable:false (снятие проведения в МС)
+//   - cancelled + external_id == nil     → пропускаем (нечего отменять)
+//
+// Ошибки пишутся в documents.ms_sync_error. Идемпотентность POST обеспечивается
+// syncId = doc.ID (UUID), который МС дедуплицирует.
 func (p *Pusher) PushDocument(ctx context.Context, docID uuid.UUID, token string) error {
 	if !p.Enabled() {
 		return nil
@@ -203,38 +228,73 @@ func (p *Pusher) PushDocument(ctx context.Context, docID uuid.UUID, token string
 	if doc == nil {
 		return fmt.Errorf("document %s not found", docID)
 	}
-	if doc.ExternalID != nil {
+
+	// Документы, пришедшие из МС, обратно не пушим.
+	if doc.Source == "ms" {
 		return nil
 	}
-	if doc.Status != "posted" {
+
+	// Пушим только posted и cancelled.
+	if doc.Status != "posted" && doc.Status != "cancelled" {
 		return nil
 	}
+
 	entity, ok := entityByDocType[doc.Type]
 	if !ok {
+		return nil
+	}
+
+	// Отменять в МС нечего, если документ туда не улетал.
+	if doc.Status == "cancelled" && doc.ExternalID == nil {
 		return nil
 	}
 
 	payload, err := p.buildDocumentPayload(ctx, doc, entity, token)
 	if err != nil {
 		_ = p.repo.SetDocumentMSError(ctx, docID, err.Error())
+		p.logError(ctx, "document", docID, nil, "push", err)
 		return err
 	}
 
 	var resp struct {
 		ID uuid.UUID `json:"id"`
 	}
-	if err := p.ms.Post(ctx, "/entity/"+entity, payload, &resp); err != nil {
+
+	if doc.ExternalID == nil {
+		// POST — создание.
+		if err := p.ms.Post(ctx, "/entity/"+entity, payload, &resp); err != nil {
+			_ = p.repo.SetDocumentMSError(ctx, docID, err.Error())
+			p.logError(ctx, "document", docID, nil, "push", err)
+			return err
+		}
+		if err := p.repo.SetDocumentMSSynced(ctx, docID, resp.ID); err != nil {
+			slog.Error("mspush: SetDocumentMSSynced failed", "our_id", docID, "error", err)
+			return err
+		}
+		if resp.ID == uuid.Nil {
+			slog.Error("mspush: MS returned empty id", "our_id", docID, "resp", resp)
+		}
+		slog.Info("mspush: document created",
+			"our_id", docID, "ms_id", resp.ID,
+			"entity", entity, "type", doc.Type, "status", doc.Status)
+		return nil
+	}
+
+	// PUT — обновление, в т.ч. отмена через applicable:false.
+	path := "/entity/" + entity + "/" + doc.ExternalID.String()
+	if err := p.ms.Put(ctx, path, payload, &resp); err != nil {
 		_ = p.repo.SetDocumentMSError(ctx, docID, err.Error())
+		p.logError(ctx, "document", docID, nil, "push", err)
 		return err
 	}
-	if err := p.repo.SetDocumentMSSynced(ctx, docID, resp.ID); err != nil {
+	// Обновим ms_synced_at и сбросим ms_sync_error.
+	if err := p.repo.SetDocumentMSSynced(ctx, docID, *doc.ExternalID); err != nil {
 		slog.Error("mspush: SetDocumentMSSynced failed", "our_id", docID, "error", err)
 		return err
 	}
-	if resp.ID == uuid.Nil {
-		slog.Error("mspush: MS returned empty id", "our_id", docID, "resp", resp)
-	}
-	slog.Info("mspush: document pushed", "our_id", docID, "ms_id", resp.ID, "entity", entity, "type", doc.Type)
+	slog.Info("mspush: document updated",
+		"our_id", docID, "ms_id", *doc.ExternalID,
+		"entity", entity, "type", doc.Type, "status", doc.Status)
 	return nil
 }
 
@@ -319,6 +379,7 @@ func (p *Pusher) PushInternalOrder(ctx context.Context, orderID uuid.UUID, token
 	payload, err := p.buildOrderPayload(ctx, order, token)
 	if err != nil {
 		_ = p.repo.SetOrderMSError(ctx, orderID, err.Error())
+		p.logError(ctx, "internalorder", orderID, nil, "push", err)
 		return err
 	}
 
@@ -330,6 +391,7 @@ func (p *Pusher) PushInternalOrder(ctx context.Context, orderID uuid.UUID, token
 		// первый push — POST в МС, applicable зависит от статуса
 		if err := p.ms.Post(ctx, "/entity/internalorder", payload, &resp); err != nil {
 			_ = p.repo.SetOrderMSError(ctx, orderID, err.Error())
+			p.logError(ctx, "internalorder", orderID, nil, "push", err)
 			return err
 		}
 		if err := p.repo.SetOrderMSSynced(ctx, orderID, resp.ID); err != nil {
@@ -341,6 +403,7 @@ func (p *Pusher) PushInternalOrder(ctx context.Context, orderID uuid.UUID, token
 		path := "/entity/internalorder/" + order.ExternalID.String()
 		if err := p.ms.Put(ctx, path, payload, &resp); err != nil {
 			_ = p.repo.SetOrderMSError(ctx, orderID, err.Error())
+			p.logError(ctx, "internalorder", orderID, nil, "push", err)
 			return err
 		}
 		// сбросим ms_sync_error и обновим ms_synced_at
@@ -368,6 +431,7 @@ func (p *Pusher) DeleteInternalOrder(ctx context.Context, orderID uuid.UUID, tok
 	path := "/entity/internalorder/" + order.ExternalID.String()
 	if err := p.ms.Delete(ctx, path); err != nil {
 		_ = p.repo.SetOrderMSError(ctx, orderID, err.Error())
+		p.logError(ctx, "internalorder", orderID, nil, "push", err)
 		return err
 	}
 	slog.Info("mspush: internal_order deleted", "our_id", orderID, "ms_id", *order.ExternalID)

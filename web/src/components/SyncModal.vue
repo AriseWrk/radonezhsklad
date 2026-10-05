@@ -9,7 +9,7 @@
       <div class="sync-body">
         <div class="sync-status-row">
           <span class="sync-status">{{ statusText }}</span>
-          <span v-if="job && job.total > 0" class="sync-counter">{{ job.fetched }} / {{ job.total }}</span>
+          <span v-if="job && (job.total ?? 0) > 0" class="sync-counter">{{ job.fetched }} / {{ job.total }}</span>
         </div>
 
         <div class="sync-bar">
@@ -52,11 +52,11 @@ const percent = computed(() => {
   if (!job.value) return 0
   if (job.value.status === 'done') return 100
   if (job.value.status === 'error') return 100
-  if (job.value.total <= 0) {
+  if ((job.value.total ?? 0) <= 0) {
     // индикация «живости»: если total ещё не пришёл — крутим до 30%
     return job.value.status === 'running' ? 30 : 5
   }
-  return Math.min(100, Math.round((job.value.fetched / job.value.total) * 100))
+  return Math.min(100, Math.round((job.value.fetched / (job.value.total ?? 1)) * 100))
 })
 
 const barClass = computed(() => {

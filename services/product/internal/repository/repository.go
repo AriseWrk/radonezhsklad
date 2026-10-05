@@ -200,6 +200,28 @@ func (r *Repo) ListByIDs(ctx context.Context, ids []uuid.UUID) ([]models.Product
 	return out, rows.Err()
 }
 
+// ListByExternalIDs — товары по списку external_id (MS UUID).
+// Возвращает только те, у которых external_id есть в БД.
+func (r *Repo) ListByExternalIDs(ctx context.Context, extIDs []uuid.UUID) ([]models.Product, error) {
+	if len(extIDs) == 0 {
+		return []models.Product{}, nil
+	}
+	rows, err := r.db.Query(ctx, productSelect+` WHERE external_id = ANY($1) ORDER BY name`, extIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []models.Product{}
+	for rows.Next() {
+		p := &models.Product{}
+		if err := rows.Scan(&p.ID, &p.ExternalID, &p.Name, &p.SKU, &p.Barcode, &p.CategoryID, &p.UnitID, &p.Description,
+			&p.Price, &p.CostPrice, &p.MinStock, &p.Currency, &p.IsArchived, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, *p)
+	}
+	return out, rows.Err()
+}
 func (r *Repo) UpdateProduct(ctx context.Context, id uuid.UUID, in ProductInput) (*models.Product, error) {
 	return scanProduct(r.db.QueryRow(ctx,
 		`UPDATE products SET name=$2, sku=$3, barcode=$4, category_id=$5, unit_id=$6,

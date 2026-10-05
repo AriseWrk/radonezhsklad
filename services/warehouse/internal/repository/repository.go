@@ -152,7 +152,7 @@ SELECT d.id, d.type, d.number, d.status, d.warehouse_id, d.target_warehouse_id,
        d.supplier_id, d.organization_id, d.incoming_number, d.incoming_date, d.paid_amount,
        d.printed_at, d.sent_at, d.comment, d.created_by,
        d.created_at, d.updated_at, d.posted_at, d.cancelled_at, d.external_id,
-       d.ms_synced_at, d.ms_sync_error, d.source_inventory_id,
+       d.ms_synced_at, d.ms_sync_error, d.source_inventory_id, d.source,
        (SELECT COUNT(*) FROM document_items di WHERE di.document_id = d.id) AS items_count,
        (SELECT COALESCE(SUM(
             CASE
@@ -170,7 +170,7 @@ func scanDocument(row pgx.Row) (*models.Document, error) {
 		&d.SupplierID, &d.OrganizationID, &d.IncomingNumber, &d.IncomingDate, &d.PaidAmount,
 		&d.PrintedAt, &d.SentAt, &d.Comment, &d.CreatedBy,
 		&d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt, &d.ExternalID,
-		&d.MSSyncedAt, &d.MSSyncError, &d.SourceInventoryID,
+		&d.MSSyncedAt, &d.MSSyncError, &d.SourceInventoryID, &d.Source,
 		&d.ItemsCount, &d.Total)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -317,7 +317,7 @@ func (r *Repo) ListDocuments(ctx context.Context, f DocumentFilters) ([]models.D
 			&d.SupplierID, &d.OrganizationID, &d.IncomingNumber, &d.IncomingDate, &d.PaidAmount,
 			&d.PrintedAt, &d.SentAt, &d.Comment, &d.CreatedBy,
 			&d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt, &d.ExternalID,
-			&d.MSSyncedAt, &d.MSSyncError, &d.SourceInventoryID,
+			&d.MSSyncedAt, &d.MSSyncError, &d.SourceInventoryID, &d.Source,
 			&d.ItemsCount, &d.Total); err != nil {
 			return nil, err
 		}

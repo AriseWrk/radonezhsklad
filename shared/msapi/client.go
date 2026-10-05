@@ -99,7 +99,7 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 		u += "?" + query.Encode()
 	}
 
-	const maxAttempts = 3
+	const maxAttempts = 5
 	var lastErr error
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		var rdr io.Reader
@@ -156,6 +156,9 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 			lastErr = fmt.Errorf("msapi: HTTP %d: %s", resp.StatusCode, msErr.String())
 			if ra := resp.Header.Get("Retry-After"); ra != "" {
 				if d, err := time.ParseDuration(ra + "s"); err == nil {
+					if d > 30*time.Second {
+						d = 30 * time.Second
+					}
 					select {
 					case <-time.After(d):
 					case <-ctx.Done():

@@ -317,5 +317,14 @@ func (h *Handler) CancelDocument(c *gin.Context) {
 		c.Error(err)
 		return
 	}
+
+	// push отмены в МС (best effort): PUT applicable:false, ошибка уже в d.ms_sync_error
+	if h.pusher != nil && h.pusher.Enabled() {
+		token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+		_ = h.pusher.PushDocument(c.Request.Context(), d.ID, token)
+		if refreshed, rerr := h.svc.GetDocument(c.Request.Context(), d.ID); rerr == nil && refreshed != nil {
+			d = refreshed
+		}
+	}
 	httpx.OK(c, d)
 }

@@ -46,6 +46,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'internal-orders/:id', name: 'internal-order-card', component: () => import('../views/InternalOrderCardView.vue'), meta: { roles: ['admin','manager','warehouse'] } },
       { path: 'users',      name: 'users',      component: () => import('../views/UsersView.vue'),      meta: { roles: ['admin'] } },
       { path: 'audit',      name: 'audit',      component: () => import('../views/AuditView.vue'),      meta: { roles: ['admin'] } },
+			{ path: 'sync',       name: 'sync',       component: () => import('../views/SyncJobsView.vue'),  meta: { roles: ['admin', 'manager', 'warehouse'] } },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },

@@ -19,10 +19,12 @@ import (
 	"github.com/radonezhsklad/warehouse/internal/config"
 	"github.com/radonezhsklad/warehouse/internal/db"
 	"github.com/radonezhsklad/warehouse/internal/handler"
+	"github.com/radonezhsklad/warehouse/internal/mspull"
 	"github.com/radonezhsklad/warehouse/internal/mspush"
 	"github.com/radonezhsklad/warehouse/internal/product"
 	"github.com/radonezhsklad/warehouse/internal/repository"
 	"github.com/radonezhsklad/warehouse/internal/service"
+	"github.com/radonezhsklad/warehouse/internal/worker"
 )
 
 func main() {
@@ -46,6 +48,15 @@ func main() {
 	projectRepo := repository.NewProjectRepo(pool)
 	invRepo := repository.NewInventoryRepo(pool)
 	orgRepo := repository.NewOrganizationRepo(pool)
+	syncJobRepo := repository.NewSyncJobRepo(pool)
+	msSyncErrRepo := repository.NewMsSyncErrorRepo(pool)
+
+	// На старте помечаем «зависшие» job'ы (running/queued от прошлого процесса) как error.
+	if n, err := syncJobRepo.MarkStaleAsError(ctx); err != nil {
+		slog.Warn("sync: MarkStaleAsError failed", "error", err)
+	} else if n > 0 {
+		slog.Info("sync: stale jobs marked as error", "count", n)
+	}
 
 	svc := service.New(repo)
 	supSvc := service.NewSupplierService(supRepo, orgRepo)
@@ -54,23 +65,53 @@ func main() {
 	invSvc := service.NewInventoryService(invRepo, repo)
 	pc := product.New(cfg.ProductURL)
 
-	// --- push в МС ---
-	var pusher *mspush.Pusher
+	// --- MS-клиент (используется и push'ем, и pull'ом) ---
+	var msCli *msapi.Client
 	if cfg.MSPushEnabled {
-		msCli, err := msapi.New(cfg.MSToken, cfg.MSTokenFile, cfg.MSAPIBase)
-		if err != nil {
-			slog.Warn("mspush: disabled, msapi init failed", "error", err)
+		cli, msErr := msapi.New(cfg.MSToken, cfg.MSTokenFile, cfg.MSAPIBase)
+		if msErr != nil {
+			slog.Warn("msapi: init failed, MS-функции отключены", "error", msErr)
 		} else {
-			pusher = mspush.New(msCli, pc, repo, intOrderRepo, true)
-			slog.Info("mspush: enabled", "base", cfg.MSAPIBase)
+			msCli = cli
+			slog.Info("msapi: enabled", "base", cfg.MSAPIBase)
 		}
 	} else {
-		pusher = mspush.New(nil, pc, repo, intOrderRepo, false)
-		slog.Info("mspush: disabled (MS_PUSH_ENABLED=false)")
+		slog.Info("msapi: disabled (MS_PUSH_ENABLED=false)")
+	}
+
+	// --- push в МС ---
+	var pusher *mspush.Pusher
+	if msCli != nil {
+		pusher = mspush.New(msCli, pc, repo, intOrderRepo, msSyncErrRepo, true)
+		slog.Info("mspush: enabled")
+	} else {
+		pusher = mspush.New(nil, pc, repo, intOrderRepo, msSyncErrRepo, false)
+		slog.Info("mspush: disabled")
 	}
 	projectSvc.SetMSPusher(pusher)
 
-	syncH := handler.NewSyncHandler(cfg.ScriptsDir)
+	// --- pull справочников из МС ---
+	msPullRepo := repository.NewMsPullRepo(pool)
+	internalToken := os.Getenv("INTERNAL_TOKEN")
+	pullRunner := mspull.NewRunner(msCli, msPullRepo, syncJobRepo, pc, internalToken)
+	if pullRunner.Enabled() {
+		slog.Info("mspull: enabled")
+	} else {
+		slog.Info("mspull: disabled")
+	}
+
+	// --- автосинк ---
+	autoSyncInterval := 15 * time.Minute
+	if v := os.Getenv("MS_AUTOSYNC_INTERVAL"); v != "" {
+		if d, perr := time.ParseDuration(v); perr == nil && d > 0 {
+			autoSyncInterval = d
+		}
+	}
+	autoSyncEnabled := os.Getenv("MS_AUTOSYNC_ENABLED") == "true"
+	autoSync := worker.NewAutoSync(syncJobRepo, pusher, internalToken, autoSyncInterval, autoSyncEnabled)
+	autoSync.Start(context.Background())
+
+	syncH := handler.NewSyncHandler(syncJobRepo, msSyncErrRepo, pullRunner, pusher, autoSync, internalToken, cfg.ScriptsDir)
 	slog.Info("sync: scripts dir", "dir", cfg.ScriptsDir)
 
 	h := handler.New(svc, pc, pusher)
@@ -117,6 +158,9 @@ func main() {
 			read.GET("/organizations", supH.ListOrganizations)
 			read.GET("/projects", projectH.List)
 			read.GET("/projects/:id", projectH.Get)
+			read.GET("/sync/jobs", syncH.List)
+			read.GET("/sync/errors", syncH.ListErrors)
+			read.GET("/sync/autosync", syncH.AutoSyncStatus)
 			read.GET("/sync/jobs/:id", syncH.Get)
 		}
 
@@ -139,6 +183,9 @@ func main() {
 			supWrite.DELETE("/projects/:id", projectH.Delete)
 			supWrite.POST("/internal-orders", intOrderH.Create)
 			supWrite.POST("/sync/pull-orders", syncH.Start)
+			supWrite.POST("/sync/retry-pending", syncH.StartRetryPending)
+			supWrite.POST("/sync/retry/document/:id", syncH.StartRetryDocument)
+			supWrite.POST("/sync/pull/:kind", syncH.StartPull)
 			supWrite.PUT("/internal-orders/:id", intOrderH.Update)
 			supWrite.POST("/internal-orders/:id/post", intOrderH.Post)
 			supWrite.POST("/internal-orders/:id/cancel", intOrderH.Cancel)

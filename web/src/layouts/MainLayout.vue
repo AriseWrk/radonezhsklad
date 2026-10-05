@@ -103,6 +103,7 @@ const subTabsMap: Record<string, SubTab[]> = {
     { name: 'dashboard', label: 'Показатели',  path: '/',        match: '/',      exact: true, roles: ['admin','manager','warehouse','user'] },
     { name: 'users',     label: 'Сотрудники',  path: '/users',   match: '/users',              roles: ['admin'] },
     { name: 'audit',     label: 'Аудит',       path: '/audit',   match: '/audit',              roles: ['admin'] },
+		{ name: 'sync',      label: 'Синхронизация', path: '/sync',   match: '/sync',  roles: ['admin','manager','warehouse'] },
   ],
   crm: [
     { name: 'counterparties', label: 'Контрагенты', path: '/counterparties', match: '/counterparties', roles: ['admin','manager','warehouse','user'] },

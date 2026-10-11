@@ -246,42 +246,87 @@
 
     <!-- Модалка деталей -->
     <div v-if="detail" class="modal-backdrop" @click.self="detail = null">
-      <div class="card modal big">
-        <h2>{{ docLabel }} {{ detail.number }}</h2>
-        <div class="doc-info">
-          <div><span class="lbl">Склад:</span> {{ warehouseName(detail.warehouse_id) }}</div>
-          <div><span class="lbl">Поставщик:</span> {{ supplierName(detail.supplier_id) }}</div>
-          <div><span class="lbl">Организация:</span> {{ organizationName(detail.organization_id) }}</div>
-          <div><span class="lbl">Статус:</span> {{ statusLabel(detail.status) }}</div>
-          <div><span class="lbl">Входящий №:</span> {{ detail.incoming_number || '—' }}</div>
-          <div><span class="lbl">Входящая дата:</span> {{ detail.incoming_date ? formatShortDate(detail.incoming_date) : '—' }}</div>
-          <div v-if="detail.comment" style="grid-column: 1/-1">
-            <span class="lbl">Комментарий:</span> {{ detail.comment }}
+      <div class="doc-card">
+        <div class="dc-head">
+          <div class="dc-head-left">
+            <button class="dc-back" @click="detail = null" title="Закрыть"><MsIcon name="chevron-left" :size="14" /></button>
+            <span class="dc-title">{{ docLabel }} № {{ shortNumber(detail) }}</span>
+            <span class="dc-status" :class="detail.status">{{ statusLabel(detail.status) }}</span>
+          </div>
+          <div class="dc-head-right">
+            <MsButton v-if="detail.status === 'draft'" variant="green" @click="onPost(detail)">Провести</MsButton>
+            <MsButton v-if="detail.status === 'posted'" variant="danger" @click="onCancel(detail)">Отменить</MsButton>
+            <MsButton icon="print">Печать</MsButton>
+            <button class="dc-close" @click="detail = null" title="Закрыть">×</button>
           </div>
         </div>
-        <table class="ms-table">
-          <thead>
-            <tr>
-              <th>Товар</th>
-              <th class="num">Кол-во</th>
-              <th class="num">Цена</th>
-              <th class="num">Сумма</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="it in detail.items" :key="it.id">
-              <td>{{ productName(it.product_id) }}</td>
-              <td class="num">{{ formatQty(it.quantity) }}</td>
-              <td class="num">{{ formatMoney(it.price) }}</td>
-              <td class="num">{{ formatMoney(it.quantity * it.price) }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="modal-actions">
-          <button v-if="detail.status === 'draft'" class="primary" @click="onPost(detail)">Провести</button>
-          <button v-if="detail.status === 'posted'" class="danger" @click="onCancel(detail)">Отменить</button>
-          <div style="flex:1"></div>
-          <button @click="detail = null">Закрыть</button>
+
+        <div class="dc-fields">
+          <div class="dc-field">
+            <span class="dc-lbl"><span class="dot"></span>Организация</span>
+            <div class="dc-val">{{ organizationName(detail.organization_id) }}</div>
+          </div>
+          <div class="dc-field" v-if="needsWarehouse || detail.warehouse_id">
+            <span class="dc-lbl"><span class="dot"></span>Склад</span>
+            <div class="dc-val">{{ warehouseName(detail.warehouse_id) }}</div>
+          </div>
+          <div class="dc-field" v-if="needsSupplier || detail.supplier_id">
+            <span class="dc-lbl"><span class="dot"></span>Контрагент</span>
+            <div class="dc-val">{{ supplierName(detail.supplier_id) }}</div>
+          </div>
+          <div class="dc-field">
+            <span class="dc-lbl"><span class="dot"></span>Входящий номер</span>
+            <div class="dc-val">{{ detail.incoming_number || '—' }}</div>
+          </div>
+          <div class="dc-field">
+            <span class="dc-lbl"><span class="dot"></span>Входящая дата</span>
+            <div class="dc-val">{{ detail.incoming_date ? formatShortDate(detail.incoming_date) : '—' }}</div>
+          </div>
+          <div class="dc-field">
+            <span class="dc-lbl"><span class="dot"></span>Оплачено</span>
+            <div class="dc-val">{{ formatMoney(detail.paid_amount ?? 0) }} ₽</div>
+          </div>
+          <div class="dc-field dc-field-wide">
+            <span class="dc-lbl"><span class="dot"></span>Комментарий</span>
+            <div class="dc-val">{{ detail.comment || '—' }}</div>
+          </div>
+        </div>
+
+        <div class="dc-items">
+          <table class="dc-table">
+            <thead>
+              <tr>
+                <th style="width:40px">№</th>
+                <th>Товар</th>
+                <th class="num" style="width:100px">Кол-во</th>
+                <th class="num" style="width:120px">Цена</th>
+                <th class="num" style="width:130px">Сумма</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(it, i) in (detail.items || [])" :key="it.id">
+                <td class="muted">{{ i + 1 }}</td>
+                <td>{{ productName(it.product_id) }}</td>
+                <td class="num">{{ formatQty(it.quantity) }}</td>
+                <td class="num">{{ formatMoney(it.price) }}</td>
+                <td class="num">{{ formatMoney(it.quantity * it.price) }}</td>
+              </tr>
+              <tr v-if="!detail.items || detail.items.length === 0">
+                <td colspan="5" class="muted" style="text-align:center;padding:20px">Нет позиций</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4" class="num dc-total-lbl">Итого:</td>
+                <td class="num dc-total-val">{{ formatMoney(detail.total ?? 0) }} ₽</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="dc-foot">
+          <div class="dc-foot-left muted">Создан: {{ formatDate(detail.created_at) }}</div>
+          <div class="dc-foot-right"><MsButton @click="detail = null">Закрыть</MsButton></div>
         </div>
       </div>
     </div>
@@ -718,4 +763,63 @@ tr.clickable { cursor: pointer; }
 .act-link.act-danger { color: #cf222e; }
 .act-status { font-size: 12px; color: #57606a; }
 .actions-col { text-align: right; white-space: nowrap; }
+/* === Карточка документа (МС-стиль) === */
+.doc-card {
+  background: #fff; border-radius: 6px; width: 92vw; max-width: 1100px; max-height: 92vh;
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0,0,0,.25);
+}
+.dc-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-bottom: 1px solid #eaeef2; gap: 10px;
+}
+.dc-head-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.dc-head-right { display: flex; align-items: center; gap: 6px; }
+.dc-back, .dc-close {
+  width: 26px; height: 26px; padding: 0; border: 1px solid #d0d7de; border-radius: 4px;
+  background: #fff; color: #57606a; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.dc-close { font-size: 18px; line-height: 1; }
+.dc-back:hover, .dc-close:hover { background: #f6f8fa; }
+.dc-title { font-size: 16px; font-weight: 600; color: #1f2328; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dc-status {
+  font-size: 12px; padding: 2px 8px; border-radius: 10px;
+  background: #eef1f5; color: #57606a;
+}
+.dc-status.posted { background: #e6f4ea; color: #1a7f37; }
+.dc-status.cancelled { background: #fde8e8; color: #cf222e; }
+
+.dc-fields {
+  display: grid; grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 10px 24px; padding: 14px 16px; background: #fafbfc;
+  border-bottom: 1px solid #eaeef2;
+}
+.dc-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.dc-field-wide { grid-column: 1 / -1; }
+.dc-lbl { font-size: 11px; color: #57606a; display: flex; align-items: center; gap: 5px; }
+.dc-lbl .dot { width: 6px; height: 6px; border-radius: 50%; background: #2c5d9c; flex-shrink: 0; }
+.dc-val { font-size: 13px; color: #1f2328; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.dc-items { flex: 1; overflow: auto; padding: 0 16px; }
+.dc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dc-table thead th {
+  position: sticky; top: 0; background: #fff; z-index: 1;
+  color: #2c5d9c; font-weight: 500; font-size: 12px;
+  padding: 8px 10px; text-align: left; border-bottom: 1px solid #d8dee4; white-space: nowrap;
+}
+.dc-table tbody td { padding: 7px 10px; border-bottom: 1px solid #eaeef2; vertical-align: middle; }
+.dc-table tbody tr:hover { background: #f6f8fa; }
+.dc-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.dc-table .muted { color: #8c959f; }
+.dc-table tfoot td { padding: 10px; border-top: 2px solid #d8dee4; font-weight: 600; }
+.dc-total-lbl { color: #57606a; font-weight: 500; }
+.dc-total-val { color: #1f2328; font-size: 14px; }
+
+.dc-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; border-top: 1px solid #eaeef2; background: #fafbfc;
+}
+.dc-foot-left { font-size: 12px; }
+.dc-foot-right { display: flex; gap: 6px; }
 </style>

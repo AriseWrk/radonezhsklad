@@ -171,9 +171,9 @@
           <td class="muted">{{ d.printed_at ? 'да' : '—' }}</td>
           <td class="muted">{{ d.comment || '—' }}</td>
           <td class="actions-col" @click.stop>
-            <button v-if="d.status === 'draft'" class="btn-link" @click="onPost(d)">Провести</button>
-            <button v-if="d.status === 'posted'" class="btn-link danger-text" @click="onCancel(d)">Отменить</button>
-            <span :class="['pill', d.status]" style="margin-left:6px">{{ statusLabel(d.status) }}</span>
+            <button v-if="d.status === 'draft'" class="act-link" @click="onPost(d)">Провести</button>
+            <button v-if="d.status === 'posted'" class="act-link act-danger" @click="onCancel(d)">Отменить</button>
+            <span class="act-status">{{ statusLabel(d.status) }}</span>
           </td>
         </tr>
       </tbody>
@@ -386,9 +386,15 @@ function statusLabel(s: string) {
   return { draft: 'Черновик', posted: 'Проведён', cancelled: 'Отменён' }[s] ?? s
 }
 function shortNumber(d: Document) {
-  // прим-1234567 → 1234567, а если UUID-формат — оставим последние 6
-  const parts = d.number.split('-')
-  return parts[parts.length - 1] || d.number
+  const n = (d.number ?? '').trim()
+  if (!n) return '—'
+  // МС-стиль: длинные числовые номера (1790014183) → последние 5 цифр
+  if (/^\d+$/.test(n) && n.length > 5) return n.slice(-5)
+  // прим-1234567 → 1234567
+  const parts = n.split('-')
+  const last = parts[parts.length - 1]
+  if (/^\d+$/.test(last) && last.length > 5) return last.slice(-5)
+  return last || n
 }
 function formatDate(s: string) {
   const d = new Date(s)
@@ -726,4 +732,12 @@ tr.clickable { cursor: pointer; }
 }
 .ms-filter .filter-grid { background: transparent; }
 .ms-filter { background: #eef1f5; }
+.act-link {
+  border: none; background: transparent; padding: 0; cursor: pointer;
+  font-size: 12px; color: #57606a; margin-right: 10px;
+}
+.act-link:hover { text-decoration: underline; }
+.act-link.act-danger { color: #cf222e; }
+.act-status { font-size: 12px; color: #57606a; }
+.actions-col { text-align: right; white-space: nowrap; }
 </style>

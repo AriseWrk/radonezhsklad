@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, ref } from 'vue'
 import MsIcon from './MsIcon.vue'
 
-interface Item { id: string; name: string }
+interface Item { id: string; name: string; sku?: string }
 const props = withDefaults(defineProps<{
   modelValue: string
   items: Item[]
@@ -23,7 +23,9 @@ const selectedName = computed(() => {
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return props.items.slice(0, 50)
-  return props.items.filter((it) => it.name.toLowerCase().includes(q)).slice(0, 50)
+  return props.items
+    .filter((it) => it.name.toLowerCase().includes(q) || (it.sku ?? '').toLowerCase().includes(q))
+    .slice(0, 50)
 })
 
 function onFocus() {
@@ -45,6 +47,15 @@ function pick(it: Item | null) {
 function onBlur() {
   // небольшая задержка, чтобы клик по элементу успел сработать
   setTimeout(() => { open.value = false }, 150)
+}
+
+// Разбивает name на [до, совпадение, после] для подсветки по query
+function parts(name: string): [string, string, string] {
+  const q = query.value.trim()
+  if (!q) return [name, '', '']
+  const i = name.toLowerCase().indexOf(q.toLowerCase())
+  if (i < 0) return [name, '', '']
+  return [name.slice(0, i), name.slice(i, i + q.length), name.slice(i + q.length)]
 }
 </script>
 
@@ -70,7 +81,7 @@ function onBlur() {
         class="ms-combo-item"
         :class="{ active: it.id === modelValue }"
         @mousedown.prevent="pick(it)"
-      >{{ it.name }}</div>
+      ><template v-for="(p, i) in [parts(it.name)]" :key="i"><span>{{ p[0] }}</span><mark v-if="p[1]">{{ p[1] }}</mark><span>{{ p[2] }}</span></template></div>
       <div v-if="filtered.length === 0" class="ms-combo-item muted">Ничего не найдено</div>
     </div>
   </div>
@@ -107,4 +118,5 @@ function onBlur() {
 }
 .ms-combo-item:hover, .ms-combo-item.active { background: #eef4fb; }
 .ms-combo-item.muted { color: #8c959f; font-style: italic; }
+.ms-combo-item mark { background: #fff3a3; color: inherit; padding: 0; }
 </style>

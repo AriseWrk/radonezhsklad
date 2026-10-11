@@ -228,10 +228,7 @@
             <button type="button" class="btn-link" @click="addItem">+ Добавить</button>
           </div>
           <div v-for="(it, idx) in form.items" :key="idx" class="item-row">
-            <select v-model="it.product_id" required>
-              <option value="">— товар —</option>
-              <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
-            </select>
+            <MsCombo v-model="it.product_id" :items="products" placeholder="— товар —" @update:model-value="(v: string) => onPickProduct(idx, v)" />
             <input v-model.number="it.quantity" type="number" step="0.001" min="0.001" placeholder="Кол-во" required />
             <input v-model.number="it.price" type="number" step="0.01" min="0" placeholder="Цена" />
             <button type="button" class="btn-link danger-text" @click="removeItem(idx)">×</button>
@@ -530,6 +527,13 @@ function openCreate() {
 function closeCreate() { showCreate.value = false }
 function addItem() { form.items.push({ product_id: '', quantity: 1, price: 0 }) }
 function removeItem(i: number) { form.items.splice(i, 1) }
+function onPickProduct(idx: number, productId: string) {
+  if (!productId) return
+  const p = products.value.find((x) => x.id === productId)
+  if (p && p.price != null && (!form.items[idx].price || form.items[idx].price === 0)) {
+    form.items[idx].price = p.price
+  }
+}
 
 async function onCreate() {
   createError.value = null

@@ -29,7 +29,7 @@
 
     <div v-if="showFilter" class="ms-filter">
       <div class="filter-actions">
-        <MsButton variant="green" @click="page = 1">Найти</MsButton>
+        <MsButton variant="green" @click="applyFilters">Найти</MsButton>
         <MsButton @click="clearFilters">Очистить</MsButton>
         <button class="filter-ico" title="Сохранить фильтр"><MsIcon name="save" :size="14" /></button>
         <button class="filter-ico" title="Настройка фильтра"><MsIcon name="gear" :size="14" /></button>
@@ -419,50 +419,8 @@ const filtered = computed(() => {
       (d.comment ?? '').toLowerCase().includes(q)
     )
   }
-  if (filterStatus.value) rows = rows.filter((d) => d.status === filterStatus.value)
-  if (filterWarehouse.value) rows = rows.filter((d) => d.warehouse_id === filterWarehouse.value)
-  if (filterSupplier.value) rows = rows.filter((d) => d.supplier_id === filterSupplier.value)
-  if (filterOrganization.value) rows = rows.filter((d) => d.organization_id === filterOrganization.value)
-  if (filterDateFrom.value) {
-    const t = new Date(filterDateFrom.value).getTime()
-    rows = rows.filter((d) => new Date(d.created_at).getTime() >= t)
-  }
-  if (filterDateTo.value) {
-    const t = new Date(filterDateTo.value).getTime() + 86400000 - 1
-    rows = rows.filter((d) => new Date(d.created_at).getTime() <= t)
-  }
-  if (filterIncomingNumber.value) {
-    const q = filterIncomingNumber.value.toLowerCase()
-    rows = rows.filter((d) => (d.incoming_number ?? '').toLowerCase().includes(q))
-  }
-  if (filterIncomingDateFrom.value) {
-    const t = new Date(filterIncomingDateFrom.value).getTime()
-    rows = rows.filter((d) => d.incoming_date && new Date(d.incoming_date).getTime() >= t)
-  }
-  if (filterIncomingDateTo.value) {
-    const t = new Date(filterIncomingDateTo.value).getTime() + 86400000 - 1
-    rows = rows.filter((d) => d.incoming_date && new Date(d.incoming_date).getTime() <= t)
-  }
-  if (filterPaidMin.value !== '') {
-    const v = Number(filterPaidMin.value)
-    rows = rows.filter((d) => (d.paid_amount ?? 0) >= v)
-  }
-  if (filterPaidMax.value !== '') {
-    const v = Number(filterPaidMax.value)
-    rows = rows.filter((d) => (d.paid_amount ?? 0) <= v)
-  }
-  if (filterPosted.value) rows = rows.filter((d) => d.status === filterPosted.value)
-  if (filterPrinted.value) {
-    const need = filterPrinted.value === 'yes'
-    rows = rows.filter((d) => Boolean(d.printed_at) === need)
-  }
-  if (filterSent.value) {
-    const need = filterSent.value === 'yes'
-    rows = rows.filter((d) => Boolean(d.sent_at) === need)
-  }
   return rows
 })
-
 const paginated = computed(() => {
   const from = (page.value - 1) * perPage
   return filtered.value.slice(from, from + perPage)
@@ -487,6 +445,10 @@ function toggleSelect(id: string) {
   selected.value = s
 }
 
+function applyFilters() {
+  page.value = 1
+  load()
+}
 function clearFilters() {
   search.value = ''
   filterStatus.value = ''
@@ -504,13 +466,29 @@ function clearFilters() {
   filterPrinted.value = ''
   filterSent.value = ''
   page.value = 1
+  load()
 }
 
 async function load() {
   loading.value = true
   error.value = null
   try {
-    items.value = await listDocuments({ type: docType })
+    items.value = await listDocuments({
+      type: docType,
+      status: filterStatus.value || undefined,
+      warehouse_id: filterWarehouse.value || undefined,
+      supplier_id: filterSupplier.value || undefined,
+      organization_id: filterOrganization.value || undefined,
+      date_from: filterDateFrom.value || undefined,
+      date_to: filterDateTo.value || undefined,
+      incoming_number: filterIncomingNumber.value || undefined,
+      incoming_date_from: filterIncomingDateFrom.value || undefined,
+      incoming_date_to: filterIncomingDateTo.value || undefined,
+      paid_min: filterPaidMin.value !== '' ? Number(filterPaidMin.value) : undefined,
+      paid_max: filterPaidMax.value !== '' ? Number(filterPaidMax.value) : undefined,
+      printed: filterPrinted.value ? filterPrinted.value === 'yes' : undefined,
+      sent: filterSent.value ? filterSent.value === 'yes' : undefined,
+    })
   } catch (e) {
     error.value = apiErrorMessage(e)
   } finally {

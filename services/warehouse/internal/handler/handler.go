@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -171,6 +172,37 @@ func parseDate(s string) *time.Time {
 	return &t
 }
 
+// parseDateEnd — конец дня (23:59:59.999)
+func parseDateEnd(s string) *time.Time {
+	if s == "" {
+		return nil
+	}
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return nil
+	}
+	end := t.Add(24*time.Hour - time.Millisecond)
+	return &end
+}
+
+func parseFloatOpt(s string) *float64 {
+	if s == "" {
+		return nil
+	}
+	v, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return nil
+	}
+	return &v
+}
+
+func parseBoolOpt(s string) *bool {
+	if s == "" {
+		return nil
+	}
+	v := s == "1" || s == "true" || s == "yes"
+	return &v
+}
 func (h *Handler) CreateDocument(c *gin.Context) {
 	var req docReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -229,6 +261,18 @@ func (h *Handler) ListDocuments(c *gin.Context) {
 	}
 	f.WarehouseID = parseUUIDOpt(c.Query("warehouse_id"))
 	f.SupplierID = parseUUIDOpt(c.Query("supplier_id"))
+	f.OrganizationID = parseUUIDOpt(c.Query("organization_id"))
+	f.DateFrom = parseDate(c.Query("date_from"))
+	f.DateTo = parseDateEnd(c.Query("date_to"))
+	if v := c.Query("incoming_number"); v != "" {
+		f.IncomingNumber = &v
+	}
+	f.IncomingDateFrom = parseDate(c.Query("incoming_date_from"))
+	f.IncomingDateTo = parseDateEnd(c.Query("incoming_date_to"))
+	f.PaidMin = parseFloatOpt(c.Query("paid_min"))
+	f.PaidMax = parseFloatOpt(c.Query("paid_max"))
+	f.Printed = parseBoolOpt(c.Query("printed"))
+	f.Sent = parseBoolOpt(c.Query("sent"))
 	items, err := h.svc.ListDocuments(c.Request.Context(), f)
 	if err != nil {
 		c.Error(err)

@@ -1,4 +1,4 @@
-package repository
+﻿package repository
 
 import (
 	"context"
@@ -273,12 +273,21 @@ func (r *Repo) itemsByDoc(ctx context.Context, docID uuid.UUID) ([]models.DocIte
 }
 
 type DocumentFilters struct {
-	Type        *string
-	Status      *string
-	WarehouseID *uuid.UUID
-	SupplierID  *uuid.UUID
+	Type              *string
+	Status            *string
+	WarehouseID       *uuid.UUID
+	SupplierID        *uuid.UUID
+	OrganizationID    *uuid.UUID
+	DateFrom          *time.Time
+	DateTo            *time.Time
+	IncomingNumber    *string
+	IncomingDateFrom  *time.Time
+	IncomingDateTo    *time.Time
+	PaidMin           *float64
+	PaidMax           *float64
+	Printed           *bool
+	Sent              *bool
 }
-
 func (r *Repo) ListDocuments(ctx context.Context, f DocumentFilters) ([]models.Document, error) {
 	q := documentSelect + ` WHERE 1=1`
 	args := []any{}
@@ -302,6 +311,60 @@ func (r *Repo) ListDocuments(ctx context.Context, f DocumentFilters) ([]models.D
 		q += ` AND d.supplier_id = $` + itoa(i)
 		args = append(args, *f.SupplierID)
 		i++
+	}
+	if f.OrganizationID != nil {
+		q += ` AND d.organization_id = $` + itoa(i)
+		args = append(args, *f.OrganizationID)
+		i++
+	}
+	if f.DateFrom != nil {
+		q += ` AND d.created_at >= $` + itoa(i)
+		args = append(args, *f.DateFrom)
+		i++
+	}
+	if f.DateTo != nil {
+		q += ` AND d.created_at <= $` + itoa(i)
+		args = append(args, *f.DateTo)
+		i++
+	}
+	if f.IncomingNumber != nil && *f.IncomingNumber != "" {
+		q += ` AND d.incoming_number ILIKE $` + itoa(i)
+		args = append(args, "%"+*f.IncomingNumber+"%")
+		i++
+	}
+	if f.IncomingDateFrom != nil {
+		q += ` AND d.incoming_date >= $` + itoa(i)
+		args = append(args, *f.IncomingDateFrom)
+		i++
+	}
+	if f.IncomingDateTo != nil {
+		q += ` AND d.incoming_date <= $` + itoa(i)
+		args = append(args, *f.IncomingDateTo)
+		i++
+	}
+	if f.PaidMin != nil {
+		q += ` AND d.paid_amount >= $` + itoa(i)
+		args = append(args, *f.PaidMin)
+		i++
+	}
+	if f.PaidMax != nil {
+		q += ` AND d.paid_amount <= $` + itoa(i)
+		args = append(args, *f.PaidMax)
+		i++
+	}
+	if f.Printed != nil {
+		if *f.Printed {
+			q += ` AND d.printed_at IS NOT NULL`
+		} else {
+			q += ` AND d.printed_at IS NULL`
+		}
+	}
+	if f.Sent != nil {
+		if *f.Sent {
+			q += ` AND d.sent_at IS NOT NULL`
+		} else {
+			q += ` AND d.sent_at IS NULL`
+		}
 	}
 	q += ` ORDER BY d.created_at DESC LIMIT 500`
 

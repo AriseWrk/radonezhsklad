@@ -51,17 +51,28 @@ export interface DocumentInput {
   items: Array<{ product_id: string; quantity: number; price?: number }>
 }
 
-export async function listDocuments(filters?: {
+export interface DocFilters {
   type?: string
   status?: string
   warehouse_id?: string
   supplier_id?: string
-}): Promise<Document[]> {
+  organization_id?: string
+  date_from?: string
+  date_to?: string
+  incoming_number?: string
+  incoming_date_from?: string
+  incoming_date_to?: string
+  paid_min?: number
+  paid_max?: number
+  printed?: boolean
+  sent?: boolean
+}
+
+export async function listDocuments(filters?: DocFilters): Promise<Document[]> {
   const params = new URLSearchParams()
-  if (filters?.type) params.set('type', filters.type)
-  if (filters?.status) params.set('status', filters.status)
-  if (filters?.warehouse_id) params.set('warehouse_id', filters.warehouse_id)
-  if (filters?.supplier_id) params.set('supplier_id', filters.supplier_id)
+  for (const [k, v] of Object.entries(filters ?? {})) {
+    if (v !== undefined && v !== null && v !== '') params.set(k, String(v))
+  }
   const qs = params.toString()
   const url = qs ? `/documents?${qs}` : '/documents'
   const { data } = await http.get<{ items: Document[] }>(url)

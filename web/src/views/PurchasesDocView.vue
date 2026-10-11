@@ -11,13 +11,19 @@
       <MsButton icon="filter" @click="showFilter = !showFilter">Фильтр</MsButton>
       <input v-model="search" class="ms-input" placeholder="Номер или комментарий" />
       <div class="ms-counter">{{ filtered.length }}</div>
+      <select class="ms-select ms-select-bulk">
+        <option>Изменить</option>
+      </select>
       <select class="ms-select" v-model="filterStatus">
-        <option value="">Статус: все</option>
+        <option value="">Статус</option>
         <option value="draft">Черновик</option>
         <option value="posted">Проведён</option>
         <option value="cancelled">Отменён</option>
       </select>
       <MsButton icon="print">Печать</MsButton>
+      <select class="ms-select ms-select-edo">
+        <option>ЭДО</option>
+      </select>
       <MsButton variant="icon" icon="gear" title="Настройки" />
     </div>
 
@@ -78,7 +84,7 @@
           <td colspan="14" class="muted" style="text-align:center;padding:24px">Загрузка...</td>
         </tr>
         <tr v-else-if="filtered.length === 0">
-          <td colspan="14" class="muted" style="text-align:center;padding:24px">Нет приёмок</td>
+          <td colspan="14" class="muted" style="text-align:center;padding:24px">Нет данных</td>
         </tr>
         <tr v-else v-for="d in paginated" :key="d.id" class="clickable" @click="openEdit(d)">
           <td class="chk-col" @click.stop>
@@ -107,13 +113,11 @@
 
     <div class="ms-footer">
       <div class="ms-pager">
-        <button :disabled="page === 1" @click="page--">◀</button>
-        <span>{{ rangeFrom }}–{{ rangeTo }} из {{ filtered.length }}</span>
-        <button :disabled="rangeTo >= filtered.length" @click="page++">▶</button>
-      </div>
-      <div class="ms-totals">
-        <span>Сумма: {{ formatMoney(totalSum) }}</span>
-        <span>Оплачено: {{ formatMoney(totalPaid) }}</span>
+        <button :disabled="page === 1" @click="page = 1" title="Первая">|‹</button>
+        <button :disabled="page === 1" @click="page--" title="Назад">‹</button>
+        <span class="ms-pager-info">{{ rangeFrom }}-{{ rangeTo }} из {{ filtered.length }}</span>
+        <button :disabled="rangeTo >= filtered.length" @click="page++" title="Вперёд">›</button>
+        <button :disabled="rangeTo >= filtered.length" @click="page = Math.ceil(filtered.length / perPage)" title="Последняя">›|</button>
       </div>
     </div>
 
@@ -443,7 +447,7 @@ async function onCreate() {
 }
 
 async function onPost(d: Document) {
-  if (!confirm(`Провести приёмку ${d.number}?`)) return
+  if (!confirm(`Провести ${meta.value.one.toLowerCase()} ${d.number}?`)) return
   try {
     await postDocument(d.id)
     await load()
@@ -452,7 +456,7 @@ async function onPost(d: Document) {
 }
 
 async function onCancel(d: Document) {
-  if (!confirm(`Отменить приёмку ${d.number}?`)) return
+  if (!confirm(`Отменить ${meta.value.one.toLowerCase()} ${d.number}?`)) return
   try {
     await cancelDocument(d.id)
     await load()
@@ -555,4 +559,20 @@ tr.clickable { cursor: pointer; }
   border: 1px solid #d0d7de; border-radius: 3px;
   background: #fff; color: #1f2328;
 }
+.ms-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 4px; margin-top: 4px;
+  font-size: 12px; color: #57606a;
+}
+.ms-pager { display: inline-flex; align-items: center; gap: 2px; }
+.ms-pager button {
+  min-width: 26px; height: 26px; padding: 0 6px;
+  border: 1px solid #d0d7de; background: #fff; color: #57606a;
+  border-radius: 3px; cursor: pointer; font-size: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.ms-pager button:hover:not(:disabled) { background: #f6f8fa; }
+.ms-pager button:disabled { opacity: .4; cursor: default; }
+.ms-pager-info { margin: 0 6px; color: #57606a; }
+.ms-select-bulk, .ms-select-edo { max-width: none; }
 </style>

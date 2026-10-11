@@ -31,8 +31,54 @@
       <div class="filter-actions">
         <MsButton variant="green" @click="page = 1">Найти</MsButton>
         <MsButton @click="clearFilters">Очистить</MsButton>
+        <button class="filter-ico" title="Сохранить фильтр"><MsIcon name="save" :size="14" /></button>
+        <button class="filter-ico" title="Настройка фильтра"><MsIcon name="gear" :size="14" /></button>
       </div>
       <div class="filter-grid">
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Период</label>
+          <div class="filter-range">
+            <select class="range-quick" v-model="filterDateQuick">
+              <option value="">вс</option>
+              <option value="today">сег</option>
+              <option value="week">нед</option>
+              <option value="month">мес</option>
+            </select>
+            <input v-model="filterDateFrom" type="date" />
+            <span class="range-dash">—</span>
+            <input v-model="filterDateTo" type="date" />
+          </div>
+        </div>
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Входящий номер</label>
+          <input v-model="filterIncomingNumber" />
+        </div>
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Входящая дата</label>
+          <div class="filter-range">
+            <select class="range-quick" v-model="filterIncDateQuick">
+              <option value="">вс</option>
+              <option value="today">сег</option>
+              <option value="week">нед</option>
+              <option value="month">мес</option>
+            </select>
+            <input v-model="filterIncomingDateFrom" type="date" />
+            <span class="range-dash">—</span>
+            <input v-model="filterIncomingDateTo" type="date" />
+          </div>
+        </div>
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Оплата</label>
+          <div class="filter-range">
+            <input v-model="filterPaidMin" type="number" placeholder="от" />
+            <span class="range-dash">—</span>
+            <input v-model="filterPaidMax" type="number" placeholder="до" />
+          </div>
+        </div>
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Товар или группа</label>
+          <select disabled><option>—</option></select>
+        </div>
         <div class="filter-field">
           <label class="filter-label"><span class="dot"></span>Склад</label>
           <select v-model="filterWarehouse">
@@ -41,23 +87,54 @@
           </select>
         </div>
         <div class="filter-field">
-          <label class="filter-label"><span class="dot"></span>Поставщик</label>
+          <label class="filter-label"><span class="dot"></span>Контрагент</label>
           <select v-model="filterSupplier">
             <option value="">—</option>
             <option v-for="s in suppliers" :key="s.id" :value="s.id">{{ s.name }}</option>
           </select>
         </div>
         <div class="filter-field">
-          <label class="filter-label"><span class="dot"></span>Период с</label>
-          <input v-model="filterDateFrom" type="date" />
+          <label class="filter-label"><span class="dot"></span>Организация</label>
+          <select v-model="filterOrganization">
+            <option value="">—</option>
+            <option v-for="o in organizations" :key="o.id" :value="o.id">{{ o.name }}</option>
+          </select>
         </div>
         <div class="filter-field">
-          <label class="filter-label"><span class="dot"></span>Период по</label>
-          <input v-model="filterDateTo" type="date" />
+          <label class="filter-label"><span class="dot"></span>Статус</label>
+          <select v-model="filterStatus">
+            <option value="">—</option>
+            <option value="draft">Черновик</option>
+            <option value="posted">Проведён</option>
+            <option value="cancelled">Отменён</option>
+          </select>
+        </div>
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Проведено</label>
+          <select v-model="filterPosted">
+            <option value="">—</option>
+            <option value="posted">Да</option>
+            <option value="draft">Нет</option>
+          </select>
+        </div>
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Напечатано</label>
+          <select v-model="filterPrinted">
+            <option value="">—</option>
+            <option value="yes">Да</option>
+            <option value="no">Нет</option>
+          </select>
+        </div>
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Отправлено</label>
+          <select v-model="filterSent">
+            <option value="">—</option>
+            <option value="yes">Да</option>
+            <option value="no">Нет</option>
+          </select>
         </div>
       </div>
     </div>
-
     <div v-if="error" class="error-box">{{ error }}</div>
 
     <table class="ms-table">
@@ -233,7 +310,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   listDocuments, createDocument, postDocument, cancelDocument, getDocument, type Document,
@@ -278,8 +355,19 @@ const search = ref('')
 const filterStatus = ref('')
 const filterWarehouse = ref('')
 const filterSupplier = ref('')
+const filterOrganization = ref('')
+const filterDateQuick = ref('')
+const filterIncDateQuick = ref('')
 const filterDateFrom = ref('')
 const filterDateTo = ref('')
+const filterIncomingNumber = ref('')
+const filterIncomingDateFrom = ref('')
+const filterIncomingDateTo = ref('')
+const filterPaidMin = ref('')
+const filterPaidMax = ref('')
+const filterPosted = ref('')
+const filterPrinted = ref('')
+const filterSent = ref('')
 
 const selected = ref<Set<string>>(new Set())
 
@@ -347,6 +435,7 @@ const filtered = computed(() => {
   if (filterStatus.value) rows = rows.filter((d) => d.status === filterStatus.value)
   if (filterWarehouse.value) rows = rows.filter((d) => d.warehouse_id === filterWarehouse.value)
   if (filterSupplier.value) rows = rows.filter((d) => d.supplier_id === filterSupplier.value)
+  if (filterOrganization.value) rows = rows.filter((d) => d.organization_id === filterOrganization.value)
   if (filterDateFrom.value) {
     const t = new Date(filterDateFrom.value).getTime()
     rows = rows.filter((d) => new Date(d.created_at).getTime() >= t)
@@ -354,6 +443,35 @@ const filtered = computed(() => {
   if (filterDateTo.value) {
     const t = new Date(filterDateTo.value).getTime() + 86400000 - 1
     rows = rows.filter((d) => new Date(d.created_at).getTime() <= t)
+  }
+  if (filterIncomingNumber.value) {
+    const q = filterIncomingNumber.value.toLowerCase()
+    rows = rows.filter((d) => (d.incoming_number ?? '').toLowerCase().includes(q))
+  }
+  if (filterIncomingDateFrom.value) {
+    const t = new Date(filterIncomingDateFrom.value).getTime()
+    rows = rows.filter((d) => d.incoming_date && new Date(d.incoming_date).getTime() >= t)
+  }
+  if (filterIncomingDateTo.value) {
+    const t = new Date(filterIncomingDateTo.value).getTime() + 86400000 - 1
+    rows = rows.filter((d) => d.incoming_date && new Date(d.incoming_date).getTime() <= t)
+  }
+  if (filterPaidMin.value !== '') {
+    const v = Number(filterPaidMin.value)
+    rows = rows.filter((d) => (d.paid_amount ?? 0) >= v)
+  }
+  if (filterPaidMax.value !== '') {
+    const v = Number(filterPaidMax.value)
+    rows = rows.filter((d) => (d.paid_amount ?? 0) <= v)
+  }
+  if (filterPosted.value) rows = rows.filter((d) => d.status === filterPosted.value)
+  if (filterPrinted.value) {
+    const need = filterPrinted.value === 'yes'
+    rows = rows.filter((d) => Boolean(d.printed_at) === need)
+  }
+  if (filterSent.value) {
+    const need = filterSent.value === 'yes'
+    rows = rows.filter((d) => Boolean(d.sent_at) === need)
   }
   return rows
 })
@@ -387,8 +505,17 @@ function clearFilters() {
   filterStatus.value = ''
   filterWarehouse.value = ''
   filterSupplier.value = ''
+  filterOrganization.value = ''
   filterDateFrom.value = ''
   filterDateTo.value = ''
+  filterIncomingNumber.value = ''
+  filterIncomingDateFrom.value = ''
+  filterIncomingDateTo.value = ''
+  filterPaidMin.value = ''
+  filterPaidMax.value = ''
+  filterPosted.value = ''
+  filterPrinted.value = ''
+  filterSent.value = ''
   page.value = 1
 }
 
@@ -468,6 +595,18 @@ async function openEdit(d: Document) {
   try { detail.value = await getDocument(d.id) } catch (e) { error.value = apiErrorMessage(e) }
 }
 
+function applyQuick(kind: 'today' | 'week' | 'month', fromRef: any, toRef: any) {
+  const now = new Date()
+  const y = now.getFullYear(), m = now.getMonth(), d = now.getDate()
+  let from: Date, to = new Date(now)
+  if (kind === 'today') from = new Date(y, m, d)
+  else if (kind === 'week') from = new Date(y, m, d - 7)
+  else from = new Date(y, m - 1, d)
+  fromRef.value = from.toISOString().slice(0, 10)
+  toRef.value = to.toISOString().slice(0, 10)
+}
+watch(filterDateQuick, (v) => { if (v) applyQuick(v as any, filterDateFrom, filterDateTo) })
+watch(filterIncDateQuick, (v) => { if (v) applyQuick(v as any, filterIncomingDateFrom, filterIncomingDateTo) })
 onMounted(async () => {
   try {
     const [w, p, s, o] = await Promise.all([
@@ -575,4 +714,26 @@ tr.clickable { cursor: pointer; }
 .ms-pager button:disabled { opacity: .4; cursor: default; }
 .ms-pager-info { margin: 0 6px; color: #57606a; }
 .ms-select-bulk, .ms-select-edo { max-width: none; }
+.filter-ico {
+  width: 30px; height: 30px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid #d0d7de; border-radius: 4px;
+  background: #fff; color: #57606a; cursor: pointer;
+}
+.filter-ico:hover { background: #f6f8fa; }
+.filter-range { display: flex; align-items: center; gap: 4px; }
+.filter-range input { flex: 1; min-width: 0; }
+.filter-range .range-quick {
+  flex: 0 0 56px; height: 28px; padding: 0 4px; font-size: 12px;
+  border: 1px solid #d0d7de; border-radius: 3px; background: #fff; color: #1f2328;
+}
+.filter-range .range-dash { color: #8c959f; font-size: 12px; }
+.filter-grid .filter-field input,
+.filter-grid .filter-field select {
+  height: 28px; padding: 0 8px; font-size: 12px;
+  border: 1px solid #d0d7de; border-radius: 3px;
+  background: #fff; color: #1f2328;
+}
+.ms-filter .filter-grid { background: transparent; }
+.ms-filter { background: #eef1f5; }
 </style>

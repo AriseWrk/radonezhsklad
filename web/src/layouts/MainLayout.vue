@@ -151,7 +151,7 @@ const currentSection = computed(() => {
   if (p.startsWith('/counterparties') || p.startsWith('/customers')) return 'crm'
   if (p.startsWith('/orders') || p.startsWith('/customers') || p.startsWith('/sales')) return 'sales'
   if (p.startsWith('/stock') || p.startsWith('/internal-orders')) return 'stock'
-  if (p === '/inventory' || p === '/inventories') return 'purchases'
+  if (p.startsWith('/purchases') || p === '/inventory' || p === '/inventories') return 'purchases'
   if (p.startsWith('/users') || p.startsWith('/audit')) return 'company'
   return 'company'
 })

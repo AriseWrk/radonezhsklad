@@ -81,24 +81,15 @@
         </div>
         <div class="filter-field">
           <label class="filter-label"><span class="dot"></span>Склад</label>
-          <select v-model="filterWarehouse">
-            <option value="">—</option>
-            <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
-          </select>
+          <MsCombo v-model="filterWarehouse" :items="warehouses" placeholder="—" />
         </div>
         <div class="filter-field">
           <label class="filter-label"><span class="dot"></span>Контрагент</label>
-          <select v-model="filterSupplier">
-            <option value="">—</option>
-            <option v-for="s in suppliers" :key="s.id" :value="s.id">{{ s.name }}</option>
-          </select>
+          <MsCombo v-model="filterSupplier" :items="suppliers" placeholder="—" />
         </div>
         <div class="filter-field">
           <label class="filter-label"><span class="dot"></span>Организация</label>
-          <select v-model="filterOrganization">
-            <option value="">—</option>
-            <option v-for="o in organizations" :key="o.id" :value="o.id">{{ o.name }}</option>
-          </select>
+          <MsCombo v-model="filterOrganization" :items="organizations" placeholder="—" />
         </div>
         <div class="filter-field">
           <label class="filter-label"><span class="dot"></span>Статус</label>
@@ -206,25 +197,16 @@
 
         <div class="grid2">
           <label v-if="needsWarehouse">Склад*
-            <select v-model="form.warehouse_id" :required="needsWarehouse">
-              <option value="">— выберите —</option>
-              <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
-            </select>
+            <MsCombo v-model="form.warehouse_id" :items="warehouses" placeholder="— выберите —" />
           </label>
           <label v-if="needsSupplier">Поставщик*
-            <select v-model="form.supplier_id" :required="needsSupplier">
-              <option value="">— выберите —</option>
-              <option v-for="s in suppliers" :key="s.id" :value="s.id">{{ s.name }}</option>
-            </select>
+            <MsCombo v-model="form.supplier_id" :items="suppliers" placeholder="— выберите —" />
           </label>
         </div>
 
         <div class="grid2">
           <label>Организация
-            <select v-model="form.organization_id">
-              <option value="">— по умолчанию —</option>
-              <option v-for="o in organizations" :key="o.id" :value="o.id">{{ o.name }}</option>
-            </select>
+            <MsCombo v-model="form.organization_id" :items="organizations" placeholder="— по умолчанию —" />
           </label>
           <label>Входящий номер
             <input v-model="form.incoming_number" placeholder="Номер от поставщика" />
@@ -321,6 +303,7 @@ import { listSuppliers, listOrganizations, type Supplier, type Organization } fr
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
 import MsIcon from '../components/MsIcon.vue'
+import MsCombo from '../components/MsCombo.vue'
 
 type PType = 'receipt' | 'purchase_order' | 'invoice_in' | 'purchase_return' | 'facture_in'
 const route = useRoute()
@@ -554,6 +537,8 @@ async function onCreate() {
   try {
     if (form.items.length === 0) throw new Error('Добавьте хотя бы одну позицию')
     if (form.items.some((it) => !it.product_id || it.quantity <= 0)) throw new Error('Заполните все позиции')
+    if (needsWarehouse.value && !form.warehouse_id) throw new Error('Выберите склад')
+    if (needsSupplier.value && !form.supplier_id) throw new Error('Выберите поставщика')
 
     await createDocument({
       type: docType as any,

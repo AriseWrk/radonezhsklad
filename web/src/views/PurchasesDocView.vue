@@ -322,11 +322,12 @@ import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
 import MsIcon from '../components/MsIcon.vue'
 
-type PType = 'purchase_order' | 'invoice_in' | 'purchase_return' | 'facture_in'
+type PType = 'receipt' | 'purchase_order' | 'invoice_in' | 'purchase_return' | 'facture_in'
 const route = useRoute()
 const docType = (route.meta as any).docType as PType | undefined
 
 const titles: Record<PType, { page: string; label: string; one: string }> = {
+  receipt:         { page: 'Приёмки', label: 'Приёмка', one: 'Приёмка' },
   purchase_order:  { page: 'Заказы поставщикам',   label: 'Заказ',    one: 'Заказ поставщику' },
   invoice_in:      { page: 'Счета поставщиков',    label: 'Счёт',     one: 'Счёт поставщика' },
   purchase_return: { page: 'Возвраты поставщикам', label: 'Возврат',  one: 'Возврат поставщику' },
@@ -337,8 +338,8 @@ const pageTitle = computed(() => meta.value.page)
 const docLabel = computed(() => meta.value.label)
 
 // Требуется ли склад / поставщик
-const needsWarehouse = computed(() => docType === 'purchase_return')
-const needsSupplier = computed(() => docType === 'purchase_order' || docType === 'invoice_in' || docType === 'purchase_return')
+const needsWarehouse = computed(() => docType === 'purchase_return' || docType === 'receipt')
+const needsSupplier = computed(() => docType === 'purchase_order' || docType === 'invoice_in' || docType === 'purchase_return' || docType === 'receipt')
 
 const items = ref<Document[]>([])
 const warehouses = ref<Warehouse[]>([])

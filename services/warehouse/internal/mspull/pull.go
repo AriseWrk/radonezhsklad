@@ -389,6 +389,14 @@ func (r *Runner) PullByKind(ctx context.Context, kind string, jobID uuid.UUID) e
 		return r.PullLoss(ctx, jobID)
 	case "docs-move", "move", "transfers":
 		return r.PullMove(ctx, jobID)
+	case "docs-purchaseorder", "purchaseorder", "purchase-orders":
+		return r.PullPurchaseOrder(ctx, jobID)
+	case "docs-invoicein", "invoicein", "invoices":
+		return r.PullInvoiceIn(ctx, jobID)
+	case "docs-purchasereturn", "purchasereturn", "returns":
+		return r.PullPurchaseReturn(ctx, jobID)
+	case "docs-facturein", "facturein", "factures":
+		return r.PullFactureIn(ctx, jobID)
 	default:
 		return fmt.Errorf("неизвестный kind для pull: %q", kind)
 	}

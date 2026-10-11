@@ -180,7 +180,7 @@ type MsDocument struct {
 	Total             float64
 	VatEnabled        bool
 	VatIncluded       bool
-	WarehouseID       uuid.UUID
+	WarehouseID       *uuid.UUID
 	TargetWarehouseID *uuid.UUID
 	SupplierID        *uuid.UUID
 	OrganizationID    *uuid.UUID

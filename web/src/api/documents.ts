@@ -1,6 +1,6 @@
-import { http } from './client'
+﻿import { http } from './client'
 
-export type DocType = 'receipt' | 'shipment' | 'transfer' | 'writeoff' | 'inventory'
+export type DocType = 'receipt' | 'shipment' | 'transfer' | 'writeoff' | 'inventory' | 'purchase_order' | 'invoice_in' | 'purchase_return' | 'facture_in'
 export type DocStatus = 'draft' | 'posted' | 'cancelled'
 
 export interface DocItem {
@@ -18,7 +18,7 @@ export interface Document {
   type: DocType
   number: string
   status: DocStatus
-  warehouse_id: string
+  warehouse_id?: string
   target_warehouse_id?: string
   supplier_id?: string
   organization_id?: string
@@ -41,7 +41,7 @@ export interface Document {
 export interface DocumentInput {
   type: DocType
   number?: string
-  warehouse_id: string
+  warehouse_id?: string
   target_warehouse_id?: string
   supplier_id?: string
   organization_id?: string

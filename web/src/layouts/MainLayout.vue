@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="app">
     <header class="topbar">
       <div class="logo" @click="go('/')">
@@ -114,8 +114,12 @@ const subTabsMap: Record<string, SubTab[]> = {
     { name: 'categories', label: 'Категории', path: '/categories', match: '/categories', roles: ['admin','manager','warehouse','user'] },
   ],
   purchases: [
-    { name: 'purchases-planning', label: 'Управление закупками', path: '/purchases/planning', match: '/purchases/planning', roles: ['admin','manager','warehouse'] },
+    { name: 'purchases-orders',   label: 'Заказы поставщикам',   path: '/purchases/orders',   match: '/purchases/orders',   roles: ['admin','manager','warehouse'] },
+    { name: 'purchases-invoices', label: 'Счета поставщиков',    path: '/purchases/invoices', match: '/purchases/invoices', roles: ['admin','manager','warehouse'] },
     { name: 'purchases-receipts', label: 'Приёмки',              path: '/purchases/receipts', match: '/purchases/receipts', roles: ['admin','manager','warehouse'] },
+    { name: 'purchases-returns',  label: 'Возвраты поставщикам', path: '/purchases/returns',  match: '/purchases/returns',  roles: ['admin','manager','warehouse'] },
+    { name: 'purchases-factures', label: 'Счета-фактуры полученные', path: '/purchases/factures', match: '/purchases/factures', roles: ['admin','manager','warehouse'] },
+    { name: 'purchases-planning', label: 'Управление закупками', path: '/purchases/planning', match: '/purchases/planning', roles: ['admin','manager','warehouse'] },
     { name: 'purchases-suppliers',label: 'Поставщики',           path: '/suppliers',          match: '/suppliers',          roles: ['admin','manager','warehouse'] },
     { name: 'inventory',          label: 'Инвентаризации',       path: '/inventory',          match: '/inventory',          roles: ['admin','manager','warehouse'] },
     { name: 'warehouses',         label: 'Склады',               path: '/warehouses',         match: '/warehouses',         roles: ['admin','warehouse'] },

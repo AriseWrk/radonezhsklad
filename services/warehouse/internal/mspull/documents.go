@@ -19,10 +19,14 @@ var msDocType = map[string]struct {
 	entity string
 	our    string
 }{
-	"enter":  {entity: "enter", our: "receipt"},
-	"demand": {entity: "demand", our: "shipment"},
-	"loss":   {entity: "loss", our: "writeoff"},
-	"move":   {entity: "move", our: "transfer"},
+	"enter":          {entity: "enter", our: "receipt"},
+	"demand":         {entity: "demand", our: "shipment"},
+	"loss":           {entity: "loss", our: "writeoff"},
+	"move":           {entity: "move", our: "transfer"},
+	"purchaseorder":  {entity: "purchaseorder", our: "purchase_order"},
+	"invoicein":      {entity: "invoicein", our: "invoice_in"},
+	"purchasereturn": {entity: "purchasereturn", our: "purchase_return"},
+	"facturein":      {entity: "facturein", our: "facture_in"},
 }
 
 // ---------- MS-строки ----------
@@ -139,21 +143,28 @@ func (r *Runner) processDocRow(
 	ctx context.Context, row msRowDoc, entity, ourType string,
 	jobID uuid.UUID, skippedNoWH, skippedNoProd *int,
 ) error {
-	// --- склад ---
+	// --- склад (опционален для purchase_order/invoice_in/facture_in) ---
+	optionalWH := ourType == "purchase_order" || ourType == "invoice_in" || ourType == "facture_in"
 	storeHref := ""
 	if row.Store != nil {
 		storeHref = row.Store.Meta.Href
 	} else if row.SourceStore != nil {
 		storeHref = row.SourceStore.Meta.Href
 	}
-	storeExt := hrefUUID(storeHref)
-	if storeExt == nil {
-		return fmt.Errorf("нет store.meta.href")
-	}
-	whID, err := r.repo.LookupWarehouseID(ctx, *storeExt)
-	if err != nil || whID == nil {
+	var whID *uuid.UUID
+	if storeExt := hrefUUID(storeHref); storeExt != nil {
+		id, err := r.repo.LookupWarehouseID(ctx, *storeExt)
+		if err != nil || id == nil {
+			if !optionalWH {
+				*skippedNoWH++
+				return fmt.Errorf("склад %s не найден локально", storeExt)
+			}
+		} else {
+			whID = id
+		}
+	} else if !optionalWH {
 		*skippedNoWH++
-		return fmt.Errorf("склад %s не найден локально", storeExt)
+		return fmt.Errorf("нет store.meta.href")
 	}
 
 	// --- target (для move) ---
@@ -182,7 +193,7 @@ func (r *Runner) processDocRow(
 
 	// --- контрагент (для demand) ---
 	var supID *uuid.UUID
-	if entity == "demand" && row.Agent != nil {
+	if (entity == "demand" || entity == "purchaseorder" || entity == "invoicein" || entity == "purchasereturn") && row.Agent != nil {
 		if ext := hrefUUID(row.Agent.Meta.Href); ext != nil {
 			if sid, err := r.repo.LookupSupplierID(ctx, *ext); err == nil && sid != nil {
 				supID = sid
@@ -294,7 +305,7 @@ func (r *Runner) processDocRow(
 		Total:             totalRub,
 		VatEnabled:        row.VatEnabled,
 		VatIncluded:       row.VatIncluded,
-		WarehouseID:       *whID,
+		WarehouseID:       whID,
 		TargetWarehouseID: targetID,
 		SupplierID:        supID,
 		OrganizationID:    orgID,
@@ -347,4 +358,24 @@ func (r *Runner) PullLoss(ctx context.Context, jobID uuid.UUID) error {
 func (r *Runner) PullMove(ctx context.Context, jobID uuid.UUID) error {
 	t := msDocType["move"]
 	return r.pullDocType(ctx, "pull-docs-move", t.entity, t.our, jobID)
+}
+
+func (r *Runner) PullPurchaseOrder(ctx context.Context, jobID uuid.UUID) error {
+	t := msDocType["purchaseorder"]
+	return r.pullDocType(ctx, "pull-docs-purchaseorder", t.entity, t.our, jobID)
+}
+
+func (r *Runner) PullInvoiceIn(ctx context.Context, jobID uuid.UUID) error {
+	t := msDocType["invoicein"]
+	return r.pullDocType(ctx, "pull-docs-invoicein", t.entity, t.our, jobID)
+}
+
+func (r *Runner) PullPurchaseReturn(ctx context.Context, jobID uuid.UUID) error {
+	t := msDocType["purchasereturn"]
+	return r.pullDocType(ctx, "pull-docs-purchasereturn", t.entity, t.our, jobID)
+}
+
+func (r *Runner) PullFactureIn(ctx context.Context, jobID uuid.UUID) error {
+	t := msDocType["facturein"]
+	return r.pullDocType(ctx, "pull-docs-facturein", t.entity, t.our, jobID)
 }

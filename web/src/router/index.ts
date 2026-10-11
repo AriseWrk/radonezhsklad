@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+﻿import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore, type Role } from '../stores/auth'
 
 declare module 'vue-router' {
@@ -32,6 +32,10 @@ const routes: RouteRecordRaw[] = [
       { path: 'stock/turnover', name: 'stock-turnover', component: () => import('../views/StockTurnoverView.vue'), meta: { roles: ['admin', 'manager', 'warehouse'] } },
   { path: 'documents/:id', name: 'document-card', component: () => import('../views/DocumentCardView.vue'), meta: { roles: ['admin', 'manager', 'warehouse'] } },
       { path: 'purchases/receipts', name: 'purchases-receipts', component: () => import('../views/ReceiptsView.vue'), meta: { roles: ['admin', 'manager', 'warehouse'] } },
+      { path: 'purchases/orders',   name: 'purchases-orders',   component: () => import('../views/PurchasesDocView.vue'), meta: { roles: ['admin', 'manager', 'warehouse'], docType: 'purchase_order' } },
+      { path: 'purchases/invoices', name: 'purchases-invoices', component: () => import('../views/PurchasesDocView.vue'), meta: { roles: ['admin', 'manager', 'warehouse'], docType: 'invoice_in' } },
+      { path: 'purchases/returns',  name: 'purchases-returns',  component: () => import('../views/PurchasesDocView.vue'), meta: { roles: ['admin', 'manager', 'warehouse'], docType: 'purchase_return' } },
+      { path: 'purchases/factures', name: 'purchases-factures', component: () => import('../views/PurchasesDocView.vue'), meta: { roles: ['admin', 'manager', 'warehouse'], docType: 'facture_in' } },
       { path: 'purchases/planning', name: 'purchases-planning', component: () => import('../views/PurchasesPlanningView.vue'), meta: { roles: ['admin', 'manager', 'warehouse'] } },
       { path: 'inventory',  name: 'inventory',  component: () => import('../views/InventoryView.vue'),  meta: { roles: ['admin', 'manager', 'warehouse'] } },
       { path: 'inventories', name: 'inventories', component: () => import('../views/InventoriesView.vue'), meta: { roles: ['admin', 'manager', 'warehouse'] }, },

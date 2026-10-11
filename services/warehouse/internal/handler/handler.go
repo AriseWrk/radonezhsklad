@@ -150,7 +150,7 @@ type docItemReq struct {
 type docReq struct {
 	Type              string       `json:"type"       binding:"required"`
 	Number            string       `json:"number"`
-	WarehouseID       string       `json:"warehouse_id" binding:"required"`
+	WarehouseID       string       `json:"warehouse_id"`
 	TargetWarehouseID string       `json:"target_warehouse_id"`
 	SupplierID        string       `json:"supplier_id"`
 	OrganizationID    string       `json:"organization_id"`
@@ -178,11 +178,7 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 		return
 	}
 
-	whID, err := uuid.Parse(req.WarehouseID)
-	if err != nil {
-		c.Error(apperr.BadRequest("invalid warehouse_id"))
-		return
-	}
+	whID := parseUUIDOpt(req.WarehouseID)
 
 	var createdBy *uuid.UUID
 	if uid := mw.CurrentUserID(c); uid != uuid.Nil {

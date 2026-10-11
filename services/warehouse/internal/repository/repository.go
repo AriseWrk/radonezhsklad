@@ -129,7 +129,7 @@ func (r *Repo) ListStock(ctx context.Context, warehouseID, productID *uuid.UUID)
 type DocumentInput struct {
 	Type              string
 	Number            string
-	WarehouseID       uuid.UUID
+	WarehouseID       *uuid.UUID
 	TargetWarehouseID *uuid.UUID
 	SupplierID        *uuid.UUID
 	OrganizationID    *uuid.UUID
@@ -468,7 +468,7 @@ GROUP BY di.product_id`)
 
 type MovementDetail struct {
 	ID                uuid.UUID
-	WarehouseID       uuid.UUID
+	WarehouseID       *uuid.UUID
 	WarehouseName     string
 	QuantityDelta     float64
 	MovementAt        time.Time

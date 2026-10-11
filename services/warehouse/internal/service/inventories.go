@@ -114,7 +114,7 @@ func (s *InventoryService) CreateCorrection(ctx context.Context, invID uuid.UUID
 	doc, err := s.docRepo.CreateDocument(ctx, repository.DocumentInput{
 		Type:              docType,
 		Number:            number,
-		WarehouseID:       *inv.WarehouseID,
+		WarehouseID:       inv.WarehouseID,
 		OrganizationID:    inv.OrganizationID,
 		Comment:           &comment,
 		SourceInventoryID: &invID,

@@ -49,7 +49,7 @@ type Document struct {
 	Type              string     `json:"type"`
 	Number            string     `json:"number"`
 	Status            string     `json:"status"`
-	WarehouseID       uuid.UUID  `json:"warehouse_id"`
+	WarehouseID       *uuid.UUID `json:"warehouse_id,omitempty"`
 	TargetWarehouseID *uuid.UUID `json:"target_warehouse_id,omitempty"`
 	SupplierID        *uuid.UUID `json:"supplier_id,omitempty"`
 	OrganizationID    *uuid.UUID `json:"organization_id,omitempty"`

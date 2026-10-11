@@ -86,7 +86,21 @@ func (s *Service) BookStockForInventory(ctx context.Context, warehouseID uuid.UU
 
 // ---------- documents ----------
 
-var validTypes = map[string]bool{"receipt": true, "shipment": true, "transfer": true, "writeoff": true, "inventory": true}
+var validTypes = map[string]bool{
+	"receipt": true, "shipment": true, "transfer": true, "writeoff": true, "inventory": true,
+	"purchase_order": true, "invoice_in": true, "purchase_return": true, "facture_in": true,
+}
+
+// requiresWarehouse — типы, для которых warehouse_id обязателен.
+var requiresWarehouse = map[string]bool{
+	"receipt": true, "shipment": true, "transfer": true, "writeoff": true, "inventory": true,
+	"purchase_return": true,
+}
+
+// requiresSupplier — типы, для которых нужен контрагент (поставщик).
+var requiresSupplier = map[string]bool{
+	"purchase_order": true, "invoice_in": true, "purchase_return": true,
+}
 
 func (s *Service) CreateDocument(ctx context.Context, in repository.DocumentInput) (*models.Document, error) {
 	if !validTypes[in.Type] {
@@ -95,11 +109,17 @@ func (s *Service) CreateDocument(ctx context.Context, in repository.DocumentInpu
 	if len(in.Items) == 0 {
 		return nil, apperr.BadRequest("document must have at least one item")
 	}
+	if requiresWarehouse[in.Type] && in.WarehouseID == nil {
+		return nil, apperr.BadRequest(in.Type + " requires warehouse_id")
+	}
+	if requiresSupplier[in.Type] && in.SupplierID == nil {
+		return nil, apperr.BadRequest(in.Type + " requires supplier_id")
+	}
 	if in.Type == "transfer" {
 		if in.TargetWarehouseID == nil {
 			return nil, apperr.BadRequest("transfer requires target_warehouse_id")
 		}
-		if *in.TargetWarehouseID == in.WarehouseID {
+		if in.WarehouseID == nil || *in.TargetWarehouseID == *in.WarehouseID {
 			return nil, apperr.BadRequest("source and target warehouses must differ")
 		}
 	}
@@ -139,11 +159,15 @@ func (s *Service) PostDocument(ctx context.Context, id uuid.UUID) (*models.Docum
 	if len(d.Items) == 0 {
 		return nil, apperr.BadRequest("document has no items")
 	}
+	if requiresWarehouse[d.Type] && d.WarehouseID == nil {
+		return nil, apperr.BadRequest(d.Type + ": warehouse_id не задан")
+	}
 
-	if d.Type == "shipment" || d.Type == "transfer" {
+	// Проверка доступности для расходных операций
+	if d.Type == "shipment" || d.Type == "transfer" || d.Type == "purchase_return" {
 		err := s.repo.WithTx(ctx, func(tx pgx.Tx) error {
 			for _, it := range d.Items {
-				avail, err := s.repo.GetBalance(ctx, tx, d.WarehouseID, it.ProductID)
+				avail, err := s.repo.GetBalance(ctx, tx, *d.WarehouseID, it.ProductID)
 				if err != nil {
 					return apperr.Internal("check balance", err)
 				}
@@ -163,29 +187,35 @@ func (s *Service) PostDocument(ctx context.Context, id uuid.UUID) (*models.Docum
 		for _, it := range d.Items {
 			switch d.Type {
 			case "receipt":
-				if err := s.repo.ApplyMovement(ctx, tx, d.WarehouseID, it.ProductID, it.Quantity, d.ID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, d.ID); err != nil {
 					return apperr.Internal("apply receipt", err)
 				}
-			case "shipment":
-				if err := s.repo.ApplyMovement(ctx, tx, d.WarehouseID, it.ProductID, -it.Quantity, d.ID); err != nil {
-					return apperr.Internal("apply shipment", err)
+			case "shipment", "purchase_return":
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, d.ID); err != nil {
+					return apperr.Internal("apply shipment/return", err)
+				}
+			case "writeoff":
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, d.ID); err != nil {
+					return apperr.Internal("apply writeoff", err)
 				}
 			case "transfer":
-				if err := s.repo.ApplyMovement(ctx, tx, d.WarehouseID, it.ProductID, -it.Quantity, d.ID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, d.ID); err != nil {
 					return apperr.Internal("apply transfer out", err)
 				}
 				if err := s.repo.ApplyMovement(ctx, tx, *d.TargetWarehouseID, it.ProductID, it.Quantity, d.ID); err != nil {
 					return apperr.Internal("apply transfer in", err)
 				}
 			case "inventory":
-				cur, err := s.repo.GetBalance(ctx, tx, d.WarehouseID, it.ProductID)
+				cur, err := s.repo.GetBalance(ctx, tx, *d.WarehouseID, it.ProductID)
 				if err != nil {
 					return apperr.Internal("inventory balance", err)
 				}
 				delta := it.Quantity - cur
-				if err := s.repo.ApplyMovement(ctx, tx, d.WarehouseID, it.ProductID, delta, d.ID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, delta, d.ID); err != nil {
 					return apperr.Internal("apply inventory", err)
 				}
+			case "purchase_order", "invoice_in", "facture_in":
+				// не двигает склад
 			}
 		}
 		return nil
@@ -208,20 +238,27 @@ func (s *Service) CancelDocument(ctx context.Context, id uuid.UUID) (*models.Doc
 	if d.Status != "posted" {
 		return nil, apperr.Conflict("only posted documents can be cancelled")
 	}
+	if requiresWarehouse[d.Type] && d.WarehouseID == nil {
+		return nil, apperr.BadRequest(d.Type + ": warehouse_id не задан")
+	}
 
 	err = s.repo.WithTx(ctx, func(tx pgx.Tx) error {
 		for _, it := range d.Items {
 			switch d.Type {
 			case "receipt":
-				if err := s.repo.ApplyMovement(ctx, tx, d.WarehouseID, it.ProductID, -it.Quantity, d.ID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, d.ID); err != nil {
 					return apperr.Internal("revert receipt", err)
 				}
-			case "shipment":
-				if err := s.repo.ApplyMovement(ctx, tx, d.WarehouseID, it.ProductID, it.Quantity, d.ID); err != nil {
-					return apperr.Internal("revert shipment", err)
+			case "shipment", "purchase_return":
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, d.ID); err != nil {
+					return apperr.Internal("revert shipment/return", err)
+				}
+			case "writeoff":
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, d.ID); err != nil {
+					return apperr.Internal("revert writeoff", err)
 				}
 			case "transfer":
-				if err := s.repo.ApplyMovement(ctx, tx, d.WarehouseID, it.ProductID, it.Quantity, d.ID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, d.ID); err != nil {
 					return apperr.Internal("revert transfer out", err)
 				}
 				if err := s.repo.ApplyMovement(ctx, tx, *d.TargetWarehouseID, it.ProductID, -it.Quantity, d.ID); err != nil {
@@ -229,6 +266,8 @@ func (s *Service) CancelDocument(ctx context.Context, id uuid.UUID) (*models.Doc
 				}
 			case "inventory":
 				return apperr.Conflict("inventory documents cannot be cancelled")
+			case "purchase_order", "invoice_in", "facture_in":
+				// не двигает склад
 			}
 		}
 		return nil

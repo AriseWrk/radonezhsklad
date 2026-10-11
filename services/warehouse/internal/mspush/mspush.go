@@ -29,10 +29,14 @@ import (
 // entityByDocType — маппинг наших типов документов в сущности МС.
 // inventory не пушим — учтём отдельно (у нас correction через документы).
 var entityByDocType = map[string]string{
-	"receipt":  "enter",
-	"shipment": "demand",
-	"writeoff": "loss",
-	"transfer": "move",
+	"receipt":         "enter",
+	"shipment":        "demand",
+	"writeoff":        "loss",
+	"transfer":        "move",
+	"purchase_order":  "purchaseorder",
+	"invoice_in":      "invoicein",
+	"purchase_return": "purchasereturn",
+	"facture_in":      "facturein",
 }
 
 // Pusher — координатор push'а.
@@ -93,7 +97,7 @@ type msDocumentPayload struct {
 	Applicable   bool         `json:"applicable"`
 	Description  string       `json:"description,omitempty"`
 	Organization msapi.Meta   `json:"organization"`
-	Store        msapi.Meta   `json:"store,omitempty"`
+	Store        *msapi.Meta  `json:"store,omitempty"`
 	TargetStore  *msapi.Meta  `json:"targetStore,omitempty"`
 	Agent        *msapi.Meta  `json:"agent,omitempty"`
 	Positions    []msPosition `json:"positions"`
@@ -161,7 +165,8 @@ func (p *Pusher) buildDocumentPayload(ctx context.Context, doc *models.Document,
 	if refs == nil {
 		return nil, fmt.Errorf("refs not found")
 	}
-	if refs.Warehouse.ExternalID == nil {
+	optionalStore := entity == "purchaseorder" || entity == "invoicein" || entity == "facturein"
+	if refs.Warehouse.ExternalID == nil && !optionalStore {
 		return nil, fmt.Errorf("склад не привязан к МС (нет external_id)")
 	}
 	if refs.Organization == nil || refs.Organization.ExternalID == nil {
@@ -187,8 +192,11 @@ func (p *Pusher) buildDocumentPayload(ctx context.Context, doc *models.Document,
 		Moment:       msMoment(doc.CreatedAt),
 		Applicable:   doc.Status == "posted",
 		Organization: p.ms.EntityMeta("organization", *refs.Organization.ExternalID),
-		Store:        p.ms.EntityMeta("store", *refs.Warehouse.ExternalID),
 		Positions:    positions,
+	}
+	if refs.Warehouse.ExternalID != nil {
+		m := p.ms.EntityMeta("store", *refs.Warehouse.ExternalID)
+		payload.Store = &m
 	}
 	if doc.Comment != nil {
 		payload.Description = *doc.Comment
@@ -199,7 +207,7 @@ func (p *Pusher) buildDocumentPayload(ctx context.Context, doc *models.Document,
 		payload.TargetStore = &m
 	}
 	// agent для отгрузки — из supplier_id (у нас других контрагентов нет)
-	if entity == "demand" && refs.Supplier != nil && refs.Supplier.ExternalID != nil {
+	if (entity == "demand" || entity == "purchaseorder" || entity == "invoicein" || entity == "purchasereturn") && refs.Supplier != nil && refs.Supplier.ExternalID != nil {
 		m := p.ms.EntityMeta("counterparty", *refs.Supplier.ExternalID)
 		payload.Agent = &m
 	}
@@ -347,7 +355,6 @@ func (p *Pusher) buildOrderPayload(ctx context.Context, order *models.InternalOr
 		Moment:       msMoment(order.DocDate),
 		Applicable:   order.Status == "posted",
 		Organization: p.ms.EntityMeta("organization", *refs.Organization.ExternalID),
-		Store:        p.ms.EntityMeta("store", *refs.Warehouse.ExternalID),
 		Positions:    positions,
 	}
 	if order.Comment != nil {

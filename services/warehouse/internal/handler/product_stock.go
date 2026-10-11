@@ -87,22 +87,27 @@ func (h *Handler) ProductStockDetail(c *gin.Context) {
 	}
 
 	groups := map[uuid.UUID]*warehouseGroupJSON{}
+	var whKey uuid.UUID
 	order := []uuid.UUID{}
 	now := time.Now()
 
 	for _, m := range movements {
-		g, ok := groups[m.WarehouseID]
+		whKey = uuid.Nil
+		if m.WarehouseID != nil {
+			whKey = *m.WarehouseID
+		}
+		g, ok := groups[whKey]
 		if !ok {
 			g = &warehouseGroupJSON{
-				WarehouseID:   m.WarehouseID,
+				WarehouseID:   whKey,
 				WarehouseName: m.WarehouseName,
-				Quantity:      balanceByWH[m.WarehouseID],
+				Quantity:      balanceByWH[whKey],
 				CostPrice:     p.CostPrice,
-				CostSum:       balanceByWH[m.WarehouseID] * p.CostPrice,
+				CostSum:       balanceByWH[whKey] * p.CostPrice,
 				Movements:     []movementJSON{},
 			}
-			groups[m.WarehouseID] = g
-			order = append(order, m.WarehouseID)
+			groups[whKey] = g
+			order = append(order, whKey)
 		}
 		days := int(math.Floor(now.Sub(m.MovementAt).Hours() / 24))
 

@@ -83,7 +83,8 @@ func (h *SyncHandler) Start(c *gin.Context) {
 }
 
 // StartPull — POST /api/v1/sync/pull/:kind
-// Поддерживаемые kind: counterparties|warehouses|organizations|projects
+// Поддерживаемые kind: counterparties|warehouses|organizations|projects|
+// docs-enter|docs-demand|docs-loss|docs-move|docs-purchaseorder|docs-invoicein|docs-purchasereturn|docs-facturein
 // (можно с префиксом pull-, он обрезается).
 func (h *SyncHandler) StartPull(c *gin.Context) {
 	if h.pull == nil || !h.pull.Enabled() {

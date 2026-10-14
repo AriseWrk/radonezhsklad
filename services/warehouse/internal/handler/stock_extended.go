@@ -73,6 +73,19 @@ func (h *Handler) StockExtended(c *gin.Context) {
 	if c.Query("only_incoming") == "true" {
 		f.OnlyIncoming = true
 	}
+	if s := c.Query("supplier_id"); s != "" {
+		if id, err := uuid.Parse(s); err == nil {
+			f.SupplierID = &id
+		}
+	}
+	if s := c.Query("as_of"); s != "" {
+		if tt, err := time.ParseInLocation("2006-01-02T15:04", s, time.Local); err == nil {
+			f.AsOf = &tt
+		} else if tt, err := time.ParseInLocation("2006-01-02", s, time.Local); err == nil {
+			f.AsOf = &tt
+		}
+	}
+	showMode := c.Query("show_mode")
 
 	rows, err := h.svc.StockExtended(ctx, f)
 	if err != nil {
@@ -119,6 +132,8 @@ func (h *Handler) StockExtended(c *gin.Context) {
 
 	for _, r := range rows {
 		p := products[r.ProductID]
+		if showMode == "normal" && p.IsArchived { continue }
+		if showMode == "archived" && !p.IsArchived { continue }
 		inc := incoming[r.ProductID]
 
 		var days *int

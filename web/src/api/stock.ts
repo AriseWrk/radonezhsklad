@@ -107,6 +107,9 @@ export interface StockExtendedFilters {
   days_min?: number | ''
   days_max?: number | ''
   only_incoming?: boolean
+  supplier_id?: string
+  as_of?: string
+  show_mode?: string
 }
 
 export async function listStockExtended(filters: StockExtendedFilters = {}): Promise<StockExtendedResponse> {
@@ -118,6 +121,9 @@ export async function listStockExtended(filters: StockExtendedFilters = {}): Pro
   if (filters.days_min !== '' && filters.days_min != null) params.set('days_min', String(filters.days_min))
   if (filters.days_max !== '' && filters.days_max != null) params.set('days_max', String(filters.days_max))
   if (filters.only_incoming) params.set('only_incoming', 'true')
+  if (filters.supplier_id) params.set('supplier_id', filters.supplier_id)
+  if (filters.as_of) params.set('as_of', filters.as_of)
+  if (filters.show_mode) params.set('show_mode', filters.show_mode)
   const qs = params.toString()
   const url = qs ? `/stock/extended?${qs}` : '/stock/extended'
   const { data } = await http.get<StockExtendedResponse>(url)

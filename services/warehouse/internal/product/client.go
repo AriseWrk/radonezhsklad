@@ -20,6 +20,7 @@ type Product struct {
 	Price      float64    `json:"price"`
 	CostPrice  float64    `json:"cost_price"`
 	MinStock   float64    `json:"min_stock"`
+	IsArchived bool       `json:"is_archived"`
 	Currency   string     `json:"currency"`
 	UnitID     *uuid.UUID `json:"unit_id"`
 }

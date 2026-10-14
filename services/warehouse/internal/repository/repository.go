@@ -484,10 +484,27 @@ AvailMode    string // "nonZero"  | "zero" | "" (любое)
 DaysMin      *int
 DaysMax      *int
 OnlyIncoming bool
+	SupplierID   *uuid.UUID
+	AsOf         *time.Time
 }
 
 func (r *Repo) StockExtended(ctx context.Context, f StockExtendedFilter) ([]ExtendedRow, error) {
-q := `
+	var q string
+	if f.AsOf != nil {
+		q = `
+WITH base AS (
+  SELECT sm.product_id, sm.warehouse_id, SUM(sm.quantity_delta) AS quantity,
+         MAX(sm.created_at) AS last_movement
+  FROM stock_movements sm
+  WHERE sm.created_at <= $1
+  GROUP BY sm.product_id, sm.warehouse_id
+)
+SELECT product_id, warehouse_id, quantity, last_movement
+FROM base
+WHERE quantity <> 0
+`
+	} else {
+		q = `
 WITH base AS (
   SELECT sb.product_id, sb.warehouse_id, sb.quantity,
          (SELECT MAX(created_at) FROM stock_movements sm
@@ -496,9 +513,15 @@ WITH base AS (
 )
 SELECT product_id, warehouse_id, quantity, last_movement
 FROM base
-WHERE 1=1`
+WHERE 1=1
+`
+	}
 args := []any{}
 n := 1
+	if f.AsOf != nil {
+		args = append(args, *f.AsOf)
+		n = 2
+	}
 	if f.ProductID != nil {
 		q += fmt.Sprintf(` AND product_id = $%d`, n)
 		args = append(args, *f.ProductID)
@@ -540,6 +563,16 @@ q += ` AND EXISTS (
   WHERE di.product_id = base.product_id AND d.type = 'receipt' AND d.status = 'draft'
 )`
 }
+	if f.SupplierID != nil {
+		q += fmt.Sprintf(` AND EXISTS (
+  SELECT 1 FROM stock_movements sm
+  JOIN documents d ON d.id = sm.document_id
+  WHERE sm.product_id = base.product_id AND sm.warehouse_id = base.warehouse_id
+    AND d.supplier_id = $%d
+)`, n)
+		args = append(args, *f.SupplierID)
+		n++
+	}
 q += ` ORDER BY product_id`
 
 rows, err := r.db.Query(ctx, q, args...)

@@ -9,6 +9,7 @@ import {
 } from '../api/stock'
 import { listWarehouses, type Warehouse } from '../api/warehouses'
 import { listProducts, type Product } from '../api/products'
+import { listSuppliers, type Supplier } from '../api/suppliers'
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
 import MsIcon from '../components/MsIcon.vue'
@@ -19,6 +20,7 @@ const error = ref<string | null>(null)
 const data = ref<StockExtendedResponse | null>(null)
 const warehouses = ref<Warehouse[]>([])
 const products = ref<Product[]>([])
+const suppliers = ref<Supplier[]>([])
 const view = ref<'products' | 'warehouses'>('products')
 const showFilter = ref(true)
 const page = ref(1)
@@ -52,6 +54,9 @@ const warehouseItems = computed<SmartItem[]>(() =>
 )
 const productItems = computed<SmartItem[]>(() =>
   products.value.map((p) => ({ id: p.id, name: p.name, sublabel: p.sku || undefined }))
+)
+const supplierItems = computed<SmartItem[]>(() =>
+  suppliers.value.map((s) => ({ id: s.id, name: s.name, sublabel: s.inn || undefined }))
 )
 
 function formatQty(n: number): string {
@@ -225,6 +230,9 @@ async function load() {
       days_min: filters.daysMin === '' ? '' : Number(filters.daysMin),
       days_max: filters.daysMax === '' ? '' : Number(filters.daysMax),
       only_incoming: filters.onlyIncoming,
+      supplier_id: filters.supplierId || undefined,
+      as_of: filters.asOf || undefined,
+      show_mode: filters.showMode,
     })
     page.value = 1
   } catch (e) {
@@ -269,6 +277,7 @@ function print() { window.print() }
 onMounted(async () => {
   try { warehouses.value = await listWarehouses() } catch { /* ignore */ }
   try { products.value = await listProducts(true) } catch { /* ignore */ }
+  try { suppliers.value = await listSuppliers() } catch { /* ignore */ }
   await load()
 })
 </script>
@@ -376,9 +385,11 @@ onMounted(async () => {
           </div>
           <div class="filter-field">
             <label class="filter-label"><span class="dot"></span>Поставщик</label>
-            <select v-model="filters.supplierId" disabled>
-              <option value="">—</option>
-            </select>
+            <MsSmartSelect
+              v-model="filters.supplierId"
+              :items="supplierItems"
+              placeholder="Поставщик"
+            />
           </div>
           <div class="filter-field">
             <label class="filter-label"><span class="dot"></span>Артикул</label>

@@ -99,9 +99,25 @@ export async function listStock(warehouseId?: string, productId?: string): Promi
   return data.items
 }
 
-export async function listStockExtended(filters: { warehouse_id?: string; search?: string } = {}): Promise<StockExtendedResponse> {
+export interface StockExtendedFilters {
+  warehouse_id?: string
+  product_id?: string
+  qty_mode?: 'positive' | 'zero' | ''
+  avail_mode?: 'nonZero' | 'zero' | ''
+  days_min?: number | ''
+  days_max?: number | ''
+  only_incoming?: boolean
+}
+
+export async function listStockExtended(filters: StockExtendedFilters = {}): Promise<StockExtendedResponse> {
   const params = new URLSearchParams()
   if (filters.warehouse_id) params.set('warehouse_id', filters.warehouse_id)
+  if (filters.product_id) params.set('product_id', filters.product_id)
+  if (filters.qty_mode) params.set('qty_mode', filters.qty_mode)
+  if (filters.avail_mode) params.set('avail_mode', filters.avail_mode)
+  if (filters.days_min !== '' && filters.days_min != null) params.set('days_min', String(filters.days_min))
+  if (filters.days_max !== '' && filters.days_max != null) params.set('days_max', String(filters.days_max))
+  if (filters.only_incoming) params.set('only_incoming', 'true')
   const qs = params.toString()
   const url = qs ? `/stock/extended?${qs}` : '/stock/extended'
   const { data } = await http.get<StockExtendedResponse>(url)

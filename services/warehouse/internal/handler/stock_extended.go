@@ -2,6 +2,7 @@ package handler
 
 import (
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	apperr "github.com/radonezhsklad/shared/errors"
 	"github.com/radonezhsklad/shared/httpx"
 	"github.com/radonezhsklad/warehouse/internal/product"
+	"github.com/radonezhsklad/warehouse/internal/repository"
 )
 
 type extendedRow struct {
@@ -45,14 +47,34 @@ func (h *Handler) StockExtended(c *gin.Context) {
 	ctx := c.Request.Context()
 	token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
 
-	var whID *uuid.UUID
+	f := repository.StockExtendedFilter{}
 	if s := c.Query("warehouse_id"); s != "" {
 		if id, err := uuid.Parse(s); err == nil {
-			whID = &id
+			f.WarehouseID = &id
 		}
 	}
+	if s := c.Query("product_id"); s != "" {
+		if id, err := uuid.Parse(s); err == nil {
+			f.ProductID = &id
+		}
+	}
+	f.QtyMode = c.Query("qty_mode")
+	f.AvailMode = c.Query("avail_mode")
+	if s := c.Query("days_min"); s != "" {
+		if v, err := strconv.Atoi(s); err == nil {
+			f.DaysMin = &v
+		}
+	}
+	if s := c.Query("days_max"); s != "" {
+		if v, err := strconv.Atoi(s); err == nil {
+			f.DaysMax = &v
+		}
+	}
+	if c.Query("only_incoming") == "true" {
+		f.OnlyIncoming = true
+	}
 
-	rows, err := h.svc.StockExtended(ctx, whID)
+	rows, err := h.svc.StockExtended(ctx, f)
 	if err != nil {
 		c.Error(err)
 		return

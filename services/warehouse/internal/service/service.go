@@ -72,8 +72,8 @@ func (s *Service) ListStock(ctx context.Context, warehouseID, productID *uuid.UU
 	return s.repo.ListStock(ctx, warehouseID, productID)
 }
 
-func (s *Service) StockExtended(ctx context.Context, warehouseID *uuid.UUID) ([]repository.ExtendedRow, error) {
-	return s.repo.StockExtended(ctx, warehouseID)
+func (s *Service) StockExtended(ctx context.Context, f repository.StockExtendedFilter) ([]repository.ExtendedRow, error) {
+    return s.repo.StockExtended(ctx, f)
 }
 
 func (s *Service) IncomingByProduct(ctx context.Context) (map[uuid.UUID]float64, error) {

@@ -1,8 +1,9 @@
-﻿package repository
+package repository
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -474,34 +475,87 @@ type ExtendedRow struct {
 	LastMovement *time.Time
 }
 
-func (r *Repo) StockExtended(ctx context.Context, warehouseID *uuid.UUID) ([]ExtendedRow, error) {
-	q := `
-SELECT sb.product_id, sb.warehouse_id, sb.quantity,
-       (SELECT MAX(created_at) FROM stock_movements sm
-        WHERE sm.product_id = sb.product_id AND sm.warehouse_id = sb.warehouse_id) AS last_movement
-FROM stock_balances sb
-WHERE sb.quantity <> 0`
-	args := []any{}
-	if warehouseID != nil {
-		q += ` AND sb.warehouse_id = $1`
-		args = append(args, *warehouseID)
-	}
-	q += ` ORDER BY sb.product_id`
+// StockExtendedFilter — серверные фильтры для расширенного отчёта остатков.
+type StockExtendedFilter struct {
+ProductID    *uuid.UUID
+	WarehouseID  *uuid.UUID
+QtyMode      string // "positive" | "zero" | "" (любой)
+AvailMode    string // "nonZero"  | "zero" | "" (любое)
+DaysMin      *int
+DaysMax      *int
+OnlyIncoming bool
+}
 
-	rows, err := r.db.Query(ctx, q, args...)
-	if err != nil {
-		return nil, err
+func (r *Repo) StockExtended(ctx context.Context, f StockExtendedFilter) ([]ExtendedRow, error) {
+q := `
+WITH base AS (
+  SELECT sb.product_id, sb.warehouse_id, sb.quantity,
+         (SELECT MAX(created_at) FROM stock_movements sm
+          WHERE sm.product_id = sb.product_id AND sm.warehouse_id = sb.warehouse_id) AS last_movement
+  FROM stock_balances sb
+)
+SELECT product_id, warehouse_id, quantity, last_movement
+FROM base
+WHERE 1=1`
+args := []any{}
+n := 1
+	if f.ProductID != nil {
+		q += fmt.Sprintf(` AND product_id = $%d`, n)
+		args = append(args, *f.ProductID)
+		n++
 	}
-	defer rows.Close()
-	out := []ExtendedRow{}
-	for rows.Next() {
-		var e ExtendedRow
-		if err := rows.Scan(&e.ProductID, &e.WarehouseID, &e.Quantity, &e.LastMovement); err != nil {
-			return nil, err
-		}
-		out = append(out, e)
-	}
-	return out, rows.Err()
+	if f.WarehouseID != nil {
+q += fmt.Sprintf(` AND warehouse_id = $%d`, n)
+args = append(args, *f.WarehouseID)
+n++
+}
+switch f.QtyMode {
+case "positive":
+q += ` AND quantity > 0`
+case "zero":
+q += ` AND quantity = 0`
+default:
+q += ` AND quantity <> 0`
+}
+switch f.AvailMode {
+case "nonZero":
+q += ` AND quantity <> 0`
+case "zero":
+q += ` AND quantity = 0`
+}
+if f.DaysMin != nil {
+q += fmt.Sprintf(` AND last_movement IS NOT NULL AND EXTRACT(EPOCH FROM (now() - last_movement))/86400 >= $%d`, n)
+args = append(args, *f.DaysMin)
+n++
+}
+if f.DaysMax != nil {
+q += fmt.Sprintf(` AND last_movement IS NOT NULL AND EXTRACT(EPOCH FROM (now() - last_movement))/86400 <= $%d`, n)
+args = append(args, *f.DaysMax)
+n++
+}
+if f.OnlyIncoming {
+q += ` AND EXISTS (
+  SELECT 1 FROM document_items di
+  JOIN documents d ON d.id = di.document_id
+  WHERE di.product_id = base.product_id AND d.type = 'receipt' AND d.status = 'draft'
+)`
+}
+q += ` ORDER BY product_id`
+
+rows, err := r.db.Query(ctx, q, args...)
+if err != nil {
+return nil, err
+}
+defer rows.Close()
+out := []ExtendedRow{}
+for rows.Next() {
+var e ExtendedRow
+if err := rows.Scan(&e.ProductID, &e.WarehouseID, &e.Quantity, &e.LastMovement); err != nil {
+return nil, err
+}
+out = append(out, e)
+}
+return out, rows.Err()
 }
 
 func (r *Repo) IncomingByProduct(ctx context.Context) (map[uuid.UUID]float64, error) {

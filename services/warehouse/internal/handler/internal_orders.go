@@ -43,10 +43,11 @@ func NewInternalOrderHandler(
 }
 
 type intOrderItemReq struct {
-	ProductID string  `json:"product_id" binding:"required"`
-	Quantity  float64 `json:"quantity"   binding:"required"`
-	Price     float64 `json:"price"`
-	VatRate   float64 `json:"vat_rate"`
+	ProductID  string  `json:"product_id" binding:"required"`
+	Quantity   float64 `json:"quantity"   binding:"required"`
+	Price      float64 `json:"price"`
+	VatRate    float64 `json:"vat_rate"`
+	SystemCode string  `json:"system_code"`
 }
 
 type intOrderReq struct {
@@ -98,8 +99,13 @@ func (h *InternalOrderHandler) toInput(c *gin.Context, req intOrderReq) (reposit
 		if vat == 0 {
 			vat = 20
 		}
+		var sysPtr *string
+		if it.SystemCode != "" {
+			sc := it.SystemCode
+			sysPtr = &sc
+		}
 		items = append(items, repository.InternalOrderItemInput{
-			ProductID: pid, Quantity: it.Quantity, Price: it.Price, VatRate: vat,
+			ProductID: pid, Quantity: it.Quantity, Price: it.Price, VatRate: vat, SystemCode: sysPtr,
 		})
 	}
 
@@ -271,13 +277,14 @@ func (h *InternalOrderHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// сначала убеждаемся, что заказ существует и его можно удалить (draft)
+	// админ может удалять заказы в любом статусе
+	isAdmin := mw.CurrentRole(c) == "admin"
 	order, err := h.svc.Get(c.Request.Context(), id)
 	if err != nil {
 		c.Error(err)
 		return
 	}
-	if order.Status != "draft" {
+	if !isAdmin && order.Status != "draft" {
 		c.Error(apperr.Conflict("удалить можно только черновик; для проведённого используйте «Отменить»"))
 		return
 	}
@@ -290,7 +297,7 @@ func (h *InternalOrderHandler) Delete(c *gin.Context) {
 		}
 	}
 
-	if err := h.svc.Delete(c.Request.Context(), id); err != nil {
+	if err := h.svc.Delete(c.Request.Context(), id, isAdmin); err != nil {
 		c.Error(err)
 		return
 	}
@@ -340,4 +347,67 @@ func (h *InternalOrderHandler) Send(c *gin.Context) {
 		return
 	}
 	httpx.OK(c, o)
+}
+
+type intOrderIssueReq struct {
+	ItemID    string  `json:"item_id" binding:"required"`
+	Qty       float64 `json:"qty"     binding:"required"`
+	IssueDate string  `json:"issue_date"`
+	Comment   string  `json:"comment"`
+}
+
+func (h *InternalOrderHandler) Issue(c *gin.Context) {
+	orderID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.Error(apperr.BadRequest("invalid id"))
+		return
+	}
+	var req intOrderIssueReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(apperr.BadRequest(err.Error()))
+		return
+	}
+	itemID, err := uuid.Parse(req.ItemID)
+	if err != nil {
+		c.Error(apperr.BadRequest("invalid item_id"))
+		return
+	}
+	var issueDate *string
+	if req.IssueDate != "" {
+		issueDate = &req.IssueDate
+	}
+	var issuedBy *uuid.UUID
+	if uid := mw.CurrentUserID(c); uid != uuid.Nil {
+		issuedBy = &uid
+	}
+	var comment *string
+	if req.Comment != "" {
+		comment = &req.Comment
+	}
+	iss, err := h.svc.Issue(c.Request.Context(), orderID, repository.InternalOrderIssueInput{
+		ItemID:    itemID,
+		Qty:       req.Qty,
+		IssueDate: issueDate,
+		IssuedBy:  issuedBy,
+		Comment:   comment,
+	})
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	httpx.Created(c, iss)
+}
+
+func (h *InternalOrderHandler) ListIssues(c *gin.Context) {
+	orderID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.Error(apperr.BadRequest("invalid id"))
+		return
+	}
+	list, err := h.svc.ListIssues(c.Request.Context(), orderID)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	httpx.OK(c, gin.H{"items": list})
 }

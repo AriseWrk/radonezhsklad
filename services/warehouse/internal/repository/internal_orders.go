@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/radonezhsklad/warehouse/internal/models"
@@ -33,10 +34,11 @@ type InternalOrderInput struct {
 }
 
 type InternalOrderItemInput struct {
-	ProductID uuid.UUID
-	Quantity  float64
-	Price     float64
-	VatRate   float64
+	ProductID  uuid.UUID
+	Quantity   float64
+	Price      float64
+	VatRate    float64
+	SystemCode *string
 }
 
 const intOrderSelect = `
@@ -45,7 +47,7 @@ SELECT o.id, o.number, o.doc_date, o.status, o.organization_id, o.warehouse_id, 
        o.sent_at, o.printed_at, o.is_printed, o.owner_id, o.owner_dept,
        o.vat_enabled, o.vat_included,
        o.posted_at, o.cancelled_at, o.created_by, o.created_at, o.updated_at, o.external_id,
-       o.ms_synced_at, o.ms_sync_error,
+       o.ms_synced_at, o.ms_sync_error, o.issue_status,
        (SELECT COUNT(*) FROM internal_order_items i WHERE i.order_id = o.id)
 FROM internal_orders o
 LEFT JOIN projects p ON p.external_id::text = o.project
@@ -58,7 +60,7 @@ func scanIntOrder(row pgx.Row) (*models.InternalOrder, error) {
 		&o.SentAt, &o.PrintedAt, &o.IsPrinted, &o.OwnerID, &o.OwnerDept,
 		&o.VatEnabled, &o.VatIncluded,
 		&o.PostedAt, &o.CancelledAt, &o.CreatedBy, &o.CreatedAt, &o.UpdatedAt, &o.ExternalID,
-		&o.MSSyncedAt, &o.MSSyncError, &o.ItemsCount)
+		&o.MSSyncedAt, &o.MSSyncError, &o.IssueStatus, &o.ItemsCount)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -96,9 +98,9 @@ RETURNING id`,
 		for _, it := range in.Items {
 			sum := it.Quantity * it.Price
 			if _, err := tx.Exec(ctx, `
-INSERT INTO internal_order_items (order_id, product_id, quantity, price, vat_rate, sum)
-VALUES ($1,$2,$3,$4,$5,$6)`,
-				id, it.ProductID, it.Quantity, it.Price, it.VatRate, sum,
+INSERT INTO internal_order_items (order_id, product_id, quantity, price, vat_rate, sum, system_code)
+VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+				id, it.ProductID, it.Quantity, it.Price, it.VatRate, sum, it.SystemCode,
 			); err != nil {
 				return err
 			}
@@ -121,7 +123,7 @@ VALUES ($1,$2,$3,$4,$5,$6)`,
 
 func loadIntItemsTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) ([]models.InternalOrderItem, error) {
 	rows, err := tx.Query(ctx, `
-SELECT id, order_id, product_id, quantity, price, vat_rate, sum, created_at
+SELECT id, order_id, product_id, quantity, price, vat_rate, sum, system_code, issued_qty, created_at
 FROM internal_order_items WHERE order_id = $1 ORDER BY created_at`, id)
 	if err != nil {
 		return nil, err
@@ -131,7 +133,7 @@ FROM internal_order_items WHERE order_id = $1 ORDER BY created_at`, id)
 	for rows.Next() {
 		var it models.InternalOrderItem
 		if err := rows.Scan(&it.ID, &it.OrderID, &it.ProductID, &it.Quantity,
-			&it.Price, &it.VatRate, &it.Sum, &it.CreatedAt); err != nil {
+			&it.Price, &it.VatRate, &it.Sum, &it.SystemCode, &it.IssuedQty, &it.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, it)
@@ -145,7 +147,7 @@ func (r *InternalOrderRepo) Get(ctx context.Context, id uuid.UUID) (*models.Inte
 		return o, err
 	}
 	rows, err := r.db.Query(ctx, `
-SELECT id, order_id, product_id, quantity, price, vat_rate, sum, created_at
+SELECT id, order_id, product_id, quantity, price, vat_rate, sum, system_code, issued_qty, created_at
 FROM internal_order_items WHERE order_id = $1 ORDER BY created_at`, id)
 	if err != nil {
 		return nil, err
@@ -155,7 +157,7 @@ FROM internal_order_items WHERE order_id = $1 ORDER BY created_at`, id)
 	for rows.Next() {
 		var it models.InternalOrderItem
 		if err := rows.Scan(&it.ID, &it.OrderID, &it.ProductID, &it.Quantity,
-			&it.Price, &it.VatRate, &it.Sum, &it.CreatedAt); err != nil {
+			&it.Price, &it.VatRate, &it.Sum, &it.SystemCode, &it.IssuedQty, &it.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, it)
@@ -198,7 +200,7 @@ func (r *InternalOrderRepo) List(ctx context.Context, f InternalOrderFilters) ([
 			&o.SentAt, &o.PrintedAt, &o.IsPrinted, &o.OwnerID, &o.OwnerDept,
 			&o.VatEnabled, &o.VatIncluded,
 			&o.PostedAt, &o.CancelledAt, &o.CreatedBy, &o.CreatedAt, &o.UpdatedAt, &o.ExternalID,
-			&o.MSSyncedAt, &o.MSSyncError, &o.ItemsCount); err != nil {
+			&o.MSSyncedAt, &o.MSSyncError, &o.IssueStatus, &o.ItemsCount); err != nil {
 			return nil, err
 		}
 		out = append(out, *o)
@@ -231,9 +233,9 @@ WHERE id=$1`,
 		for _, it := range in.Items {
 			sum := it.Quantity * it.Price
 			if _, err := tx.Exec(ctx, `
-INSERT INTO internal_order_items (order_id, product_id, quantity, price, vat_rate, sum)
-VALUES ($1,$2,$3,$4,$5,$6)`,
-				id, it.ProductID, it.Quantity, it.Price, it.VatRate, sum); err != nil {
+INSERT INTO internal_order_items (order_id, product_id, quantity, price, vat_rate, sum, system_code)
+VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+				id, it.ProductID, it.Quantity, it.Price, it.VatRate, sum, it.SystemCode); err != nil {
 				return err
 			}
 		}
@@ -267,8 +269,14 @@ func (r *InternalOrderRepo) UpdateStatus(ctx context.Context, id uuid.UUID, stat
 	return err
 }
 
-func (r *InternalOrderRepo) Delete(ctx context.Context, id uuid.UUID) (bool, error) {
-	tag, err := r.db.Exec(ctx, `DELETE FROM internal_orders WHERE id=$1 AND status='draft'`, id)
+func (r *InternalOrderRepo) Delete(ctx context.Context, id uuid.UUID, force bool) (bool, error) {
+	var tag pgconn.CommandTag
+	var err error
+	if force {
+		tag, err = r.db.Exec(ctx, `DELETE FROM internal_orders WHERE id=$1`, id)
+	} else {
+		tag, err = r.db.Exec(ctx, `DELETE FROM internal_orders WHERE id=$1 AND status='draft'`, id)
+	}
 	if err != nil {
 		return false, err
 	}

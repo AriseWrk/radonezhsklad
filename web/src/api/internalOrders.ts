@@ -10,6 +10,8 @@ export interface InternalOrderItem {
   price: number
   vat_rate: number
   sum: number
+  system_code?: string | null
+  issued_qty: number
 }
 
 export interface InternalOrder {
@@ -40,6 +42,7 @@ export interface InternalOrder {
   items?: InternalOrderItem[]
   items_count?: number
   external_id?: string | null
+  issue_status?: 'none' | 'partial' | 'full'
 }
 
 export interface IntOrderInput {
@@ -58,6 +61,7 @@ export interface IntOrderInput {
     quantity: number
     price: number
     vat_rate?: number
+    system_code?: string | null
   }>
 }
 
@@ -121,3 +125,40 @@ export async function exportInternalOrder(id: string): Promise<{ blob: Blob; fil
   if (m && m[1]) filename = m[1]
   return { blob: resp.data as Blob, filename }
 }
+
+export interface IntOrderIssue {
+  id: string
+  order_id: string
+  item_id: string
+  qty: number
+  issue_date: string
+  issued_by?: string
+  comment?: string
+  created_at: string
+}
+
+export interface IntOrderIssueInput {
+  item_id: string
+  qty: number
+  issue_date?: string
+  comment?: string
+}
+
+export async function listInternalOrderIssues(orderId: string): Promise<IntOrderIssue[]> {
+  const { data } = await http.get<{ items: IntOrderIssue[] }>('/internal-orders/' + orderId + '/issues')
+  return data.items
+}
+
+export async function issueInternalOrderItem(orderId: string, input: IntOrderIssueInput): Promise<IntOrderIssue> {
+  const { data } = await http.post<IntOrderIssue>('/internal-orders/' + orderId + '/issues', input)
+  return data
+}
+
+export const SYSTEMS: Array<{ code: string; name: string }> = [
+  { code: 'SOTS', name: 'СОТС' },
+  { code: 'APS',  name: 'АПС'  },
+  { code: 'SOUE', name: 'СОУЭ' },
+  { code: 'SKUD', name: 'СКУД' },
+  { code: 'SOT',  name: 'СОТ'  },
+  { code: 'SKS',  name: 'СКС'  },
+]

@@ -11,11 +11,12 @@ import (
 )
 
 type InternalOrderService struct {
-	repo *repository.InternalOrderRepo
+	repo      *repository.InternalOrderRepo
+	issueRepo *repository.InternalOrderIssueRepo
 }
 
-func NewInternalOrderService(repo *repository.InternalOrderRepo) *InternalOrderService {
-	return &InternalOrderService{repo: repo}
+func NewInternalOrderService(repo *repository.InternalOrderRepo, issueRepo *repository.InternalOrderIssueRepo) *InternalOrderService {
+	return &InternalOrderService{repo: repo, issueRepo: issueRepo}
 }
 
 func (s *InternalOrderService) NextNumber(ctx context.Context) (string, error) {
@@ -104,8 +105,8 @@ func (s *InternalOrderService) Cancel(ctx context.Context, id uuid.UUID) (*model
 	return s.Get(ctx, id)
 }
 
-func (s *InternalOrderService) Delete(ctx context.Context, id uuid.UUID) error {
-	ok, err := s.repo.Delete(ctx, id)
+func (s *InternalOrderService) Delete(ctx context.Context, id uuid.UUID, force bool) error {
+	ok, err := s.repo.Delete(ctx, id, force)
 	if err != nil {
 		return apperr.Internal("delete order", err)
 	}
@@ -114,10 +115,38 @@ func (s *InternalOrderService) Delete(ctx context.Context, id uuid.UUID) error {
 	}
 	return nil
 }
+
 func (s *InternalOrderService) MarkPrinted(ctx context.Context, id uuid.UUID) error {
 	return s.repo.MarkPrinted(ctx, id)
 }
 
 func (s *InternalOrderService) MarkSent(ctx context.Context, id uuid.UUID) error {
 	return s.repo.MarkSent(ctx, id)
+}
+
+// Issue фиксирует фактическую выдачу по позиции заказа.
+// Разрешено только для проведённого заказа. Склад не двигаем (вариант 1).
+func (s *InternalOrderService) Issue(ctx context.Context, orderID uuid.UUID, in repository.InternalOrderIssueInput) (*models.InternalOrderIssue, error) {
+	o, err := s.Get(ctx, orderID)
+	if err != nil {
+		return nil, err
+	}
+	if o.Status != "posted" {
+		return nil, apperr.Conflict("выдача доступна только для проведённого заказа")
+	}
+	iss, err := s.issueRepo.AddIssue(ctx, orderID, in)
+	if err != nil {
+		if err == repository.ErrIssueOverflow {
+			return nil, apperr.BadRequest("выдача превышает остаток по позиции")
+		}
+		return nil, apperr.Internal("add issue", err)
+	}
+	return iss, nil
+}
+
+func (s *InternalOrderService) ListIssues(ctx context.Context, orderID uuid.UUID) ([]models.InternalOrderIssue, error) {
+	if _, err := s.Get(ctx, orderID); err != nil {
+		return nil, err
+	}
+	return s.issueRepo.ListByOrder(ctx, orderID)
 }

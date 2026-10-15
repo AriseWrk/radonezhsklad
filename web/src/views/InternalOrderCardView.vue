@@ -25,7 +25,7 @@
       <MsButton icon="print" @click="print">Печать</MsButton>
       <MsButton icon="send" @click="onSend" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отправить</MsButton>
       <MsButton icon="close" @click="onCancel" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отменить</MsButton>
-      <MsButton variant="icon" icon="trash" title="Удалить" @click="onDelete" :disabled="(!currentId && !isNew) || (currentId !== null && form.status !== 'draft')" />
+      <MsButton variant="icon" icon="trash" title="Удалить" @click="onDelete" :disabled="(!currentId && !isNew) || (currentId !== null && form.status !== 'draft' && auth.role !== 'admin')" />
       <div class="toolbar-spacer"></div>
       <MsButton variant="icon" icon="close" @click="close" title="Закрыть" />
     </div>
@@ -107,6 +107,7 @@
     <!-- Вкладки -->
     <div class="ms-tabs">
       <button class="tab" :class="{ active: tab === 'main' }" @click="tab = 'main'">Главная</button>
+      <button class="tab" :class="{ active: tab === 'issues' }" @click="tab = 'issues'">Выдачи</button>
       <button class="tab" :class="{ active: tab === 'related' }" @click="tab = 'related'">Связанные документы</button>
     </div>
 
@@ -120,17 +121,30 @@
           @input="onSearchInput"
           @focus="showSuggest = true"
           @blur="hideSuggestSoon"
+          @keydown="onSuggestKeydown"
         />
         <MsButton @click="focusCatalog">Из справочника</MsButton>
         <MsButton @click="checkStock">Проверить</MsButton>
         <MsButton @click="importCsv">Импорт</MsButton>
         <div v-if="showSuggest && suggestions.length" class="suggest">
-          <div v-for="p in suggestions" :key="p.id" class="suggest-item" @mousedown.prevent="addItem(p)">
+          <div
+            v-for="(p, idx) in suggestions"
+            :key="p.id"
+            class="suggest-item"
+            :class="{ 'already-in': p._already, 'is-active': idx === activeSuggestIndex }"
+            @mousedown.prevent="addItem(p)"
+            @mouseenter="activeSuggestIndex = idx"
+          >
             <div class="suggest-row">
-              <div class="suggest-name">{{ p.name }}</div>
+              <div class="suggest-name" v-html="highlight(p.name, p._hits, 'name')"></div>
               <div class="suggest-stock" :class="{ 'out': availableFor(p.id) <= 0 }">
                 {{ availableFor(p.id) > 0 ? 'Остаток: ' + formatQty(availableFor(p.id)) : 'Нет в наличии' }}
               </div>
+            </div>
+            <div class="suggest-meta">
+              <span v-if="p.sku" class="suggest-sku">SKU: <span v-html="highlight(p.sku, p._hits, 'sku')"></span></span>
+              <span v-if="p.barcode" class="suggest-barcode">Ш/К: <span v-html="highlight(p.barcode, p._hits, 'barcode')"></span></span>
+              <span v-if="p._already" class="suggest-already">уже добавлен</span>
             </div>
             <div class="suggest-meta muted">
               <span v-if="p.sku">Арт. {{ p.sku }}</span>
@@ -146,8 +160,11 @@
           <tr>
             <th class="col-num">#</th>
             <th>Наименование</th>
+            <th class="col-sys">Система</th>
             <th class="col-num-right">Кол-во</th>
+            <th class="col-num-right">Выдано</th>
             <th class="col-num-right">Доступно</th>
+            <th class="col-act"></th>
             <th class="col-num-right">Цена</th>
             <th class="col-num-right">НДС</th>
             <th class="col-num-right">Сумма</th>
@@ -156,13 +173,26 @@
         </thead>
         <tbody>
           <tr v-if="form.items.length === 0">
-            <td colspan="8" class="empty">Добавьте позиции</td>
+            <td colspan="10" class="empty">Добавьте позиции</td>
           </tr>
           <tr v-else v-for="(it, idx) in form.items" :key="it.product_id">
             <td class="col-num">{{ idx + 1 }}</td>
             <td>{{ productName(it.product_id) }}</td>
+            <td class="col-sys">
+              <select v-model="it.system_code" :disabled="!canEdit" class="cell-select">
+                <option :value="null">—</option>
+                <option v-for="s in SYSTEMS" :key="s.code" :value="s.code">{{ s.name }}</option>
+              </select>
+            </td>
             <td class="col-num-right">
               <input v-model.number="it.quantity" type="number" min="0" step="0.001" class="cell-input" :disabled="!canEditQty" />
+            </td>
+            <td class="col-num-right muted">
+              <span v-if="form.status === 'posted'">{{ formatQty(it.issued_qty ?? 0) }}</span>
+              <span v-else>—</span>
+            </td>
+            <td class="col-act">
+              <button v-if="form.status === 'posted' && remainingFor(it) > 0" class="issue-btn" @click="openIssue(it.id || '', remainingFor(it))" title="Выдать">Выдать</button>
             </td>
             <td class="col-num-right muted">{{ formatQty(availableFor(it.product_id)) }}</td>
             <td class="col-num-right">
@@ -209,10 +239,57 @@
       </div>
     </template>
 
+    <template v-else-if="tab === 'issues'">
+      <div class="sys-summary">
+        <h3>Сводка по системам</h3>
+        <table class="ms-items">
+          <thead><tr><th>Система</th><th class="col-num-right">Заказано</th><th class="col-num-right">Выдано</th></tr></thead>
+          <tbody>
+            <tr v-for="s in SYSTEMS" :key="s.code">
+              <td>{{ s.name }}</td>
+              <td class="col-num-right">{{ formatQty(issueQtyBySystem(s.code).ordered) }}</td>
+              <td class="col-num-right">{{ formatQty(issueQtyBySystem(s.code).issued) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <table class="ms-items">
+        <thead><tr><th>Дата</th><th>Позиция</th><th class="col-num-right">Кол-во</th><th>Комментарий</th></tr></thead>
+        <tbody>
+          <tr v-if="issues.length === 0"><td colspan="4" class="empty">Выдач пока нет</td></tr>
+          <tr v-else v-for="iss in issues" :key="iss.id">
+            <td>{{ iss.issue_date.slice(0, 10) }}</td>
+            <td>{{ itemName(iss.item_id) }}</td>
+            <td class="col-num-right">{{ formatQty(iss.qty) }}</td>
+            <td class="muted">{{ iss.comment || '' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </template>
+
     <template v-else>
       <div class="empty-block">Связанных документов пока нет</div>
     </template>
 
+    <!-- Модалка: выдача -->
+    <div v-if="showIssueModal" class="modal-backdrop" @click.self="showIssueModal = false">
+      <form class="card modal" @submit.prevent="submitIssue">
+        <h2>Выдача по позиции</h2>
+        <div v-if="error" class="error-box">{{ error }}</div>
+        <label>Количество</label>
+        <input v-model.number="issueQty" type="number" min="0.001" step="0.001" autofocus />
+        <label>Дата выдачи</label>
+        <input v-model="issueDate" type="date" />
+        <label>Комментарий</label>
+        <input v-model="issueComment" placeholder="Необязательно" />
+        <div class="modal-actions">
+          <button type="button" @click="showIssueModal = false">Отмена</button>
+          <button class="primary" type="submit" :disabled="issuing">
+            {{ issuing ? 'Сохранение...' : 'Выдать' }}
+          </button>
+        </div>
+      </form>
+    </div>
     <!-- Модалка: новый проект -->
     <div v-if="showCreateProject" class="modal-backdrop" @click.self="showCreateProject = false">
       <form class="card modal" @submit.prevent="submitCreateProject">
@@ -242,8 +319,13 @@ import {
   postInternalOrder, nextInternalOrderNumber,
   type IntOrderInput,
   exportInternalOrder,
+  listInternalOrderIssues,
+  issueInternalOrderItem,
+  SYSTEMS,
+  type IntOrderIssue,
 } from '../api/internalOrders'
 import { listProducts, type Product } from '../api/products'
+import { smartSearch, type Hit, type FieldName } from '../utils/smartSearch'
 import { listWarehouses, type Warehouse } from '../api/warehouses'
 import { listOrganizations, type Organization } from '../api/suppliers'
 import { listProjects, createProject, type Project } from '../api/projects'
@@ -254,10 +336,13 @@ import MsButton from '../components/MsButton.vue'
 import MsIcon from '../components/MsIcon.vue'
 
 interface FormItem {
+  id?: string
   product_id: string
   quantity: number
   price: number
   vat_rate: number
+  system_code?: string | null
+  issued_qty?: number
 }
 
 const route = useRoute()
@@ -273,7 +358,7 @@ const stockMap = ref<Map<string, number>>(new Map())
 const loading = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
-const tab = ref<'main' | 'related'>('main')
+const tab = ref<'main' | 'issues' | 'related'>('main')
 const isNew = computed(() => route.params.id === 'new' || route.path.endsWith('/new'))
 
 const form = reactive({
@@ -293,22 +378,104 @@ const form = reactive({
 })
 
 const currentId = ref<string | null>(null)
+const issues = ref<IntOrderIssue[]>([])
+const showIssueModal = ref(false)
+const issueItemId = ref<string>('')
+const issueQty = ref<number>(0)
+const issueDate = ref<string>('')
+const issueComment = ref<string>('')
+const issuing = ref(false)
+
+function openIssue(itemId: string, remaining: number) {
+  issueItemId.value = itemId
+  issueQty.value = remaining > 0 ? remaining : 0
+  issueDate.value = new Date().toISOString().slice(0, 10)
+  issueComment.value = ''
+  showIssueModal.value = true
+}
+
+function remainingFor(it: FormItem) {
+  return Math.max(0, (it.quantity ?? 0) - (it.issued_qty ?? 0))
+}
+
+async function submitIssue() {
+  if (!currentId.value) return
+  if (issueQty.value <= 0) { error.value = 'Количество должно быть больше нуля'; return }
+  issuing.value = true; error.value = null
+  try {
+    await issueInternalOrderItem(currentId.value, {
+      item_id: issueItemId.value,
+      qty: issueQty.value,
+      issue_date: issueDate.value || undefined,
+      comment: issueComment.value || undefined,
+    })
+    showIssueModal.value = false
+    await reload()
+  } catch (e) {
+    error.value = apiErrorMessage(e)
+  } finally {
+    issuing.value = false
+  }
+}
+
+async function reload() {
+  if (!currentId.value) return
+  const o = await getInternalOrder(currentId.value)
+  form.status = o.status
+  form.items = (o.items ?? []).map((it) => ({
+    id: it.id, product_id: it.product_id, quantity: it.quantity, price: it.price, vat_rate: it.vat_rate,
+    system_code: it.system_code ?? null, issued_qty: it.issued_qty ?? 0,
+  }))
+  try { issues.value = await listInternalOrderIssues(currentId.value) } catch { issues.value = [] }
+}
+
+function itemName(itemId: string) {
+  const it = form.items.find((i) => i.id === itemId)
+  if (!it) return itemId.slice(0, 8)
+  return productName(it.product_id)
+}
+
+function issueQtyBySystem(code: string) {
+  const t = form.items.filter((i) => i.system_code === code).reduce((s, i) => s + (i.quantity ?? 0), 0)
+  const f = form.items.filter((i) => i.system_code === code).reduce((s, i) => s + (i.issued_qty ?? 0), 0)
+  return { ordered: t, issued: f }
+}
 const externalId = ref<string | null>(null)
 const canEdit = computed(() => isNew.value || (form.status === 'draft' && !externalId.value))
 const canEditQty = computed(() => isNew.value || form.status === 'draft')
 
 const newItemSearch = ref('')
 const showSuggest = ref(false)
+const activeSuggestIndex = ref(0)
 const suggestions = computed(() => {
-  const q = newItemSearch.value.trim().toLowerCase()
-  if (!q) return []
-  return products.value.filter((p) => !!p.external_id).filter((p) =>
-    p.name.toLowerCase().includes(q) ||
-    (p.sku ?? '').toLowerCase().includes(q)
-  ).slice(0, 8)
+  return smartSearch(products.value, newItemSearch.value, {
+    getFields: (p) => [p.name, p.sku, p.barcode, p.external_id],
+    fieldOrder: ['sku', 'barcode', 'external_id', 'name'],
+    limit: 10,
+    extraScore: (p) => (form.items.some((i) => i.product_id === p.id) ? -50 : 0),
+  }).map((sc) => Object.assign({}, sc.item, {
+    _hits: sc.hits as Hit[],
+    _already: form.items.some((i) => i.product_id === sc.item.id),
+  }))
 })
+watch(newItemSearch, () => { activeSuggestIndex.value = 0 })
 function hideSuggestSoon() { setTimeout(() => { showSuggest.value = false }, 150) }
 function onSearchInput() { showSuggest.value = true }
+function onSuggestKeydown(e: KeyboardEvent) {
+  if (!showSuggest.value || !suggestions.value.length) return
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    activeSuggestIndex.value = Math.min(activeSuggestIndex.value + 1, suggestions.value.length - 1)
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    activeSuggestIndex.value = Math.max(activeSuggestIndex.value - 1, 0)
+  } else if (e.key === 'Enter') {
+    const it = suggestions.value[activeSuggestIndex.value]
+    if (it) { e.preventDefault(); addItem(it as Product) }
+  } else if (e.key === 'Escape') {
+    showSuggest.value = false
+  }
+}
 function focusCatalog() { showSuggest.value = true }
 function addItem(p: Product) {
   const existing = form.items.find((i) => i.product_id === p.id)
@@ -322,6 +489,26 @@ function removeItem(idx: number) { form.items.splice(idx, 1) }
 function productName(id: string) { return products.value.find((p) => p.id === id)?.name ?? '—' }
 function availableFor(id: string) { return stockMap.value.get(id) ?? 0 }
 function formatQty(n: number) { return n === 0 ? '0' : n.toLocaleString('ru-RU', { maximumFractionDigits: 3 }) }
+const HTML_ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => HTML_ESC[c] || c)
+}
+function highlight(text: string | null | undefined, hits: Hit[], field: FieldName): string {
+  const t = text ?? ''
+  if (!t) return ''
+  const ranges = (hits || []).filter((h) => h.field === field).sort((a, b) => a.start - b.start)
+  if (!ranges.length) return escapeHtml(t)
+  let out = ''
+  let pos = 0
+  for (const r of ranges) {
+    if (r.start < pos) continue
+    out += escapeHtml(t.slice(pos, r.start))
+    out += '<mark>' + escapeHtml(t.slice(r.start, r.end)) + '</mark>'
+    pos = r.end
+  }
+  out += escapeHtml(t.slice(pos))
+  return out
+}
 function formatMoney(n: number) { return n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
 
 const subtotal = computed(() => form.items.reduce((s, i) => s + i.quantity * i.price, 0))
@@ -379,8 +566,9 @@ async function load() {
       form.vat_included = o.vat_included
       externalId.value = o.external_id ?? null
       form.items = (o.items ?? []).map((it) => ({
-        product_id: it.product_id, quantity: it.quantity, price: it.price, vat_rate: it.vat_rate,
+        id: it.id, product_id: it.product_id, quantity: it.quantity, price: it.price, vat_rate: it.vat_rate, system_code: it.system_code ?? null, issued_qty: it.issued_qty ?? 0,
       }))
+      try { issues.value = await listInternalOrderIssues(currentId.value) } catch { issues.value = [] }
     } else {
       // новосоздаваемый — получаем следующий номер и дефолтные значения
       try { form.number = await nextInternalOrderNumber() } catch { /* ignore */ }
@@ -409,7 +597,7 @@ function buildInput(): IntOrderInput {
     vat_enabled: form.vat_enabled,
     vat_included: form.vat_included,
     items: form.items.map((i) => ({
-      product_id: i.product_id, quantity: i.quantity, price: i.price, vat_rate: i.vat_rate,
+      product_id: i.product_id, quantity: i.quantity, price: i.price, vat_rate: i.vat_rate, system_code: i.system_code ?? null,
     })),
   }
 }
@@ -438,8 +626,10 @@ async function save() {
       form.number = created.number
       form.status = created.status
       router.replace(`/internal-orders/${created.id}`)
+      await reload()
     } else if (currentId.value) {
       await updateInternalOrder(currentId.value, buildInput())
+      await reload()
     }
   } catch (e) {
     error.value = apiErrorMessage(e)
@@ -454,8 +644,8 @@ async function onTogglePosted(e: Event) {
   try {
     if (checked && form.status === 'draft') {
       await save()
-      const updated = await postInternalOrder(currentId.value)
-      form.status = updated.status
+      await postInternalOrder(currentId.value)
+      await reload()
     }
   } catch (err) {
     error.value = apiErrorMessage(err)
@@ -746,7 +936,6 @@ async function submitCreateProject() {
 .suggest-item:last-child { border-bottom: none; }
 .suggest-row { display: block; }
 .suggest-name { font-size: 13px; color: #1f2328; display: inline; }
-.suggest-meta { font-size: 11px; }
 .suggest-stock { font-size: 12px; color: #15803d; white-space: nowrap; display: inline; margin-left: 12px; }
 .suggest-stock.out { color: #b91c1c; }
 
@@ -1024,7 +1213,6 @@ async function submitCreateProject() {
 .suggest-item:hover { background: #f6f8fa; }
 .suggest-row { display: block; }
 .suggest-name { font-size: 13px; color: #1f2328; display: inline; }
-.suggest-meta { font-size: 11px; margin-top: 2px; }
 .suggest-stock { font-size: 12px; color: #15803d; white-space: nowrap; display: inline; margin-left: 12px; }
 .suggest-stock.out { color: #b91c1c; }
 
@@ -1110,4 +1298,26 @@ async function submitCreateProject() {
   color: #8c959f; font-size: 13px;
   background: #fff; border: 1px solid #eaeef2; border-radius: 4px;
 }
+.suggest-item { cursor: pointer; padding: 4px 8px; border-radius: 4px; }
+.suggest-item.is-active { background: #eef5ff; }
+.suggest-item.already-in { opacity: 0.55; }
+.suggest-meta { display: flex; gap: 10px; font-size: 12px; color: #777; margin-top: 2px; }
+.suggest-already { color: #b26a00; }
+.suggest mark { background: #ffe9a8; color: inherit; padding: 0 1px; border-radius: 2px; }
+
+
+.col-sys { width: 110px; }
+.col-act { width: 70px; }
+.cell-select {
+  width: 100%; height: 24px; padding: 0 4px;
+  font-size: 12px; border: 1px solid #d0d7de; border-radius: 3px; background: #fff;
+}
+.issue-btn {
+  padding: 2px 8px; font-size: 12px;
+  border: 1px solid #2c5d9c; border-radius: 3px;
+  background: #fff; color: #2c5d9c; cursor: pointer;
+}
+.issue-btn:hover { background: #eaf1fb; }
+.sys-summary { margin: 10px 0 16px; }
+.sys-summary h3 { font-size: 14px; margin: 0 0 6px; color: #1f2328; }
 </style>

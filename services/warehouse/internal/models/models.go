@@ -122,19 +122,33 @@ type InternalOrder struct {
 	ExternalID     *uuid.UUID          `json:"external_id,omitempty"`
 	MSSyncedAt     *time.Time          `json:"ms_synced_at,omitempty"`
 	MSSyncError    *string             `json:"ms_sync_error,omitempty"`
+	IssueStatus    string              `json:"issue_status"`
 	Items          []InternalOrderItem `json:"items,omitempty"`
 	ItemsCount     int                 `json:"items_count"`
 }
 
 type InternalOrderItem struct {
-	ID        uuid.UUID `json:"id"`
-	OrderID   uuid.UUID `json:"order_id"`
-	ProductID uuid.UUID `json:"product_id"`
-	Quantity  float64   `json:"quantity"`
-	Price     float64   `json:"price"`
-	VatRate   float64   `json:"vat_rate"`
-	Sum       float64   `json:"sum"`
-	CreatedAt time.Time `json:"created_at"`
+	ID         uuid.UUID `json:"id"`
+	OrderID    uuid.UUID `json:"order_id"`
+	ProductID  uuid.UUID `json:"product_id"`
+	Quantity   float64   `json:"quantity"`
+	Price      float64   `json:"price"`
+	VatRate    float64   `json:"vat_rate"`
+	Sum        float64   `json:"sum"`
+	SystemCode *string   `json:"system_code,omitempty"`
+	IssuedQty  float64   `json:"issued_qty"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+type InternalOrderIssue struct {
+	ID        uuid.UUID  `json:"id"`
+	OrderID   uuid.UUID  `json:"order_id"`
+	ItemID    uuid.UUID  `json:"item_id"`
+	Qty       float64    `json:"qty"`
+	IssueDate time.Time  `json:"issue_date"`
+	IssuedBy  *uuid.UUID `json:"issued_by,omitempty"`
+	Comment   *string    `json:"comment,omitempty"`
+	CreatedAt time.Time  `json:"created_at"`
 }
 
 // ---- Inventory ----

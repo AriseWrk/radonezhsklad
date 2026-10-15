@@ -45,6 +45,7 @@ func main() {
 	repo := repository.New(pool)
 	supRepo := repository.NewSupplierRepo(pool)
 	intOrderRepo := repository.NewInternalOrderRepo(pool)
+	intIssueRepo := repository.NewInternalOrderIssueRepo(pool)
 	projectRepo := repository.NewProjectRepo(pool)
 	invRepo := repository.NewInventoryRepo(pool)
 	orgRepo := repository.NewOrganizationRepo(pool)
@@ -60,7 +61,7 @@ func main() {
 
 	svc := service.New(repo)
 	supSvc := service.NewSupplierService(supRepo, orgRepo)
-	intOrderSvc := service.NewInternalOrderService(intOrderRepo)
+	intOrderSvc := service.NewInternalOrderService(intOrderRepo, intIssueRepo)
 	projectSvc := service.NewProjectService(projectRepo)
 	invSvc := service.NewInventoryService(invRepo, repo)
 	pc := product.New(cfg.ProductURL)
@@ -155,6 +156,7 @@ func main() {
 			read.GET("/internal-orders/:id", intOrderH.Get)
 			read.GET("/internal-orders/next-number", intOrderH.NextNumber)
 			read.GET("/internal-orders/:id/export", intOrderH.Export)
+			read.GET("/internal-orders/:id/issues", intOrderH.ListIssues)
 			read.GET("/organizations", supH.ListOrganizations)
 			read.GET("/projects", projectH.List)
 			read.GET("/projects/:id", projectH.Get)
@@ -192,6 +194,7 @@ func main() {
 			supWrite.DELETE("/internal-orders/:id", intOrderH.Delete)
 			supWrite.POST("/internal-orders/:id/print", intOrderH.Print)
 			supWrite.POST("/internal-orders/:id/send", intOrderH.Send)
+			supWrite.POST("/internal-orders/:id/issues", intOrderH.Issue)
 		}
 
 		docWrite := api.Group("")

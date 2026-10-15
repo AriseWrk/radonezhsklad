@@ -104,6 +104,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import { smartFilter } from '../utils/smartSearch'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { listProducts, type Product } from '../api/products'
 import { listStockExtended, type StockExtendedRow } from '../api/stock'
@@ -249,11 +250,10 @@ async function load() {
 const filtered = computed(() => {
   let rows = allRows.value
   if (filters.search) {
-    const q = filters.search.toLowerCase()
-    rows = rows.filter((r) =>
-      r.product_name.toLowerCase().includes(q) ||
-      (r.sku ?? '').toLowerCase().includes(q)
-    )
+    rows = smartFilter(rows, filters.search, {
+      getFields: (r) => [r.product_name, r.sku ?? null, null, null],
+      limit: rows.length,
+    })
   }
   if (filters.stockMode === 'positive') rows = rows.filter((r) => r.stock > 0)
   if (filters.stockMode === 'zero')     rows = rows.filter((r) => r.stock === 0)

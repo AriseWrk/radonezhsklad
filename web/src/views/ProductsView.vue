@@ -217,6 +217,7 @@
 </template>
 
 <script setup lang="ts">
+import { smartFilter } from '../utils/smartSearch'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   listProducts, createProduct, updateProduct, archiveProduct,
@@ -302,16 +303,16 @@ const filtered = computed(() => {
   let rows = products.value
   if (selectedCategory.value) rows = rows.filter((p) => p.category_id === selectedCategory.value)
   if (search.value) {
-    const q = search.value.toLowerCase()
-    rows = rows.filter((p) =>
-      p.name.toLowerCase().includes(q) ||
-      (p.sku ?? '').toLowerCase().includes(q) ||
-      (p.barcode ?? '').toLowerCase().includes(q)
-    )
+    rows = smartFilter(rows, search.value, {
+      getFields: (p) => [p.name, p.sku ?? null, p.barcode ?? null, null],
+      limit: rows.length,
+    })
   }
   if (filterSku.value) {
-    const q = filterSku.value.toLowerCase()
-    rows = rows.filter((p) => (p.sku ?? '').toLowerCase().includes(q))
+    rows = smartFilter(rows, filterSku.value, {
+      getFields: (p) => [null, p.sku ?? null, null, null],
+      limit: rows.length,
+    })
   }
   if (filterPriceFrom.value != null) rows = rows.filter((p) => p.price >= filterPriceFrom.value!)
   if (filterPriceTo.value != null) rows = rows.filter((p) => p.price <= filterPriceTo.value!)

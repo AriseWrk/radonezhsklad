@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { smartFilter } from '../utils/smartSearch'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   listStockExtended,
@@ -127,8 +128,10 @@ function sortBy(key: keyof StockExtendedRow) {
 function applyCommon(rows: StockExtendedRow[]): StockExtendedRow[] {
   let r = rows
   if (filters.sku) {
-    const q = filters.sku.toLowerCase()
-    r = r.filter((x) => (x.sku ?? '').toLowerCase().includes(q))
+    r = smartFilter(r, filters.sku, {
+      getFields: (x) => [null, x.sku ?? null, null, null],
+      limit: r.length,
+    })
   }
   switch (filters.qtyMode) {
     case 'positive': r = r.filter((x) => x.quantity > 0); break

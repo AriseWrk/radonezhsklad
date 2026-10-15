@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import MsIcon from './MsIcon.vue'
+import { smartFilter } from '../utils/smartSearch'
 
 interface Item { id: string; name: string; sku?: string }
 const props = withDefaults(defineProps<{
@@ -21,11 +22,12 @@ const selectedName = computed(() => {
 })
 
 const filtered = computed(() => {
-  const q = query.value.trim().toLowerCase()
+  const q = query.value.trim()
   if (!q) return props.items.slice(0, 50)
-  return props.items
-    .filter((it) => it.name.toLowerCase().includes(q) || (it.sku ?? '').toLowerCase().includes(q))
-    .slice(0, 50)
+  return smartFilter(props.items, q, {
+    getFields: (it) => [it.name, it.sku ?? null, null, null],
+    limit: 50,
+  })
 })
 
 function onFocus() {

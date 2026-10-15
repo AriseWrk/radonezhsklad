@@ -325,7 +325,7 @@ import {
   type IntOrderIssue,
 } from '../api/internalOrders'
 import { listProducts, type Product } from '../api/products'
-import { smartSearch, type Hit, type FieldName } from '../utils/smartSearch'
+import { smartSearch, smartFilter, type Hit, type FieldName } from '../utils/smartSearch'
 import { listWarehouses, type Warehouse } from '../api/warehouses'
 import { listOrganizations, type Organization } from '../api/suppliers'
 import { listProjects, createProject, type Project } from '../api/projects'
@@ -722,17 +722,23 @@ const showWarehouseSuggest = ref(false)
 const showOrganizationSuggest = ref(false)
 
 const warehouseSuggestions = computed(() => {
-  const q = warehouseSearch.value.trim().toLowerCase()
+  const q = warehouseSearch.value.trim()
   const list = warehouses.value.filter((w) => !!w.external_id)
   if (!q) return list.slice(0, 8)
-  return list.filter((w) => w.name.toLowerCase().includes(q)).slice(0, 10)
+  return smartFilter(list, q, {
+    getFields: (w) => [w.name, null, null, null],
+    limit: 10,
+  })
 })
 
 const organizationSuggestions = computed(() => {
-  const q = organizationSearch.value.trim().toLowerCase()
+  const q = organizationSearch.value.trim()
   const list = organizations.value.filter((o) => !!o.external_id)
   if (!q) return list.slice(0, 8)
-  return list.filter((o) => o.name.toLowerCase().includes(q)).slice(0, 10)
+  return smartFilter(list, q, {
+    getFields: (o) => [o.name, null, null, null],
+    limit: 10,
+  })
 })
 
 function hideWarehouseSuggestSoon() { setTimeout(() => { showWarehouseSuggest.value = false }, 150) }
@@ -781,10 +787,13 @@ const creatingProject = ref(false)
 const projectError = ref<string | null>(null)
 
 const projectSuggestions = computed(() => {
-  const q = projectSearch.value.trim().toLowerCase()
+  const q = projectSearch.value.trim()
   const list = projects.value.slice().sort((a, b) => a.name.localeCompare(b.name, 'ru'))
   if (!q) return list.slice(0, 8)
-  return list.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 10)
+  return smartFilter(list, q, {
+    getFields: (p) => [p.name, null, null, null],
+    limit: 10,
+  })
 })
 
 function hideProjectSuggestSoon() { setTimeout(() => { showProjectSuggest.value = false }, 150) }

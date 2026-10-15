@@ -195,3 +195,11 @@ export function smartScoreOne<T>(query: string, item: T, opts: SmartSearchOption
   const r = smartSearch([item], query, { ...opts, limit: 1 })
   return r[0] ?? null
 }
+
+// Как filter: возвращает только совпавшие элементы, отсортированные по релевантности.
+export function smartFilter<T>(items: T[], query: string, opts: SmartSearchOptions<T>): T[] {
+  const q = (query ?? '').trim()
+  if (q.length < (opts.minChars ?? 1)) return items.slice()
+  const scored = smartSearch(items, q, { ...opts, limit: items.length })
+  return scored.map((s) => s.item)
+}

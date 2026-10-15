@@ -141,6 +141,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import { smartFilter } from '../utils/smartSearch'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { listProducts, type Product } from '../api/products'
 import { salesAnalytics, salesDaily, type SalesAnalyticsRow, type SalesDailyRow } from '../api/analytics'
@@ -235,11 +236,10 @@ const filtered = computed(() => {
   let r = rows.value
   if (filters.onlySold === 'yes') r = r.filter((x) => x.sold_qty > 0)
   if (filters.search) {
-    const q = filters.search.toLowerCase()
-    r = r.filter((x) =>
-      x.product_name.toLowerCase().includes(q) ||
-      (x.sku ?? '').toLowerCase().includes(q)
-    )
+    r = smartFilter(r, filters.search, {
+      getFields: (x) => [x.product_name, x.sku ?? null, null, null],
+      limit: r.length,
+    })
   }
   return [...r].sort((a, b) => {
     const av = a[sortKey.value]

@@ -612,6 +612,16 @@ async function save() {
   error.value = null
   saving.value = true
   try {
+    // Если введено имя проекта, но из подсказки не выбрано — найдём по имени или создадим.
+    const typedProject = projectSearch.value.trim()
+    if (typedProject && !form.project) {
+      const existing = projects.value.find((p) => p.name.toLowerCase() === typedProject.toLowerCase())
+      const proj = existing ?? await createProject(typedProject)
+      if (!existing) {
+        projects.value = [...projects.value, proj].sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+      }
+      selectProject(proj)
+    }
     if (form.items.length === 0) throw new Error('Добавьте хотя бы одну позицию')
     if (!form.warehouse_id) throw new Error('Выберите склад из списка')
     const wh = warehouses.value.find((x) => x.id === form.warehouse_id)
@@ -805,7 +815,7 @@ const projectSuggestions = computed(() => {
 function hideProjectSuggestSoon() { setTimeout(() => { showProjectSuggest.value = false }, 150) }
 
 function selectProject(p: Project) {
-  form.project = p.external_id ?? ''
+  form.project = p.id
   form.project_name = p.name
   projectSearch.value = p.name
   showProjectSuggest.value = false
@@ -816,11 +826,17 @@ function clearProject() {
   projectSearch.value = ''
 }
 function syncProjectSearch() {
-  projectSearch.value = form.project_name || ''
+  if (form.project_name) {
+    projectSearch.value = form.project_name
+    return
+  }
+  const p = form.project ? projects.value.find((x) => x.id === form.project) : undefined
+  projectSearch.value = p?.name ?? ''
+  if (p) form.project_name = p.name
 }
 watch(projectSearch, (val) => {
   const p = projects.value.find((x) => x.name === val)
-  form.project = p?.external_id ?? ''
+  form.project = p?.id ?? ''
   form.project_name = p?.name ?? ''
 })
 

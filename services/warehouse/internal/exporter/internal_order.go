@@ -2,7 +2,10 @@ package exporter
 
 import (
 	"fmt"
+	"math"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/xuri/excelize/v2"
@@ -20,6 +23,17 @@ type OrderExportCtx struct {
 	ProjectName      string
 }
 
+// Ширины столбцов (в условных символах Calibri 11).
+const (
+	colWidthA float64 = 8
+	colWidthB float64 = 60
+	colWidthC float64 = 12
+	colWidthD float64 = 12
+)
+
+// Суммарная ширина merge-области A:D — для оценки числа строк при wrap.
+const mergedADWidth = colWidthA + colWidthB + colWidthC + colWidthD
+
 // InternalOrderXLSX генерирует файл «Заявка» (структура как во внутреннем заказе МойСклад).
 func InternalOrderXLSX(ctx OrderExportCtx) ([]byte, error) {
 	f := excelize.NewFile()
@@ -30,13 +44,14 @@ func InternalOrderXLSX(ctx OrderExportCtx) ([]byte, error) {
 		return nil, err
 	}
 
-	_ = f.SetColWidth(sheet, "A", "A", 8)
-	_ = f.SetColWidth(sheet, "B", "B", 60)
-	_ = f.SetColWidth(sheet, "C", "C", 12)
-	_ = f.SetColWidth(sheet, "D", "D", 12)
+	_ = f.SetColWidth(sheet, "A", "A", colWidthA)
+	_ = f.SetColWidth(sheet, "B", "B", colWidthB)
+	_ = f.SetColWidth(sheet, "C", "C", colWidthC)
+	_ = f.SetColWidth(sheet, "D", "D", colWidthD)
 
 	bigBold, _ := f.NewStyle(&excelize.Style{
-		Font: &excelize.Font{Size: 14, Bold: true},
+		Font:      &excelize.Font{Size: 14, Bold: true},
+		Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "center", WrapText: true},
 	})
 	headerBold, _ := f.NewStyle(&excelize.Style{
 		Font:      &excelize.Font{Size: 12, Bold: true},
@@ -66,6 +81,15 @@ func InternalOrderXLSX(ctx OrderExportCtx) ([]byte, error) {
 	bordered, _ := f.NewStyle(&excelize.Style{
 		Border: []excelize.Border{{Type: "left", Color: "000000", Style: 1}, {Type: "right", Color: "000000", Style: 1}, {Type: "top", Color: "000000", Style: 1}, {Type: "bottom", Color: "000000", Style: 1}},
 	})
+	// textWrap — для длинных текстовых ячеек: перенос по словам, выравнивание по верху.
+	textWrap, _ := f.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "top", WrapText: true},
+		Border:    []excelize.Border{{Type: "left", Color: "000000", Style: 1}, {Type: "right", Color: "000000", Style: 1}, {Type: "top", Color: "000000", Style: 1}, {Type: "bottom", Color: "000000", Style: 1}},
+	})
+	// infoWrap — без рамки, для merge-строк «Склад: …», «Объект: …» и подписей.
+	infoWrap, _ := f.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "top", WrapText: true},
+	})
 
 	o := ctx.Order
 
@@ -73,14 +97,22 @@ func InternalOrderXLSX(ctx OrderExportCtx) ([]byte, error) {
 	_ = f.SetCellValue(sheet, "A1", title)
 	_ = f.SetCellStyle(sheet, "A1", "D1", bigBold)
 	_ = f.MergeCell(sheet, "A1", "D1")
+	_ = f.SetRowHeight(sheet, 1, rowHeightForLines(estimateLines(title, mergedADWidth)))
 
 	warehouseLine := "Склад: "
 	if ctx.WarehouseName != "" {
 		warehouseLine += ctx.WarehouseName
 	}
 	_ = f.SetCellValue(sheet, "A3", warehouseLine)
+	_ = f.SetCellStyle(sheet, "A3", "D3", infoWrap)
+	_ = f.MergeCell(sheet, "A3", "D3")
+	_ = f.SetRowHeight(sheet, 3, rowHeightForLines(estimateLines(warehouseLine, mergedADWidth)))
 
-	_ = f.SetCellValue(sheet, "A5", "Объект:"+ctx.ProjectName)
+	objLine := "Объект:" + ctx.ProjectName
+	_ = f.SetCellValue(sheet, "A5", objLine)
+	_ = f.SetCellStyle(sheet, "A5", "D5", infoWrap)
+	_ = f.MergeCell(sheet, "A5", "D5")
+	_ = f.SetRowHeight(sheet, 5, rowHeightForLines(estimateLines(objLine, mergedADWidth)))
 
 	_ = f.SetCellValue(sheet, "A7", "№ п.п.")
 	_ = f.SetCellValue(sheet, "B7", "Наименование")
@@ -99,7 +131,7 @@ func InternalOrderXLSX(ctx OrderExportCtx) ([]byte, error) {
 
 		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), i+1)
 		_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), p.Name)
-		_ = f.SetCellStyle(sheet, fmt.Sprintf("B%d", row), fmt.Sprintf("B%d", row), bordered)
+		_ = f.SetCellStyle(sheet, fmt.Sprintf("B%d", row), fmt.Sprintf("B%d", row), textWrap)
 		_ = f.SetCellValue(sheet, fmt.Sprintf("C%d", row), unit)
 		_ = f.SetCellValue(sheet, fmt.Sprintf("D%d", row), it.Quantity)
 		_ = f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), centerStyle)
@@ -114,12 +146,13 @@ func InternalOrderXLSX(ctx OrderExportCtx) ([]byte, error) {
 	_ = f.SetCellStyle(sheet, fmt.Sprintf("C%d", row), fmt.Sprintf("C%d", row), totalBold)
 	_ = f.SetCellStyle(sheet, fmt.Sprintf("D%d", row), fmt.Sprintf("D%d", row), totalNum)
 
-	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row+4),
-		"Оборудование согласно перечня сдал: _____________________________ Лушкина Н.Г.")
-	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row+6),
-		"Оборудование согласно перечня принял: ________________________")
-	_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row+9),
-		`Ген. Директор ООО "ПТС" / Изюмская Е.А./ _______________________________`)
+	sign1 := "Оборудование согласно перечня сдал: _____________________________ Лушкина Н.Г."
+	sign2 := "Оборудование согласно перечня принял: ________________________"
+	sign3 := `Ген. Директор ООО "ПТС" / Изюмская Е.А./ _______________________________`
+
+	setMergedInfoLine(f, sheet, row+4, sign1, infoWrap)
+	setMergedInfoLine(f, sheet, row+6, sign2, infoWrap)
+	setMergedInfoLine(f, sheet, row+9, sign3, infoWrap)
 
 	buf, err := f.WriteToBuffer()
 	if err != nil {
@@ -130,4 +163,51 @@ func InternalOrderXLSX(ctx OrderExportCtx) ([]byte, error) {
 
 func formatDateRu(t time.Time) string {
 	return t.Format("02.01.2006")
+}
+
+// setMergedInfoLine пишет текст в объединённую ячейку A:D указанной строки,
+// включает перенос и подгоняет высоту строки.
+func setMergedInfoLine(f *excelize.File, sheet string, row int, text string, style int) {
+	cellA := fmt.Sprintf("A%d", row)
+	cellD := fmt.Sprintf("D%d", row)
+	_ = f.SetCellValue(sheet, cellA, text)
+	_ = f.SetCellStyle(sheet, cellA, cellD, style)
+	_ = f.MergeCell(sheet, cellA, cellD)
+	_ = f.SetRowHeight(sheet, row, rowHeightForLines(estimateLines(text, mergedADWidth)))
+}
+
+// estimateLines — грубая оценка числа строк текста при заданной ширине (в символах Calibri 11).
+// Учитывает явные \n и поправку 0.95 на кириллицу (шире латиницы).
+func estimateLines(text string, widthChars float64) int {
+	if strings.TrimSpace(text) == "" {
+		return 1
+	}
+	if widthChars <= 0 {
+		widthChars = 60
+	}
+	total := 0
+	for _, part := range strings.Split(text, "\n") {
+		n := utf8.RuneCountInString(part)
+		if n == 0 {
+			total++
+			continue
+		}
+		lines := int(math.Ceil(float64(n) * 1.5 / widthChars))
+		if lines < 1 {
+			lines = 1
+		}
+		total += lines
+	}
+	if total < 1 {
+		total = 1
+	}
+	return total
+}
+
+// rowHeightForLines — высота строки в пунктах: 15pt на строку, минимум 15pt.
+func rowHeightForLines(lines int) float64 {
+	if lines < 1 {
+		lines = 1
+	}
+	return float64(lines) * 15.0
 }

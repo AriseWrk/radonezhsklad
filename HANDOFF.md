@@ -286,3 +286,9 @@ E) Дополнительные справочники: uom (у нас 7, в М�
    project, contract, expenseItem
 
 F) UI для движения товара: /stock/product/:id уже есть в backend, но не в UI
+
+## Последние изменения
+
+- Этап 46 (b13349e): smart-search номенклатуры (fuzzy) + vitest + WIP выдачи по внутр. заказам.
+- Тесты фронта: `cd web; npm test` (vitest).
+- Утилита: `web/src/utils/smartSearch.ts` (normalize / skeleton / tokenize / levenshtein / smartSearch).

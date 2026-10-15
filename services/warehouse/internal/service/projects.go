@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
@@ -44,9 +45,10 @@ func (s *ProjectService) Create(ctx context.Context, in ProjectInput) (*models.P
 	if s.ms != nil && s.ms.Enabled() {
 		ext, merr := s.ms.CreateProject(ctx, name)
 		if merr != nil {
-			return nil, apperr.Internal("create project in MS", merr)
+			slog.Warn("project: create in MS failed, saving locally", "name", name, "err", merr)
+		} else {
+			p.ExternalID = &ext
 		}
-		p.ExternalID = &ext
 	}
 	if err := s.repo.Create(ctx, p); err != nil {
 		return nil, apperr.Internal("create project", err)

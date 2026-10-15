@@ -50,7 +50,7 @@ SELECT o.id, o.number, o.doc_date, o.status, o.organization_id, o.warehouse_id, 
        o.ms_synced_at, o.ms_sync_error, o.issue_status,
        (SELECT COUNT(*) FROM internal_order_items i WHERE i.order_id = o.id)
 FROM internal_orders o
-LEFT JOIN projects p ON p.external_id::text = o.project
+LEFT JOIN projects p ON p.id::text = o.project
 LEFT JOIN warehouses w ON w.id = o.warehouse_id`
 
 func scanIntOrder(row pgx.Row) (*models.InternalOrder, error) {
@@ -65,6 +65,17 @@ func scanIntOrder(row pgx.Row) (*models.InternalOrder, error) {
 		return nil, nil
 	}
 	return o, err
+}
+
+// GetProjectExternalID возвращает MS external_id проекта по нашему локальному id.
+// Возвращает (nil, nil), если проекта нет или у него нет external_id.
+func (r *InternalOrderRepo) GetProjectExternalID(ctx context.Context, localID uuid.UUID) (*uuid.UUID, error) {
+	var ext *uuid.UUID
+	err := r.db.QueryRow(ctx, `SELECT external_id FROM projects WHERE id = $1`, localID).Scan(&ext)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	return ext, err
 }
 
 func (r *InternalOrderRepo) Create(ctx context.Context, in InternalOrderInput) (*models.InternalOrder, error) {

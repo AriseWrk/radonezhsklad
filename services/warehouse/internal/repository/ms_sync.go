@@ -119,8 +119,13 @@ FROM internal_orders WHERE id = $1`, orderID).Scan(&whID, &orgID, &projectExtern
 		out.Organization = &ExternalRef{OurID: *orgID, ExternalID: orgExt}
 	}
 	if projectExternal != nil && *projectExternal != "" {
-		if pid, err := uuid.Parse(*projectExternal); err == nil {
-			out.Project = &ExternalRef{ExternalID: &pid}
+		// projectExternal - nash lokalny projects.id; MS external_id rezuolvim nizhe.
+		if localID, err := uuid.Parse(*projectExternal); err == nil {
+			var extID *uuid.UUID
+			_ = r.db.QueryRow(ctx, `SELECT external_id FROM projects WHERE id = $1`, localID).Scan(&extID)
+			if extID != nil {
+				out.Project = &ExternalRef{OurID: localID, ExternalID: extID}
+			}
 		}
 	}
 	return out, nil

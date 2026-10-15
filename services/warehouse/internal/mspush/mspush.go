@@ -362,9 +362,11 @@ func (p *Pusher) buildOrderPayload(ctx context.Context, order *models.InternalOr
 	}
 	// проект: order.Project хранит external_id МС (UUID)
 	if order.Project != nil && *order.Project != "" {
-		if pid, perr := uuid.Parse(*order.Project); perr == nil {
-			m := p.ms.EntityMeta("project", pid)
-			payload.Project = &m
+		if localID, perr := uuid.Parse(*order.Project); perr == nil {
+			if extID, eerr := p.orders.GetProjectExternalID(ctx, localID); eerr == nil && extID != nil {
+				m := p.ms.EntityMeta("project", *extID)
+				payload.Project = &m
+			}
 		}
 	}
 	return payload, nil

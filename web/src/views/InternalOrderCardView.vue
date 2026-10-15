@@ -148,6 +148,7 @@
             </div>
             <div class="suggest-meta muted">
               <span v-if="p.sku">Арт. {{ p.sku }}</span>
+              <span v-if="unitShort(p.unit_id)" style="margin-left:12px">{{ unitShort(p.unit_id) }}</span>
               <span style="margin-left:12px">{{ p.price.toFixed(2) }} ₽</span>
             </div>
           </div>
@@ -325,6 +326,7 @@ import {
   type IntOrderIssue,
 } from '../api/internalOrders'
 import { listProducts, type Product } from '../api/products'
+import { listUnits, type Unit } from '../api/units'
 import { smartSearch, smartFilter, type Hit, type FieldName } from '../utils/smartSearch'
 import { listWarehouses, type Warehouse } from '../api/warehouses'
 import { listOrganizations, type Organization } from '../api/suppliers'
@@ -350,6 +352,7 @@ const router = useRouter()
 const auth = useAuthStore()
 
 const products = ref<Product[]>([])
+const units = ref<Unit[]>([])
 const warehouses = ref<Warehouse[]>([])
 const organizations = ref<Organization[]>([])
 const projects = ref<Project[]>([])
@@ -510,6 +513,7 @@ function highlight(text: string | null | undefined, hits: Hit[], field: FieldNam
   return out
 }
 function formatMoney(n: number) { return n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
+function unitShort(id?: string | null) { return units.value.find((u) => u.id === id)?.short_name ?? '' }
 
 const subtotal = computed(() => form.items.reduce((s, i) => s + i.quantity * i.price, 0))
 const vatAmount = computed(() => {
@@ -536,16 +540,18 @@ async function reloadStockMap() {
 async function load() {
   loading.value = true; error.value = null
   try {
-    const [prods, w, orgs, projs] = await Promise.all([
+    const [prods, w, orgs, projs, us] = await Promise.all([
       listProducts(true),
       listWarehouses(),
       listOrganizations(),
       listProjects().catch(() => [] as Project[]),
+      listUnits().catch(() => [] as Unit[]),
     ])
     products.value = prods
     warehouses.value = w
     organizations.value = orgs
     projects.value = projs
+    units.value = us
 
     if (!isNew.value && route.params.id) {
       currentId.value = route.params.id as string

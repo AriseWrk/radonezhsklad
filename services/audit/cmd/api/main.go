@@ -36,6 +36,7 @@ slog.Info("db connected")
 
 repo := repository.New(pool)
 h := handler.New(repo, cfg.InternalToken)
+	logsH := handler.NewLogs(cfg.LogsDir)
 
 if env == "prod" { gin.SetMode(gin.ReleaseMode) }
 r := gin.New()
@@ -55,6 +56,7 @@ read := api.Group("/audit")
 read.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin"))
 {
 read.GET("", h.List)
+			read.GET("/logs", logsH.Tail)
 }
 }
 

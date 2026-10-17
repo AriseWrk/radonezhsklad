@@ -44,3 +44,25 @@ export async function listAudit(filters: AuditFilters = {}): Promise<AuditRespon
   const { data } = await http.get<AuditResponse>(url)
   return data
 }
+
+export interface AuditLogLine {
+  service: string
+  line: string
+}
+
+export interface AuditLogsResponse {
+  kind: 'out' | 'err'
+  service: string
+  items: AuditLogLine[]
+}
+
+export async function listAuditLogs(params: { kind?: 'out' | 'err'; service?: string; lines?: number } = {}): Promise<AuditLogsResponse> {
+  const p = new URLSearchParams()
+  if (params.kind) p.set('kind', params.kind)
+  if (params.service) p.set('service', params.service)
+  if (params.lines) p.set('lines', String(params.lines))
+  const qs = p.toString()
+  const url = '/audit/logs' + (qs ? '?' + qs : '')
+  const { data } = await http.get<AuditLogsResponse>(url)
+  return data
+}

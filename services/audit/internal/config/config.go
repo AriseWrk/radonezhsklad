@@ -12,6 +12,7 @@ DatabaseURL   string
 JWTSecret     string
 CORSOrigins   []string
 InternalToken string
+	LogsDir       string
 }
 
 func Load() *Config {
@@ -21,5 +22,6 @@ DatabaseURL:   shcfg.GetString("DATABASE_URL", "postgres://radonezh:radonezh_dev
 JWTSecret:     shcfg.GetString("JWT_SECRET", "dev-secret-change-me"),
 CORSOrigins:   strings.Split(shcfg.GetString("CORS_ORIGINS", "*"), ","),
 InternalToken: shcfg.GetString("INTERNAL_TOKEN", "dev-audit-internal-token"),
+		LogsDir:       shcfg.GetString("LOGS_DIR", "../../logs"),
 }
 }

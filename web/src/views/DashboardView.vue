@@ -53,6 +53,7 @@
         </div>
       </div>
     </div>
+    <RealtimeLogs />
     </div>
   </div>
 </template>
@@ -64,6 +65,7 @@ import { listCategories } from '../api/categories'
 import { listUnits } from '../api/units'
 import MsIcon from '../components/MsIcon.vue'
 import { http } from '../api/client'
+import RealtimeLogs from '../components/RealtimeLogs.vue'
 
 const productsCount = ref<number | string>('—')
 const categoriesCount = ref<number | string>('—')

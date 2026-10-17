@@ -1,6 +1,6 @@
 import { http } from './client'
 
-export type UserRole = 'admin' | 'manager' | 'warehouse' | 'user'
+export type UserRole = 'admin' | 'warehouse' | 'pts'
 
 export interface User {
   id: string

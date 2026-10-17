@@ -133,38 +133,44 @@ func main() {
 			c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "warehouse"})
 		})
 
-		read := api.Group("")
-		read.Use(mw.RequireJWT(cfg.JWTSecret))
+		// readPts — что видит ПТС (админ/склад/ПТС)
+		readPts := api.Group("")
+		readPts.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "warehouse", "pts"))
 		{
-			read.GET("/warehouses", h.ListWarehouses)
-			read.GET("/warehouses/:id", h.GetWarehouse)
-			read.GET("/stock", h.ListStock)
-			read.GET("/stock/extended", h.StockExtended)
-			read.GET("/stock/product/:id", h.ProductStockDetail)
-			read.GET("/reports/turnover", h.TurnoverReport)
-			read.GET("/inventory/prepare", h.InventoryPrepare)
-			read.GET("/inventories", invH.List)
-			read.GET("/inventories/:id", invH.Get)
-			read.GET("/inventories/:id/neighbors", invH.Neighbors)
-			read.GET("/inventories/:id/export", invH.Export)
-			read.GET("/inventories/:id/export-inv3", invH.ExportInv3)
-			read.GET("/documents", h.ListDocuments)
-			read.GET("/documents/:id", h.GetDocument)
+			readPts.GET("/warehouses", h.ListWarehouses)
+			readPts.GET("/warehouses/:id", h.GetWarehouse)
+			readPts.GET("/stock", h.ListStock)
+			readPts.GET("/stock/extended", h.StockExtended)
+			readPts.GET("/stock/product/:id", h.ProductStockDetail)
+			readPts.GET("/internal-orders", intOrderH.List)
+			readPts.GET("/internal-orders/next-number", intOrderH.NextNumber)
+			readPts.GET("/internal-orders/:id", intOrderH.Get)
+			readPts.GET("/internal-orders/:id/export", intOrderH.Export)
+			readPts.GET("/internal-orders/:id/issues", intOrderH.ListIssues)
+			readPts.GET("/organizations", supH.ListOrganizations)
+			readPts.GET("/projects", projectH.List)
+			readPts.GET("/projects/:id", projectH.Get)
+		}
 
-			read.GET("/suppliers", supH.List)
-			read.GET("/suppliers/:id", supH.Get)
-			read.GET("/internal-orders", intOrderH.List)
-			read.GET("/internal-orders/:id", intOrderH.Get)
-			read.GET("/internal-orders/next-number", intOrderH.NextNumber)
-			read.GET("/internal-orders/:id/export", intOrderH.Export)
-			read.GET("/internal-orders/:id/issues", intOrderH.ListIssues)
-			read.GET("/organizations", supH.ListOrganizations)
-			read.GET("/projects", projectH.List)
-			read.GET("/projects/:id", projectH.Get)
-			read.GET("/sync/jobs", syncH.List)
-			read.GET("/sync/errors", syncH.ListErrors)
-			read.GET("/sync/autosync", syncH.AutoSyncStatus)
-			read.GET("/sync/jobs/:id", syncH.Get)
+		// readCore — только админ/склад
+		readCore := api.Group("")
+		readCore.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "warehouse"))
+		{
+			readCore.GET("/reports/turnover", h.TurnoverReport)
+			readCore.GET("/inventory/prepare", h.InventoryPrepare)
+			readCore.GET("/inventories", invH.List)
+			readCore.GET("/inventories/:id", invH.Get)
+			readCore.GET("/inventories/:id/neighbors", invH.Neighbors)
+			readCore.GET("/inventories/:id/export", invH.Export)
+			readCore.GET("/inventories/:id/export-inv3", invH.ExportInv3)
+			readCore.GET("/documents", h.ListDocuments)
+			readCore.GET("/documents/:id", h.GetDocument)
+			readCore.GET("/suppliers", supH.List)
+			readCore.GET("/suppliers/:id", supH.Get)
+			readCore.GET("/sync/jobs", syncH.List)
+			readCore.GET("/sync/errors", syncH.ListErrors)
+			readCore.GET("/sync/autosync", syncH.AutoSyncStatus)
+			readCore.GET("/sync/jobs/:id", syncH.Get)
 		}
 
 		whWrite := api.Group("")
@@ -175,8 +181,28 @@ func main() {
 			whWrite.DELETE("/warehouses/:id", h.DeleteWarehouse)
 		}
 
+		// internal-orders CRUD + print — админ/склад/ПТС
+		intOrderWrite := api.Group("")
+		intOrderWrite.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "warehouse", "pts"))
+		{
+			intOrderWrite.POST("/internal-orders", intOrderH.Create)
+			intOrderWrite.PUT("/internal-orders/:id", intOrderH.Update)
+			intOrderWrite.POST("/internal-orders/:id/print", intOrderH.Print)
+		}
+
+		// internal-orders: проведение/отмена/отправка/выдача/удаление — только админ/склад
+		intOrderPost := api.Group("")
+		intOrderPost.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "warehouse"))
+		{
+			intOrderPost.POST("/internal-orders/:id/post", intOrderH.Post)
+			intOrderPost.POST("/internal-orders/:id/cancel", intOrderH.Cancel)
+			intOrderPost.POST("/internal-orders/:id/send", intOrderH.Send)
+			intOrderPost.POST("/internal-orders/:id/issues", intOrderH.Issue)
+			intOrderPost.DELETE("/internal-orders/:id", intOrderH.Delete)
+		}
+
 		supWrite := api.Group("")
-		supWrite.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "manager", "warehouse"))
+		supWrite.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "warehouse"))
 		{
 			supWrite.POST("/suppliers", supH.Create)
 			supWrite.PUT("/suppliers/:id", supH.Update)
@@ -184,22 +210,14 @@ func main() {
 			supWrite.POST("/projects", projectH.Create)
 			supWrite.PUT("/projects/:id", projectH.Update)
 			supWrite.DELETE("/projects/:id", projectH.Delete)
-			supWrite.POST("/internal-orders", intOrderH.Create)
 			supWrite.POST("/sync/pull-orders", syncH.Start)
 			supWrite.POST("/sync/retry-pending", syncH.StartRetryPending)
 			supWrite.POST("/sync/retry/document/:id", syncH.StartRetryDocument)
 			supWrite.POST("/sync/pull/:kind", syncH.StartPull)
-			supWrite.PUT("/internal-orders/:id", intOrderH.Update)
-			supWrite.POST("/internal-orders/:id/post", intOrderH.Post)
-			supWrite.POST("/internal-orders/:id/cancel", intOrderH.Cancel)
-			supWrite.DELETE("/internal-orders/:id", intOrderH.Delete)
-			supWrite.POST("/internal-orders/:id/print", intOrderH.Print)
-			supWrite.POST("/internal-orders/:id/send", intOrderH.Send)
-			supWrite.POST("/internal-orders/:id/issues", intOrderH.Issue)
 		}
 
 		docWrite := api.Group("")
-		docWrite.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "manager", "warehouse"))
+		docWrite.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "warehouse"))
 		{
 			docWrite.POST("/documents", h.CreateDocument)
 			docWrite.POST("/documents/:id/post", h.PostDocument)

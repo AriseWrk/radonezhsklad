@@ -81,7 +81,7 @@ func main() {
 		}
 
 		write := api.Group("")
-		write.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "manager"))
+		write.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "warehouse"))
 		{
 			write.POST("/categories", h.CreateCategory)
 			write.PUT("/categories/:id", h.UpdateCategory)

@@ -19,7 +19,7 @@
       </nav>
 
       <div class="top-right">
-        <button class="sync-btn" @click="openSync" title="Синхронизировать с МойСклад">
+        <button v-if="auth.can('warehouse')" class="sync-btn" @click="openSync" title="Синхронизировать с МойСклад">
           <MsIcon name="refresh" :size="16" />
           <span>Синхронизировать</span>
         </button>
@@ -91,52 +91,52 @@ interface SubTab {
 
 const sections: Section[] = [
   { key: 'company',   label: 'Компания', icon: 'building', path: '/' },
-  { key: 'purchases', label: 'Закупки',  icon: 'cart',     path: '/purchases/planning', roles: ['admin', 'manager', 'warehouse'] },
-  { key: 'sales',     label: 'Продажи',  icon: 'send',     path: '/orders',             roles: ['admin', 'manager'] },
+  { key: 'purchases', label: 'Закупки',  icon: 'cart',     path: '/purchases/planning', roles: ['admin', 'warehouse'] },
+  { key: 'sales',     label: 'Продажи',  icon: 'send',     path: '/orders',             roles: ['admin', 'warehouse'] },
   { key: 'crm',       label: 'CRM',      icon: 'user',     path: '/counterparties' },
   { key: 'products',  label: 'Товары',   icon: 'package',  path: '/products' },
-  { key: 'stock',     label: 'Склад',    icon: 'building', path: '/stock',              roles: ['admin', 'manager', 'warehouse'] },
+  { key: 'stock',     label: 'Склад',    icon: 'building', path: '/stock',              roles: ['admin', 'warehouse', 'pts'] },
 ]
 
 const subTabsMap: Record<string, SubTab[]> = {
   company: [
-    { name: 'dashboard', label: 'Показатели',  path: '/',        match: '/',      exact: true, roles: ['admin','manager','warehouse','user'] },
-    { name: 'users',     label: 'Сотрудники',  path: '/users',   match: '/users',              roles: ['admin'] },
-    { name: 'audit',     label: 'Аудит',       path: '/audit',   match: '/audit',              roles: ['admin'] },
-		{ name: 'sync',      label: 'Синхронизация', path: '/sync',   match: '/sync',  roles: ['admin','manager','warehouse'] },
+    { name: 'dashboard', label: 'Показатели',  path: '/',        match: '/',      exact: true },
+    { name: 'users',     label: 'Сотрудники',  path: '/users',   match: '/users',   roles: ['admin'] },
+    { name: 'audit',     label: 'Аудит',       path: '/audit',   match: '/audit',   roles: ['admin'] },
+    { name: 'sync',      label: 'Синхронизация', path: '/sync', match: '/sync',    roles: ['admin', 'warehouse'] },
   ],
   crm: [
-    { name: 'counterparties', label: 'Контрагенты', path: '/counterparties', match: '/counterparties', roles: ['admin','manager','warehouse','user'] },
-    { name: 'contracts',      label: 'Договоры',    path: '/contracts',      match: '/contracts',      roles: ['admin','manager'] },
+    { name: 'counterparties', label: 'Контрагенты', path: '/counterparties', match: '/counterparties' },
+    { name: 'contracts',      label: 'Договоры',    path: '/contracts',      match: '/contracts',      roles: ['admin', 'warehouse'] },
   ],
   products: [
-    { name: 'products',   label: 'Товары',    path: '/products',   match: '/products',   roles: ['admin','manager','warehouse','user'] },
-    { name: 'categories', label: 'Категории', path: '/categories', match: '/categories', roles: ['admin','manager','warehouse','user'] },
+    { name: 'products',   label: 'Товары',    path: '/products',   match: '/products' },
+    { name: 'categories', label: 'Категории', path: '/categories', match: '/categories' },
   ],
   purchases: [
-    { name: 'purchases-orders',   label: 'Заказы поставщикам',   path: '/purchases/orders',   match: '/purchases/orders',   roles: ['admin','manager','warehouse'] },
-    { name: 'purchases-invoices', label: 'Счета поставщиков',    path: '/purchases/invoices', match: '/purchases/invoices', roles: ['admin','manager','warehouse'] },
-    { name: 'purchases-receipts', label: 'Приёмки',              path: '/purchases/receipts', match: '/purchases/receipts', roles: ['admin','manager','warehouse'] },
-    { name: 'purchases-returns',  label: 'Возвраты поставщикам', path: '/purchases/returns',  match: '/purchases/returns',  roles: ['admin','manager','warehouse'] },
-    { name: 'purchases-factures', label: 'Счета-фактуры полученные', path: '/purchases/factures', match: '/purchases/factures', roles: ['admin','manager','warehouse'] },
-    { name: 'purchases-planning', label: 'Управление закупками', path: '/purchases/planning', match: '/purchases/planning', roles: ['admin','manager','warehouse'] },
-    { name: 'purchases-suppliers',label: 'Поставщики',           path: '/suppliers',          match: '/suppliers',          roles: ['admin','manager','warehouse'] },
-    { name: 'inventory',          label: 'Инвентаризации',       path: '/inventory',          match: '/inventory',          roles: ['admin','manager','warehouse'] },
+    { name: 'purchases-orders',   label: 'Заказы поставщикам',   path: '/purchases/orders',   match: '/purchases/orders',   roles: ['admin','warehouse'] },
+    { name: 'purchases-invoices', label: 'Счета поставщиков',    path: '/purchases/invoices', match: '/purchases/invoices', roles: ['admin','warehouse'] },
+    { name: 'purchases-receipts', label: 'Приёмки',              path: '/purchases/receipts', match: '/purchases/receipts', roles: ['admin','warehouse'] },
+    { name: 'purchases-returns',  label: 'Возвраты поставщикам', path: '/purchases/returns',  match: '/purchases/returns',  roles: ['admin','warehouse'] },
+    { name: 'purchases-factures', label: 'Счета-фактуры полученные', path: '/purchases/factures', match: '/purchases/factures', roles: ['admin','warehouse'] },
+    { name: 'purchases-planning', label: 'Управление закупками', path: '/purchases/planning', match: '/purchases/planning', roles: ['admin','warehouse'] },
+    { name: 'purchases-suppliers',label: 'Поставщики',           path: '/suppliers',          match: '/suppliers',          roles: ['admin','warehouse'] },
+    { name: 'inventory',          label: 'Инвентаризации',       path: '/inventory',          match: '/inventory',          roles: ['admin','warehouse'] },
     { name: 'warehouses',         label: 'Склады',               path: '/warehouses',         match: '/warehouses',         roles: ['admin','warehouse'] },
   ],
   sales: [
-    { name: 'orders',          label: 'Заказы',     path: '/orders',          match: '/orders',          roles: ['admin','manager'] },
-    { name: 'customers',       label: 'Покупатели', path: '/customers',       match: '/customers',       roles: ['admin','manager'] },
-    { name: 'sales-analytics', label: 'Аналитика',  path: '/sales/analytics', match: '/sales/analytics', roles: ['admin','manager'] },
+    { name: 'orders',          label: 'Заказы',     path: '/orders',          match: '/orders',          roles: ['admin','warehouse'] },
+    { name: 'customers',       label: 'Покупатели', path: '/customers',       match: '/customers',       roles: ['admin','warehouse'] },
+    { name: 'sales-analytics', label: 'Аналитика',  path: '/sales/analytics', match: '/sales/analytics', roles: ['admin','warehouse'] },
   ],
   stock: [
-    { name: 'stock',           label: 'Остатки',           path: '/stock',           match: '/stock',           roles: ['admin','manager','warehouse'] },
-    { name: 'internal-orders', label: 'Внутренние заказы', path: '/internal-orders', match: '/internal-orders', roles: ['admin','manager','warehouse'] },
-    { name: 'stock-receipts',       label: 'Оприходования',         path: '/stock/receipts',       match: '/stock/receipts',       roles: ['admin','manager','warehouse'] },
-    { name: 'stock-writeoffs',      label: 'Списания',             path: '/stock/writeoffs',      match: '/stock/writeoffs',      roles: ['admin','manager','warehouse'] },
-    { name: 'stock-transfers',      label: 'Перемещения',          path: '/stock/transfers',      match: '/stock/transfers',      roles: ['admin','manager','warehouse'] },
-    { name: 'stock-turnover',       label: 'Обороты',              path: '/stock/turnover',       match: '/stock/turnover',       roles: ['admin','manager','warehouse'] },
-    { name: 'inventories',     label: 'Инвентаризации',    path: '/inventories',     match: '/inventories',     roles: ['admin','manager','warehouse'] },
+    { name: 'stock',           label: 'Остатки',           path: '/stock',           match: '/stock' },
+    { name: 'internal-orders', label: 'Внутренние заказы', path: '/internal-orders', match: '/internal-orders' },
+    { name: 'stock-receipts',  label: 'Оприходования',     path: '/stock/receipts',  match: '/stock/receipts',  roles: ['admin','warehouse'] },
+    { name: 'stock-writeoffs', label: 'Списания',          path: '/stock/writeoffs', match: '/stock/writeoffs', roles: ['admin','warehouse'] },
+    { name: 'stock-transfers', label: 'Перемещения',       path: '/stock/transfers', match: '/stock/transfers', roles: ['admin','warehouse'] },
+    { name: 'stock-turnover',  label: 'Обороты',           path: '/stock/turnover',  match: '/stock/turnover',  roles: ['admin','warehouse'] },
+    { name: 'inventories',     label: 'Инвентаризации',    path: '/inventories',     match: '/inventories',     roles: ['admin','warehouse'] },
     { name: 'warehouses',      label: 'Склады',            path: '/warehouses',      match: '/warehouses',      roles: ['admin','warehouse'] },
   ],
 }
@@ -170,7 +170,7 @@ function shortId(id: string) { return id.slice(0, 8) }
 const avatarLetter = computed(() => (auth.userId ? auth.userId.slice(0, 1).toUpperCase() : '?'))
 function roleLabel(r: Role | null) {
   if (!r) return ''
-  return { admin: 'Админ', manager: 'Менеджер', warehouse: 'Кладовщик', user: 'Пользователь' }[r]
+  return { admin: 'Админ', warehouse: 'Склад/Бух', pts: 'ПТС' }[r]
 }
 function go(path: string) { router.push(path) }
 function onLogout() {
@@ -313,7 +313,6 @@ function onLogout() {
 }
 
 .role-admin     { color: #ffcdd2; }
-.role-manager   { color: #bbdefb; }
 .role-warehouse { color: #ffe082; }
-.role-user      { color: #e0e0e0; }
+.role-pts       { color: #c8e6c9; }
 </style>

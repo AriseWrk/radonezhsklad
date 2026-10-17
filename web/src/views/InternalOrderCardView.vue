@@ -10,7 +10,7 @@
       </div>
       <div class="ms-status">
         <span class="st" :class="'st-' + form.status">{{ statusLabel(form.status) }}</span>
-        <label class="posted-check">
+        <label v-if="canPost" class="posted-check">
           <input type="checkbox" :checked="form.status === 'posted'" :disabled="!canEdit || form.status === 'cancelled'" @change="onTogglePosted" />
           Проведено
         </label>
@@ -21,10 +21,10 @@
     <div class="ms-toolbar">
       <MsButton variant="primary" icon="plus" @click="close">Создать</MsButton>
       <MsButton icon="save" @click="save" :disabled="saving || !canEditQty">{{ saving ? 'Сохранение...' : 'Сохранить' }}</MsButton>
-      <MsButton icon="post" @click="onTogglePosted" :disabled="!canEdit || form.status === 'cancelled'">Провести</MsButton>
+      <MsButton v-if="canPost" icon="post" @click="onTogglePosted" :disabled="!canEdit || form.status === 'cancelled'">Провести</MsButton>
       <MsButton icon="print" @click="print">Печать</MsButton>
-      <MsButton icon="send" @click="onSend" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отправить</MsButton>
-      <MsButton icon="close" @click="onCancel" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отменить</MsButton>
+      <MsButton v-if="canPost" icon="send" @click="onSend" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отправить</MsButton>
+      <MsButton v-if="canPost" icon="close" @click="onCancel" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отменить</MsButton>
       <MsButton variant="icon" icon="trash" title="Удалить" @click="onDelete" :disabled="(!currentId && !isNew) || (currentId !== null && form.status !== 'draft' && auth.role !== 'admin')" />
       <div class="toolbar-spacer"></div>
       <MsButton variant="icon" icon="close" @click="close" title="Закрыть" />
@@ -193,7 +193,7 @@
               <span v-else>—</span>
             </td>
             <td class="col-act">
-              <button v-if="form.status === 'posted' && remainingFor(it) > 0" class="issue-btn" @click="openIssue(it.id || '', remainingFor(it))" title="Выдать">Выдать</button>
+              <button v-if="canPost && form.status === 'posted' && remainingFor(it) > 0" class="issue-btn" @click="openIssue(it.id || '', remainingFor(it))" title="Выдать">Выдать</button>
             </td>
             <td class="col-num-right muted">{{ formatQty(availableFor(it.product_id)) }}</td>
             <td class="col-num-right">
@@ -445,6 +445,7 @@ function issueQtyBySystem(code: string) {
   return { ordered: t, issued: f }
 }
 const externalId = ref<string | null>(null)
+const canPost = computed(() => auth.can('warehouse'))
 const canEdit = computed(() => isNew.value || (form.status === 'draft' && !externalId.value))
 const canEditQty = computed(() => isNew.value || form.status === 'draft')
 

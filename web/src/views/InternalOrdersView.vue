@@ -13,7 +13,7 @@
       <MsButton icon="filter" @click="showFilter = !showFilter">Фильтр</MsButton>
       <input v-model="search" class="ms-input" placeholder="Номер или комментарий" />
       <div class="ms-counter" :class="{ active: selected.size > 0 }">{{ selected.size }}</div>
-      <select class="ms-select" @change="onBulkAction">
+      <select v-if="auth.can('warehouse')" class="ms-select" @change="onBulkAction">
         <option value="">Изменить</option>
         <option value="delete">Удалить</option>
       </select>
@@ -204,6 +204,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listInternalOrders, deleteInternalOrder, type InternalOrder } from '../api/internalOrders'
+import { useAuthStore } from '../stores/auth'
 import { listWarehouses, type Warehouse } from '../api/warehouses'
 import { listOrganizations, type Organization } from '../api/suppliers'
 import { listProjects, type Project } from '../api/projects'
@@ -238,6 +239,7 @@ const sortDir = ref<'asc' | 'desc'>('desc')
 
 const selected = ref<Set<string>>(new Set())
 const router = useRouter()
+const auth = useAuthStore()
 
 function organizationName(id?: string) {
   if (!id) return organizations.value.find((o) => o.is_default)?.name ?? '—'

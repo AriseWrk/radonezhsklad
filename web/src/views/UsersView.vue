@@ -14,9 +14,8 @@
       <select class="ms-select" v-model="filterRole" @change="page = 1">
         <option value="">Все роли</option>
         <option value="admin">Администратор</option>
-        <option value="manager">Менеджер</option>
-        <option value="warehouse">Кладовщик</option>
-        <option value="user">Пользователь</option>
+        <option value="warehouse">Склад/Бух</option>
+        <option value="pts">ПТС</option>
       </select>
       <div class="ms-counter">{{ filtered.length }}</div>
       <MsButton icon="print">Печать</MsButton>
@@ -138,9 +137,8 @@
         <label>Роль*
           <select v-model="form.role" required>
             <option value="admin">Администратор</option>
-            <option value="manager">Менеджер</option>
-            <option value="warehouse">Кладовщик</option>
-            <option value="user">Пользователь (индивидуальные настройки)</option>
+            <option value="warehouse">Склад/Бух</option>
+            <option value="pts">ПТС</option>
           </select>
         </label>
 
@@ -205,16 +203,15 @@ const form = reactive({
   login: '',
   password: '',
   description: '',
-  role: 'user' as string,
+  role: 'pts' as string,
   is_active: true,
 })
 
 function roleLong(r: string) {
   return {
     admin: 'Администратор',
-    manager: 'Менеджер',
-    warehouse: 'Кладовщик',
-    user: 'Пользователь (индивидуальные настройки)',
+    warehouse: 'Склад/Бух',
+    pts: 'ПТС',
   }[r] ?? r
 }
 
@@ -286,7 +283,7 @@ function openCreate() {
   Object.assign(form, {
     last_name: '', first_name: '', middle_name: '', phone: '',
     email: '', login: '', password: '', description: '',
-    role: 'user', is_active: true,
+    role: 'pts', is_active: true,
   })
   modal.open = true; modal.isEdit = false; modal.error = null; modal.editingId = ''
 }

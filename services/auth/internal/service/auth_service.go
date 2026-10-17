@@ -24,7 +24,7 @@ ErrInvalidToken       = errors.New("invalid token")
 ErrInvalidRole        = errors.New("invalid role")
 )
 
-var validRoles = map[string]bool{"admin": true, "manager": true, "warehouse": true, "user": true}
+var validRoles = map[string]bool{"admin": true, "warehouse": true, "pts": true}
 
 type AuthService struct {
 users  *repository.UserRepo
@@ -53,7 +53,7 @@ if err != nil { return nil, err }
 
 u := &models.User{
 Email: email, PasswordHash: string(hash), FullName: fullName,
-LastName: fullName, Role: "user",
+LastName: fullName, Role: "pts",
 }
 if err := s.users.Create(ctx, u); err != nil { return nil, err }
 return u, nil

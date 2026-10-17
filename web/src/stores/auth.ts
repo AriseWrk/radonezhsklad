@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import * as authApi from '../api/auth'
 import { TOKEN_KEY } from '../api/client'
 
-export type Role = 'admin' | 'manager' | 'warehouse' | 'user'
+export type Role = 'admin' | 'warehouse' | 'pts'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem(TOKEN_KEY))

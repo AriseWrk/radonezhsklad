@@ -79,7 +79,7 @@ func NewOrganizationRepo(db *pgxpool.Pool) *OrganizationRepo { return &Organizat
 
 func (r *OrganizationRepo) List(ctx context.Context) ([]models.Organization, error) {
 	rows, err := r.db.Query(ctx,
-		`SELECT id, external_id, name, inn, is_default, created_at FROM organizations ORDER BY name`)
+		`SELECT id, external_id, name, full_name, inn, kpp, ogrn, okpo, legal_address, is_default, created_at FROM organizations ORDER BY name`)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (r *OrganizationRepo) List(ctx context.Context) ([]models.Organization, err
 	out := []models.Organization{}
 	for rows.Next() {
 		var o models.Organization
-		if err := rows.Scan(&o.ID, &o.ExternalID, &o.Name, &o.INN, &o.IsDefault, &o.CreatedAt); err != nil {
+		if err := rows.Scan(&o.ID, &o.ExternalID, &o.Name, &o.FullName, &o.INN, &o.KPP, &o.OGRN, &o.OKPO, &o.LegalAddress, &o.IsDefault, &o.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, o)
@@ -98,9 +98,9 @@ func (r *OrganizationRepo) List(ctx context.Context) ([]models.Organization, err
 func (r *OrganizationRepo) Default(ctx context.Context) (*models.Organization, error) {
 	o := &models.Organization{}
 	err := r.db.QueryRow(ctx,
-		`SELECT id, external_id, name, inn, is_default, created_at FROM organizations
+		`SELECT id, external_id, name, full_name, inn, kpp, ogrn, okpo, legal_address, is_default, created_at FROM organizations
  WHERE is_default = TRUE ORDER BY created_at LIMIT 1`,
-	).Scan(&o.ID, &o.ExternalID, &o.Name, &o.INN, &o.IsDefault, &o.CreatedAt)
+	).Scan(&o.ID, &o.ExternalID, &o.Name, &o.INN, &o.KPP, &o.OGRN, &o.OKPO, &o.LegalAddress, &o.IsDefault, &o.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -109,8 +109,8 @@ func (r *OrganizationRepo) Default(ctx context.Context) (*models.Organization, e
 func (r *OrganizationRepo) Get(ctx context.Context, id uuid.UUID) (*models.Organization, error) {
 	o := &models.Organization{}
 	err := r.db.QueryRow(ctx,
-		`SELECT id, external_id, name, inn, is_default, created_at FROM organizations WHERE id = $1`, id,
-	).Scan(&o.ID, &o.ExternalID, &o.Name, &o.INN, &o.IsDefault, &o.CreatedAt)
+		`SELECT id, external_id, name, full_name, inn, kpp, ogrn, okpo, legal_address, is_default, created_at FROM organizations WHERE id = $1`, id,
+	).Scan(&o.ID, &o.ExternalID, &o.Name, &o.FullName, &o.INN, &o.KPP, &o.OGRN, &o.OKPO, &o.LegalAddress, &o.IsDefault, &o.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}

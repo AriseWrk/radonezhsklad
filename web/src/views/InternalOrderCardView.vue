@@ -186,7 +186,7 @@
               </select>
             </td>
             <td class="col-num-right">
-              <input v-model.number="it.quantity" type="number" min="0" step="0.001" class="cell-input" :disabled="!canEditQty" />
+              <QtyStepper v-model="it.quantity" :disabled="!canEditQty" :min="0" :step="0.001" />
             </td>
             <td class="col-num-right muted">
               <span v-if="form.status === 'posted'">{{ formatQty(it.issued_qty ?? 0) }}</span>
@@ -310,6 +310,7 @@
 </template>
 
 <script setup lang="ts">
+import QtyStepper from '../components/QtyStepper.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {

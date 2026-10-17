@@ -3,7 +3,7 @@
 #   .\dev-up.ps1              — инфра + все бэкенды + фронт
 #   .\dev-up.ps1 -NoFront     — только инфра + бэкенды
 #   .\dev-up.ps1 -Only warehouse,gateway — конкретные сервисы
-#   .\dev-up.ps1 -Rebuild     — пересобрать Go-бинарники
+#   .\dev-up.ps1 -Rebuild     — пересобрать и перезапустить (форс-рестарт) выбранные сервисы
 #
 # Логи: logs\<service>.log
 # PID:  .run\pids.json
@@ -72,8 +72,15 @@ foreach ($svc in $services) {
     if ($pid_old) {
         $proc = Get-Process -Id $pid_old -ErrorAction SilentlyContinue
         if ($proc) {
-            Write-Warn "== ${svc}: уже запущен (PID $pid_old), пропускаю"
-            continue
+            if ($Rebuild) {
+                Write-Step "== ${svc}: -Rebuild -> перезапуск (стоп PID $pid_old)"
+                Stop-Process -Id $pid_old -Force -ErrorAction SilentlyContinue
+                try { $proc.WaitForExit(5000) | Out-Null } catch {}
+                Start-Sleep -Milliseconds 400
+            } else {
+                Write-Warn "== ${svc}: уже запущен (PID $pid_old), пропускаю"
+                continue
+            }
         }
     }
 
@@ -106,7 +113,8 @@ foreach ($svc in $services) {
 $existing | ConvertTo-Json | Set-Content -Path $pidsFile -Encoding UTF8
 
 # --- Frontend (vite) ---
-if (-not $NoFront) {
+$runFront = (-not $NoFront) -and ((-not $Only) -or ('front' -in $Only))
+if ($runFront) {
     $webDir = Join-Path $root 'web'
     if (-not (Test-Path (Join-Path $webDir 'node_modules'))) {
         Write-Step '==> npm install (первый запуск, подожди)'

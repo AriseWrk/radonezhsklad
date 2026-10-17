@@ -119,7 +119,7 @@ func main() {
 	supH := handler.NewSupplierHandler(supSvc)
 	intOrderH := handler.NewInternalOrderHandler(intOrderSvc, svc, supSvc, pc, pusher)
 	projectH := handler.NewProjectHandler(projectSvc)
-	invH := handler.NewInventoryHandler(invSvc, pc)
+	invH := handler.NewInventoryHandler(invSvc, svc, supSvc, pc)
 
 	if env == "prod" {
 		gin.SetMode(gin.ReleaseMode)
@@ -147,6 +147,7 @@ func main() {
 			read.GET("/inventories/:id", invH.Get)
 			read.GET("/inventories/:id/neighbors", invH.Neighbors)
 			read.GET("/inventories/:id/export", invH.Export)
+			read.GET("/inventories/:id/export-inv3", invH.ExportInv3)
 			read.GET("/documents", h.ListDocuments)
 			read.GET("/documents/:id", h.GetDocument)
 

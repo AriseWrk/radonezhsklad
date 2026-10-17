@@ -28,12 +28,17 @@ type Supplier struct {
 }
 
 type Organization struct {
-	ID         uuid.UUID  `json:"id"`
-	ExternalID *uuid.UUID `json:"external_id,omitempty"`
-	Name       string     `json:"name"`
-	INN        *string    `json:"inn,omitempty"`
-	IsDefault  bool       `json:"is_default"`
-	CreatedAt  time.Time  `json:"created_at"`
+	ID           uuid.UUID  `json:"id"`
+	ExternalID   *uuid.UUID `json:"external_id,omitempty"`
+	Name         string     `json:"name"`
+	FullName     *string    `json:"full_name,omitempty"`
+	INN          *string    `json:"inn,omitempty"`
+	KPP          *string    `json:"kpp,omitempty"`
+	OGRN         *string    `json:"ogrn,omitempty"`
+	OKPO         *string    `json:"okpo,omitempty"`
+	LegalAddress *string    `json:"legal_address,omitempty"`
+	IsDefault    bool       `json:"is_default"`
+	CreatedAt    time.Time  `json:"created_at"`
 }
 
 type StockBalance struct {

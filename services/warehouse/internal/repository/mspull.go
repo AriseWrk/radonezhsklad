@@ -25,6 +25,7 @@ func NewMsPullRepo(db *pgxpool.Pool) *MsPullRepo { return &MsPullRepo{db: db} }
 type MsCounterparty struct {
 	ExternalID    uuid.UUID
 	Name          string
+	LegalTitle    *string
 	ExternalCode  *string
 	INN           *string
 	KPP           *string
@@ -105,6 +106,7 @@ ON CONFLICT (external_id) WHERE external_id IS NOT NULL DO UPDATE SET
 type MsOrganization struct {
 	ExternalID   uuid.UUID
 	Name         string
+	LegalTitle   *string
 	ExternalCode *string
 	KPP          *string
 	OGRN         *string
@@ -118,15 +120,16 @@ type MsOrganization struct {
 func (r *MsPullRepo) UpsertOrganization(ctx context.Context, o MsOrganization) error {
 	_, err := r.db.Exec(ctx, `
 INSERT INTO organizations (
-    external_id, external_code, name, kpp, ogrn, okpo,
+    external_id, external_code, name, full_name, kpp, ogrn, okpo,
     legal_address, email, archived, source
 ) VALUES (
-    $1, $2, $3, $4, $5, $6,
-    $7, $8, $9, 'ms'
+    $1, $2, $3, COALESCE($4, $3), $5, $6, $7,
+    $8, $9, $10, 'ms'
 )
 ON CONFLICT (external_id) WHERE external_id IS NOT NULL DO UPDATE SET
     external_code = EXCLUDED.external_code,
     name          = EXCLUDED.name,
+    full_name     = COALESCE(EXCLUDED.full_name, EXCLUDED.name),
     kpp           = EXCLUDED.kpp,
     ogrn          = EXCLUDED.ogrn,
     okpo          = EXCLUDED.okpo,
@@ -134,7 +137,7 @@ ON CONFLICT (external_id) WHERE external_id IS NOT NULL DO UPDATE SET
     email         = EXCLUDED.email,
     archived      = EXCLUDED.archived,
     source        = 'ms'`,
-		o.ExternalID, o.ExternalCode, o.Name, o.KPP, o.OGRN, o.OKPO,
+		o.ExternalID, o.ExternalCode, o.Name, o.LegalTitle, o.KPP, o.OGRN, o.OKPO,
 		o.LegalAddress, o.Email, o.Archived,
 	)
 	return err

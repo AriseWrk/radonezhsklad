@@ -15,12 +15,14 @@ import (
 )
 
 type InventoryHandler struct {
-	svc        *service.InventoryService
-	productCli *product.Client
+	svc          *service.InventoryService
+	warehouseSvc *service.Service
+	supplierSvc  *service.SupplierService
+	productCli   *product.Client
 }
 
-func NewInventoryHandler(svc *service.InventoryService, pc *product.Client) *InventoryHandler {
-	return &InventoryHandler{svc: svc, productCli: pc}
+func NewInventoryHandler(svc *service.InventoryService, warehouseSvc *service.Service, supplierSvc *service.SupplierService, pc *product.Client) *InventoryHandler {
+	return &InventoryHandler{svc: svc, warehouseSvc: warehouseSvc, supplierSvc: supplierSvc, productCli: pc}
 }
 
 func (h *InventoryHandler) List(c *gin.Context) {

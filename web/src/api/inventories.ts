@@ -84,6 +84,14 @@ export async function exportInventory(id: string): Promise<{ blob: Blob; filenam
   if (m && m[1]) filename = m[1]
   return { blob: resp.data as Blob, filename }
 }
+export async function exportInventoryInv3(id: string): Promise<{ blob: Blob; filename: string }> {
+  const resp = await http.get(`/inventories/${id}/export-inv3`, { responseType: 'blob' })
+  const dispo = (resp.headers['content-disposition'] as string | undefined) || ''
+  let filename = `inv3-${id}.xlsx`
+  const m = /filename="?([^"]+)"?/.exec(dispo)
+  if (m && m[1]) filename = m[1]
+  return { blob: resp.data as Blob, filename }
+}
 export async function createInventoryCorrection(id: string, kind: CorrectionKind): Promise<CorrectionDocument> {
   const { data } = await http.post<CorrectionDocument>(`/inventories/${id}/create-correction`, { kind })
   return data

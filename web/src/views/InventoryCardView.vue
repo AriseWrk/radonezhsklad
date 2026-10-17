@@ -13,7 +13,16 @@
 
     <div class="ms-toolbar">
       <MsButton variant="primary" icon="plus" @click="showCreateDialog = true">Создать документ</MsButton>
-      <MsButton icon="print" @click="print">Печать</MsButton>
+      <div class="print-menu-wrap">
+        <MsButton icon="print" @click="togglePrintMenu">Печать</MsButton>
+        <div v-if="printMenuOpen" class="print-menu" @mouseleave="printMenuOpen = false">
+          <button class="pm-item" @click="printInv3">ИНВ-3 (инвентаризационная опись)</button>
+          <button class="pm-item" disabled title="Скоро">Сличительная ведомость</button>
+          <button class="pm-item" disabled title="Скоро">ИНВ-19 (инвентаризационная опись)</button>
+          <button class="pm-item" disabled title="Скоро">Список инвентаризаций по ячейкам</button>
+          <button class="pm-item" disabled title="Скоро">Инвентаризация с ячейками</button>
+        </div>
+      </div>
       <div class="pager-nav">
         <button class="pg" :disabled="!prevId" @click="prev">‹</button>
         <span class="pg-info">{{ position }} из {{ total }}</span>
@@ -134,7 +143,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getInventory, getInventoryNeighbors, createInventoryCorrection, exportInventory, type Inventory, type InventoryItem } from '../api/inventories'
+import { getInventory, getInventoryNeighbors, createInventoryCorrection, exportInventory, exportInventoryInv3, type Inventory, type InventoryItem } from '../api/inventories'
 import { listOrganizations, type Organization } from '../api/suppliers'
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
@@ -203,6 +212,30 @@ const prevId = ref<string | null>(null)
 const nextId = ref<string | null>(null)
 const position = ref(0)
 const total = ref(0)
+
+const printMenuOpen = ref(false)
+function togglePrintMenu() { printMenuOpen.value = !printMenuOpen.value }
+
+async function printInv3() {
+  printMenuOpen.value = false
+  if (!doc.value.id) {
+    error.value = 'Сначала сохраните документ'
+    return
+  }
+  try {
+    const { blob, filename } = await exportInventoryInv3(doc.value.id)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1500)
+  } catch (e) {
+    error.value = apiErrorMessage(e)
+  }
+}
 
 function close() { router.push('/inventories') }
 async function print() {
@@ -326,4 +359,18 @@ watch(() => route.params.id, load)
   .bottom-row { grid-template-columns: 1fr; gap: 0; }
   .totals-box { background: transparent; border: none; padding: 8px 0 0; }
 }
+
+.print-menu-wrap { position: relative; display: inline-block; }
+.print-menu {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 20;
+  min-width: 280px; background: #fff; border: 1px solid #d0d7de; border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12); padding: 4px;
+}
+.pm-item {
+  display: block; width: 100%; text-align: left; padding: 6px 10px;
+  border: none; background: transparent; border-radius: 4px; font-size: 13px; cursor: pointer;
+}
+.pm-item:hover:not(:disabled) { background: #eaeef2; }
+.pm-item:disabled { color: #8c959f; cursor: default; }
+
 </style>

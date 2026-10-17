@@ -64,6 +64,7 @@ type msListResponse[T any] struct {
 type msRowCounterparty struct {
 	ID            uuid.UUID `json:"id"`
 	Name          string    `json:"name"`
+	LegalTitle    *string   `json:"legalTitle"`
 	ExternalCode  *string   `json:"externalCode"`
 	INN           *string   `json:"inn"`
 	KPP           *string   `json:"kpp"`
@@ -90,6 +91,7 @@ type msRowStore struct {
 type msRowOrganization struct {
 	ID           uuid.UUID `json:"id"`
 	Name         string    `json:"name"`
+	LegalTitle   *string   `json:"legalTitle"`
 	ExternalCode *string   `json:"externalCode"`
 	KPP          *string   `json:"kpp"`
 	OGRN         *string   `json:"ogrn"`
@@ -183,6 +185,7 @@ func (r *Runner) PullCounterparties(ctx context.Context, jobID uuid.UUID) error 
 		for _, row := range page.Rows {
 			cp := repository.MsCounterparty{
 				ExternalID:    row.ID,
+				LegalTitle:    row.LegalTitle,
 				Name:          row.Name,
 				ExternalCode:  row.ExternalCode,
 				INN:           row.INN,
@@ -293,6 +296,7 @@ func (r *Runner) PullOrganizations(ctx context.Context, jobID uuid.UUID) error {
 		for _, row := range page.Rows {
 			org := repository.MsOrganization{
 				ExternalID:   row.ID,
+				LegalTitle:   row.LegalTitle,
 				Name:         row.Name,
 				ExternalCode: row.ExternalCode,
 				KPP:          row.KPP,

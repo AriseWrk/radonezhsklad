@@ -73,7 +73,7 @@ func (s *Service) ListStock(ctx context.Context, warehouseID, productID *uuid.UU
 }
 
 func (s *Service) StockExtended(ctx context.Context, f repository.StockExtendedFilter) ([]repository.ExtendedRow, error) {
-    return s.repo.StockExtended(ctx, f)
+	return s.repo.StockExtended(ctx, f)
 }
 
 func (s *Service) IncomingByProduct(ctx context.Context) (map[uuid.UUID]float64, error) {
@@ -163,7 +163,7 @@ func (s *Service) PostDocument(ctx context.Context, id uuid.UUID) (*models.Docum
 		return nil, apperr.BadRequest(d.Type + ": warehouse_id не задан")
 	}
 
-	// Проверка доступности для расходных операций
+	// Проверка доступности для расходных операций (учитывая резервы)
 	if d.Type == "shipment" || d.Type == "transfer" || d.Type == "purchase_return" {
 		err := s.repo.WithTx(ctx, func(tx pgx.Tx) error {
 			for _, it := range d.Items {
@@ -171,9 +171,13 @@ func (s *Service) PostDocument(ctx context.Context, id uuid.UUID) (*models.Docum
 				if err != nil {
 					return apperr.Internal("check balance", err)
 				}
-				if avail < it.Quantity {
-					return apperr.Conflict(fmt.Sprintf("недостаточно товара %s: доступно %.3f, требуется %.3f",
-						it.ProductID, avail, it.Quantity))
+				reserved, err := s.repo.GetReserved(ctx, tx, *d.WarehouseID, it.ProductID)
+				if err != nil {
+					return apperr.Internal("check reserved", err)
+				}
+				if avail-reserved < it.Quantity {
+					return apperr.Conflict(fmt.Sprintf("недостаточно товара %s: доступно %.3f (с учётом резерва), требуется %.3f",
+						it.ProductID, avail-reserved, it.Quantity))
 				}
 			}
 			return nil
@@ -187,22 +191,22 @@ func (s *Service) PostDocument(ctx context.Context, id uuid.UUID) (*models.Docum
 		for _, it := range d.Items {
 			switch d.Type {
 			case "receipt":
-				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, d.ID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, d.ID, d.Type, d.CreatedBy, nil, d.WarehouseID); err != nil {
 					return apperr.Internal("apply receipt", err)
 				}
 			case "shipment", "purchase_return":
-				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, d.ID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, d.ID, d.Type, d.CreatedBy, d.WarehouseID, nil); err != nil {
 					return apperr.Internal("apply shipment/return", err)
 				}
 			case "writeoff":
-				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, d.ID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, d.ID, d.Type, d.CreatedBy, d.WarehouseID, nil); err != nil {
 					return apperr.Internal("apply writeoff", err)
 				}
 			case "transfer":
-				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, d.ID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, d.ID, d.Type, d.CreatedBy, d.WarehouseID, d.TargetWarehouseID); err != nil {
 					return apperr.Internal("apply transfer out", err)
 				}
-				if err := s.repo.ApplyMovement(ctx, tx, *d.TargetWarehouseID, it.ProductID, it.Quantity, d.ID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.TargetWarehouseID, it.ProductID, it.Quantity, d.ID, d.Type, d.CreatedBy, d.WarehouseID, d.TargetWarehouseID); err != nil {
 					return apperr.Internal("apply transfer in", err)
 				}
 			case "inventory":
@@ -211,21 +215,20 @@ func (s *Service) PostDocument(ctx context.Context, id uuid.UUID) (*models.Docum
 					return apperr.Internal("inventory balance", err)
 				}
 				delta := it.Quantity - cur
-				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, delta, d.ID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, delta, d.ID, d.Type, d.CreatedBy, nil, d.WarehouseID); err != nil {
 					return apperr.Internal("apply inventory", err)
 				}
 			case "purchase_order", "invoice_in", "facture_in":
 				// не двигает склад
 			}
 		}
+		if err := s.repo.UpdateDocStatusTx(ctx, tx, d.ID, "posted", true, false); err != nil {
+			return apperr.Internal("update status", err)
+		}
 		return nil
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	if err := s.repo.UpdateDocStatus(ctx, id, "posted", true, false); err != nil {
-		return nil, apperr.Internal("update status", err)
 	}
 	return s.GetDocument(ctx, id)
 }
@@ -246,22 +249,22 @@ func (s *Service) CancelDocument(ctx context.Context, id uuid.UUID) (*models.Doc
 		for _, it := range d.Items {
 			switch d.Type {
 			case "receipt":
-				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, d.ID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, d.ID, d.Type, d.CreatedBy, nil, d.WarehouseID); err != nil {
 					return apperr.Internal("revert receipt", err)
 				}
 			case "shipment", "purchase_return":
-				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, d.ID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, d.ID, d.Type, d.CreatedBy, d.WarehouseID, nil); err != nil {
 					return apperr.Internal("revert shipment/return", err)
 				}
 			case "writeoff":
-				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, d.ID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, d.ID, d.Type, d.CreatedBy, d.WarehouseID, nil); err != nil {
 					return apperr.Internal("revert writeoff", err)
 				}
 			case "transfer":
-				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, d.ID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, d.ID, d.Type, d.CreatedBy, d.WarehouseID, d.TargetWarehouseID); err != nil {
 					return apperr.Internal("revert transfer out", err)
 				}
-				if err := s.repo.ApplyMovement(ctx, tx, *d.TargetWarehouseID, it.ProductID, -it.Quantity, d.ID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.TargetWarehouseID, it.ProductID, -it.Quantity, d.ID, d.Type, d.CreatedBy, d.WarehouseID, d.TargetWarehouseID); err != nil {
 					return apperr.Internal("revert transfer in", err)
 				}
 			case "inventory":
@@ -270,14 +273,13 @@ func (s *Service) CancelDocument(ctx context.Context, id uuid.UUID) (*models.Doc
 				// не двигает склад
 			}
 		}
+		if err := s.repo.UpdateDocStatusTx(ctx, tx, d.ID, "cancelled", false, true); err != nil {
+			return apperr.Internal("update status", err)
+		}
 		return nil
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	if err := s.repo.UpdateDocStatus(ctx, id, "cancelled", false, true); err != nil {
-		return nil, apperr.Internal("update status", err)
 	}
 	return s.GetDocument(ctx, id)
 }

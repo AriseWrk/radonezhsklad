@@ -274,21 +274,22 @@ func (r *Repo) itemsByDoc(ctx context.Context, docID uuid.UUID) ([]models.DocIte
 }
 
 type DocumentFilters struct {
-	Type              *string
-	Status            *string
-	WarehouseID       *uuid.UUID
-	SupplierID        *uuid.UUID
-	OrganizationID    *uuid.UUID
-	DateFrom          *time.Time
-	DateTo            *time.Time
-	IncomingNumber    *string
-	IncomingDateFrom  *time.Time
-	IncomingDateTo    *time.Time
-	PaidMin           *float64
-	PaidMax           *float64
-	Printed           *bool
-	Sent              *bool
+	Type             *string
+	Status           *string
+	WarehouseID      *uuid.UUID
+	SupplierID       *uuid.UUID
+	OrganizationID   *uuid.UUID
+	DateFrom         *time.Time
+	DateTo           *time.Time
+	IncomingNumber   *string
+	IncomingDateFrom *time.Time
+	IncomingDateTo   *time.Time
+	PaidMin          *float64
+	PaidMax          *float64
+	Printed          *bool
+	Sent             *bool
 }
+
 func (r *Repo) ListDocuments(ctx context.Context, f DocumentFilters) ([]models.Document, error) {
 	q := documentSelect + ` WHERE 1=1`
 	args := []any{}
@@ -404,8 +405,9 @@ func (r *Repo) UpdateDocStatus(ctx context.Context, id uuid.UUID, status string,
 	return err
 }
 
-// ApplyMovement — атомарное изменение остатка + audit-запись.
-func (r *Repo) ApplyMovement(ctx context.Context, tx pgx.Tx, warehouseID, productID uuid.UUID, delta float64, docID uuid.UUID) error {
+// ApplyMovement — атомарное изменение остатка + audit-запись с денормализацией.
+// docType — тип документа, userID — кто провёл, warehouseFrom/To — для перемещений.
+func (r *Repo) ApplyMovement(ctx context.Context, tx pgx.Tx, warehouseID, productID uuid.UUID, delta float64, docID uuid.UUID, docType string, userID, warehouseFrom, warehouseTo *uuid.UUID) error {
 	_, err := tx.Exec(ctx,
 		`INSERT INTO stock_balances (warehouse_id, product_id, quantity)
  VALUES ($1, $2, $3)
@@ -418,11 +420,30 @@ func (r *Repo) ApplyMovement(ctx context.Context, tx pgx.Tx, warehouseID, produc
 		return err
 	}
 
+	var dt *string
+	if docType != "" {
+		dt = &docType
+	}
 	_, err = tx.Exec(ctx,
-		`INSERT INTO stock_movements (warehouse_id, product_id, document_id, quantity_delta)
- VALUES ($1, $2, $3, $4)`,
-		warehouseID, productID, docID, delta,
+		`INSERT INTO stock_movements (warehouse_id, product_id, document_id, quantity_delta, doc_type, user_id, warehouse_from, warehouse_to)
+ VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		warehouseID, productID, docID, delta, dt, userID, warehouseFrom, warehouseTo,
 	)
+	return err
+}
+
+// UpdateDocStatusTx — обновление статуса внутри переданной транзакции.
+func (r *Repo) UpdateDocStatusTx(ctx context.Context, tx pgx.Tx, id uuid.UUID, status string, setPosted, setCancelled bool) error {
+	var q string
+	switch {
+	case setPosted:
+		q = `UPDATE documents SET status = $2, posted_at = NOW() WHERE id = $1`
+	case setCancelled:
+		q = `UPDATE documents SET status = $2, cancelled_at = NOW() WHERE id = $1`
+	default:
+		q = `UPDATE documents SET status = $2 WHERE id = $1`
+	}
+	_, err := tx.Exec(ctx, q, id, status)
 	return err
 }
 
@@ -436,6 +457,47 @@ func (r *Repo) GetBalance(ctx context.Context, tx pgx.Tx, warehouseID, productID
 		return 0, nil
 	}
 	return q, err
+}
+
+// ---------- reserves ----------
+
+func (r *Repo) GetReserved(ctx context.Context, tx pgx.Tx, warehouseID, productID uuid.UUID) (float64, error) {
+	var q float64
+	err := tx.QueryRow(ctx,
+		`SELECT COALESCE(SUM(quantity), 0) FROM stock_reserves WHERE warehouse_id = $1 AND product_id = $2`,
+		warehouseID, productID).Scan(&q)
+	return q, err
+}
+
+func (r *Repo) AddReserve(ctx context.Context, tx pgx.Tx, warehouseID, productID, orderID uuid.UUID, qty float64) error {
+	if qty <= 0 {
+		return nil
+	}
+	_, err := tx.Exec(ctx,
+		`INSERT INTO stock_reserves (warehouse_id, product_id, order_id, quantity) VALUES ($1, $2, $3, $4)`,
+		warehouseID, productID, orderID, qty)
+	return err
+}
+
+func (r *Repo) ReleaseReserve(ctx context.Context, tx pgx.Tx, orderID uuid.UUID) error {
+	_, err := tx.Exec(ctx, `DELETE FROM stock_reserves WHERE order_id = $1`, orderID)
+	return err
+}
+
+func (r *Repo) ReleaseReserveItem(ctx context.Context, tx pgx.Tx, orderID, productID uuid.UUID, qty float64) error {
+	if qty <= 0 {
+		return nil
+	}
+	_, err := tx.Exec(ctx,
+		`UPDATE stock_reserves SET quantity = quantity - $3 WHERE order_id = $1 AND product_id = $2 AND quantity > $3`,
+		orderID, productID, qty)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx,
+		`DELETE FROM stock_reserves WHERE order_id = $1 AND product_id = $2 AND quantity <= 0`,
+		orderID, productID)
+	return err
 }
 
 // ---------- inventory ----------
@@ -477,13 +539,13 @@ type ExtendedRow struct {
 
 // StockExtendedFilter — серверные фильтры для расширенного отчёта остатков.
 type StockExtendedFilter struct {
-ProductID    *uuid.UUID
+	ProductID    *uuid.UUID
 	WarehouseID  *uuid.UUID
-QtyMode      string // "positive" | "zero" | "" (любой)
-AvailMode    string // "nonZero"  | "zero" | "" (любое)
-DaysMin      *int
-DaysMax      *int
-OnlyIncoming bool
+	QtyMode      string // "positive" | "zero" | "" (любой)
+	AvailMode    string // "nonZero"  | "zero" | "" (любое)
+	DaysMin      *int
+	DaysMax      *int
+	OnlyIncoming bool
 	SupplierID   *uuid.UUID
 	AsOf         *time.Time
 }
@@ -516,8 +578,8 @@ FROM base
 WHERE 1=1
 `
 	}
-args := []any{}
-n := 1
+	args := []any{}
+	n := 1
 	if f.AsOf != nil {
 		args = append(args, *f.AsOf)
 		n = 2
@@ -528,41 +590,41 @@ n := 1
 		n++
 	}
 	if f.WarehouseID != nil {
-q += fmt.Sprintf(` AND warehouse_id = $%d`, n)
-args = append(args, *f.WarehouseID)
-n++
-}
-switch f.QtyMode {
-case "positive":
-q += ` AND quantity > 0`
-case "zero":
-q += ` AND quantity = 0`
-default:
-q += ` AND quantity <> 0`
-}
-switch f.AvailMode {
-case "nonZero":
-q += ` AND quantity <> 0`
-case "zero":
-q += ` AND quantity = 0`
-}
-if f.DaysMin != nil {
-q += fmt.Sprintf(` AND last_movement IS NOT NULL AND EXTRACT(EPOCH FROM (now() - last_movement))/86400 >= $%d`, n)
-args = append(args, *f.DaysMin)
-n++
-}
-if f.DaysMax != nil {
-q += fmt.Sprintf(` AND last_movement IS NOT NULL AND EXTRACT(EPOCH FROM (now() - last_movement))/86400 <= $%d`, n)
-args = append(args, *f.DaysMax)
-n++
-}
-if f.OnlyIncoming {
-q += ` AND EXISTS (
+		q += fmt.Sprintf(` AND warehouse_id = $%d`, n)
+		args = append(args, *f.WarehouseID)
+		n++
+	}
+	switch f.QtyMode {
+	case "positive":
+		q += ` AND quantity > 0`
+	case "zero":
+		q += ` AND quantity = 0`
+	default:
+		q += ` AND quantity <> 0`
+	}
+	switch f.AvailMode {
+	case "nonZero":
+		q += ` AND quantity <> 0`
+	case "zero":
+		q += ` AND quantity = 0`
+	}
+	if f.DaysMin != nil {
+		q += fmt.Sprintf(` AND last_movement IS NOT NULL AND EXTRACT(EPOCH FROM (now() - last_movement))/86400 >= $%d`, n)
+		args = append(args, *f.DaysMin)
+		n++
+	}
+	if f.DaysMax != nil {
+		q += fmt.Sprintf(` AND last_movement IS NOT NULL AND EXTRACT(EPOCH FROM (now() - last_movement))/86400 <= $%d`, n)
+		args = append(args, *f.DaysMax)
+		n++
+	}
+	if f.OnlyIncoming {
+		q += ` AND EXISTS (
   SELECT 1 FROM document_items di
   JOIN documents d ON d.id = di.document_id
   WHERE di.product_id = base.product_id AND d.type = 'receipt' AND d.status = 'draft'
 )`
-}
+	}
 	if f.SupplierID != nil {
 		q += fmt.Sprintf(` AND EXISTS (
   SELECT 1 FROM stock_movements sm
@@ -573,22 +635,22 @@ q += ` AND EXISTS (
 		args = append(args, *f.SupplierID)
 		n++
 	}
-q += ` ORDER BY product_id`
+	q += ` ORDER BY product_id`
 
-rows, err := r.db.Query(ctx, q, args...)
-if err != nil {
-return nil, err
-}
-defer rows.Close()
-out := []ExtendedRow{}
-for rows.Next() {
-var e ExtendedRow
-if err := rows.Scan(&e.ProductID, &e.WarehouseID, &e.Quantity, &e.LastMovement); err != nil {
-return nil, err
-}
-out = append(out, e)
-}
-return out, rows.Err()
+	rows, err := r.db.Query(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []ExtendedRow{}
+	for rows.Next() {
+		var e ExtendedRow
+		if err := rows.Scan(&e.ProductID, &e.WarehouseID, &e.Quantity, &e.LastMovement); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
 }
 
 func (r *Repo) IncomingByProduct(ctx context.Context) (map[uuid.UUID]float64, error) {

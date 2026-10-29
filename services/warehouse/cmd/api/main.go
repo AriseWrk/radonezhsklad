@@ -63,7 +63,7 @@ func main() {
 	supSvc := service.NewSupplierService(supRepo, orgRepo)
 	intOrderSvc := service.NewInternalOrderService(intOrderRepo, intIssueRepo, repo)
 	projectSvc := service.NewProjectService(projectRepo)
-	invSvc := service.NewInventoryService(invRepo, repo)
+	invSvc := service.NewInventoryService(invRepo, repo, svc)
 	pc := product.New(cfg.ProductURL)
 
 	// --- MS-клиент (используется и push'ем, и pull'ом) ---

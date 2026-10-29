@@ -122,13 +122,14 @@ func (h *InventoryHandler) CreateCorrection(c *gin.Context) {
 		return
 	}
 	var req struct {
-		Kind string `json:"kind" binding:"required"`
+		Kind     string `json:"kind" binding:"required"`
+		AutoPost bool   `json:"auto_post"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(apperr.BadRequest(err.Error()))
 		return
 	}
-	doc, err := h.svc.CreateCorrection(c.Request.Context(), id, req.Kind)
+	doc, err := h.svc.CreateCorrection(c.Request.Context(), id, req.Kind, req.AutoPost)
 	if err != nil {
 		c.Error(err)
 		return

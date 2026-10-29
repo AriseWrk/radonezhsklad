@@ -13,10 +13,11 @@ import (
 type InventoryService struct {
 	repo    *repository.InventoryRepo
 	docRepo *repository.Repo
+	docSvc  *Service
 }
 
-func NewInventoryService(repo *repository.InventoryRepo, docRepo *repository.Repo) *InventoryService {
-	return &InventoryService{repo: repo, docRepo: docRepo}
+func NewInventoryService(repo *repository.InventoryRepo, docRepo *repository.Repo, docSvc *Service) *InventoryService {
+	return &InventoryService{repo: repo, docRepo: docRepo, docSvc: docSvc}
 }
 
 func (s *InventoryService) List(ctx context.Context, f repository.InventoryFilters) ([]models.Inventory, error) {
@@ -45,7 +46,7 @@ func (s *InventoryService) Neighbors(ctx context.Context, id uuid.UUID) (*reposi
 	return n, nil
 }
 
-func (s *InventoryService) CreateCorrection(ctx context.Context, invID uuid.UUID, kind string) (*models.Document, error) {
+func (s *InventoryService) CreateCorrection(ctx context.Context, invID uuid.UUID, kind string, autoPost bool) (*models.Document, error) {
 	inv, err := s.repo.Get(ctx, invID)
 	if err != nil {
 		return nil, apperr.Internal("get inventory", err)
@@ -122,6 +123,13 @@ func (s *InventoryService) CreateCorrection(ctx context.Context, invID uuid.UUID
 	})
 	if err != nil {
 		return nil, apperr.Internal("create correction doc", err)
+	}
+	if autoPost {
+		posted, perr := s.docSvc.PostDocument(ctx, doc.ID)
+		if perr != nil {
+			return nil, perr
+		}
+		return posted, nil
 	}
 	return doc, nil
 }

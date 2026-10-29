@@ -280,6 +280,24 @@ func (r *InternalOrderRepo) UpdateStatus(ctx context.Context, id uuid.UUID, stat
 	return err
 }
 
+// SetStatusTx — смена статуса ВЗ внутри транзакции, с проставлением отметок времени.
+func (r *InternalOrderRepo) SetStatusTx(ctx context.Context, tx pgx.Tx, id uuid.UUID, status string) error {
+	var q string
+	switch status {
+	case "posted":
+		q = `UPDATE internal_orders SET status = $2, posted_at = NOW() WHERE id = $1`
+	case "cancelled":
+		q = `UPDATE internal_orders SET status = $2, cancelled_at = NOW() WHERE id = $1`
+	case "shipped":
+		q = `UPDATE internal_orders SET status = $2, shipped_at = NOW() WHERE id = $1`
+	case "closed":
+		q = `UPDATE internal_orders SET status = $2, closed_at = NOW() WHERE id = $1`
+	default:
+		q = `UPDATE internal_orders SET status = $2 WHERE id = $1`
+	}
+	_, err := tx.Exec(ctx, q, id, status)
+	return err
+}
 func (r *InternalOrderRepo) Delete(ctx context.Context, id uuid.UUID, force bool) (bool, error) {
 	var tag pgconn.CommandTag
 	var err error

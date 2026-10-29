@@ -29,65 +29,59 @@ type InternalOrderIssueInput struct {
 
 var ErrIssueOverflow = errors.New("issue exceeds remaining quantity")
 
-// AddIssue вставляет одну выдачу в транзакции:
+// AddIssueTx вставляет одну выдачу в переданной транзакции:
 //   - проверяет остаток по позиции (с блокировкой строки)
 //   - пишет internal_order_issues
 //   - увеличивает issued_qty у позиции
 //   - пересчитывает issue_status у заказа
-func (r *InternalOrderIssueRepo) AddIssue(ctx context.Context, orderID uuid.UUID, in InternalOrderIssueInput) (*models.InternalOrderIssue, error) {
-	var out *models.InternalOrderIssue
-	err := pgx.BeginFunc(ctx, r.db, func(tx pgx.Tx) error {
-		var orderedQty, issuedQty float64
-		err := tx.QueryRow(ctx, `
+func (r *InternalOrderIssueRepo) AddIssueTx(ctx context.Context, tx pgx.Tx, orderID uuid.UUID, in InternalOrderIssueInput) (*models.InternalOrderIssue, error) {
+	var orderedQty, issuedQty float64
+	err := tx.QueryRow(ctx, `
 SELECT quantity, issued_qty FROM internal_order_items
 WHERE id = $1 AND order_id = $2
 FOR UPDATE`, in.ItemID, orderID).Scan(&orderedQty, &issuedQty)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("item not found in order")
-		}
-		if err != nil {
-			return err
-		}
-		if in.Qty <= 0 {
-			return fmt.Errorf("qty must be > 0")
-		}
-		if issuedQty+in.Qty > orderedQty+1e-9 {
-			return ErrIssueOverflow
-		}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("item not found in order")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if in.Qty <= 0 {
+		return nil, fmt.Errorf("qty must be > 0")
+	}
+	if issuedQty+in.Qty > orderedQty+1e-9 {
+		return nil, ErrIssueOverflow
+	}
 
-		issueDate := time.Now()
-		if in.IssueDate != nil && *in.IssueDate != "" {
-			if t, perr := time.Parse("2006-01-02", *in.IssueDate); perr == nil {
-				issueDate = t
-			}
+	issueDate := time.Now()
+	if in.IssueDate != nil && *in.IssueDate != "" {
+		if t, perr := time.Parse("2006-01-02", *in.IssueDate); perr == nil {
+			issueDate = t
 		}
+	}
 
-		iss := &models.InternalOrderIssue{}
-		if err := tx.QueryRow(ctx, `
+	iss := &models.InternalOrderIssue{}
+	if err := tx.QueryRow(ctx, `
 INSERT INTO internal_order_issues (order_id, item_id, qty, issue_date, issued_by, comment)
 VALUES ($1,$2,$3,$4,$5,$6)
 RETURNING id, order_id, item_id, qty, issue_date, issued_by, comment, created_at`,
-			orderID, in.ItemID, in.Qty, issueDate, in.IssuedBy, in.Comment,
-		).Scan(
-			&iss.ID, &iss.OrderID, &iss.ItemID, &iss.Qty, &iss.IssueDate,
-			&iss.IssuedBy, &iss.Comment, &iss.CreatedAt,
-		); err != nil {
-			return err
-		}
+		orderID, in.ItemID, in.Qty, issueDate, in.IssuedBy, in.Comment,
+	).Scan(
+		&iss.ID, &iss.OrderID, &iss.ItemID, &iss.Qty, &iss.IssueDate,
+		&iss.IssuedBy, &iss.Comment, &iss.CreatedAt,
+	); err != nil {
+		return nil, err
+	}
 
-		if _, err := tx.Exec(ctx, `
+	if _, err := tx.Exec(ctx, `
 UPDATE internal_order_items SET issued_qty = issued_qty + $2 WHERE id = $1`, in.ItemID, in.Qty); err != nil {
-			return err
-		}
-		if err := recalcIssueStatus(ctx, tx, orderID); err != nil {
-			return err
-		}
-		out = iss
-		return nil
-	})
-	return out, err
+		return nil, err
+	}
+	if err := recalcIssueStatus(ctx, tx, orderID); err != nil {
+		return nil, err
+	}
+	return iss, nil
 }
-
 func (r *InternalOrderIssueRepo) ListByOrder(ctx context.Context, orderID uuid.UUID) ([]models.InternalOrderIssue, error) {
 	rows, err := r.db.Query(ctx, `
 SELECT id, order_id, item_id, qty, issue_date, issued_by, comment, created_at

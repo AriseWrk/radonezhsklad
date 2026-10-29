@@ -61,7 +61,7 @@ func main() {
 
 	svc := service.New(repo)
 	supSvc := service.NewSupplierService(supRepo, orgRepo)
-	intOrderSvc := service.NewInternalOrderService(intOrderRepo, intIssueRepo)
+	intOrderSvc := service.NewInternalOrderService(intOrderRepo, intIssueRepo, repo)
 	projectSvc := service.NewProjectService(projectRepo)
 	invSvc := service.NewInventoryService(invRepo, repo)
 	pc := product.New(cfg.ProductURL)

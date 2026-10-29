@@ -688,16 +688,26 @@ type MovementDetail struct {
 	DocumentType      *string
 	DocumentNumber    *string
 	DocumentCreatedAt *time.Time
+	DocType           *string
+	UserID            *uuid.UUID
+	WarehouseFrom     *uuid.UUID
+	WarehouseTo       *uuid.UUID
+	WarehouseFromName string
+	WarehouseToName   string
 }
 
 func (r *Repo) MovementsByProduct(ctx context.Context, productID uuid.UUID) ([]MovementDetail, error) {
 	rows, err := r.db.Query(ctx, `
 SELECT sm.id, sm.warehouse_id, w.name AS warehouse_name,
        sm.quantity_delta, sm.created_at AS movement_at,
-       d.id, d.type, d.number, d.created_at AS document_created_at
+       d.id, d.type, d.number, d.created_at AS document_created_at,
+       sm.doc_type, sm.user_id, sm.warehouse_from, sm.warehouse_to,
+       wf.name AS wf_name, wt.name AS wt_name
 FROM stock_movements sm
 JOIN warehouses w ON w.id = sm.warehouse_id
 LEFT JOIN documents d ON d.id = sm.document_id
+LEFT JOIN warehouses wf ON wf.id = sm.warehouse_from
+LEFT JOIN warehouses wt ON wt.id = sm.warehouse_to
 WHERE sm.product_id = $1
 ORDER BY sm.created_at DESC`, productID)
 	if err != nil {
@@ -708,12 +718,41 @@ ORDER BY sm.created_at DESC`, productID)
 	out := []MovementDetail{}
 	for rows.Next() {
 		var m MovementDetail
+		var wfName, wtName *string
 		if err := rows.Scan(&m.ID, &m.WarehouseID, &m.WarehouseName,
 			&m.QuantityDelta, &m.MovementAt,
-			&m.DocumentID, &m.DocumentType, &m.DocumentNumber, &m.DocumentCreatedAt); err != nil {
+			&m.DocumentID, &m.DocumentType, &m.DocumentNumber, &m.DocumentCreatedAt,
+			&m.DocType, &m.UserID, &m.WarehouseFrom, &m.WarehouseTo,
+			&wfName, &wtName); err != nil {
 			return nil, err
 		}
+		if wfName != nil {
+			m.WarehouseFromName = *wfName
+		}
+		if wtName != nil {
+			m.WarehouseToName = *wtName
+		}
 		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+// ReservedByProduct — суммарный резерв по товару в разрезе складов.
+func (r *Repo) ReservedByProduct(ctx context.Context, productID uuid.UUID) (map[uuid.UUID]float64, error) {
+	rows, err := r.db.Query(ctx, `
+SELECT warehouse_id, SUM(quantity) FROM stock_reserves WHERE product_id = $1 GROUP BY warehouse_id`, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[uuid.UUID]float64{}
+	for rows.Next() {
+		var id uuid.UUID
+		var q float64
+		if err := rows.Scan(&id, &q); err != nil {
+			return nil, err
+		}
+		out[id] = q
 	}
 	return out, rows.Err()
 }

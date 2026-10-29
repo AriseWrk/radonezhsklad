@@ -20,6 +20,12 @@ type movementJSON struct {
 	DocumentCreatedAt *time.Time `json:"document_created_at,omitempty"`
 	MovementAt        time.Time  `json:"movement_at"`
 	QuantityDelta     float64    `json:"quantity_delta"`
+	DocType           string     `json:"doc_type,omitempty"`
+	UserID            *uuid.UUID `json:"user_id,omitempty"`
+	WarehouseFrom     *uuid.UUID `json:"warehouse_from,omitempty"`
+	WarehouseTo       *uuid.UUID `json:"warehouse_to,omitempty"`
+	WarehouseFromName string     `json:"warehouse_from_name,omitempty"`
+	WarehouseToName   string     `json:"warehouse_to_name,omitempty"`
 	DaysOnStock       int        `json:"days_on_stock"`
 	CostPrice         float64    `json:"cost_price"`
 	CostSum           float64    `json:"cost_sum"`
@@ -119,6 +125,10 @@ func (h *Handler) ProductStockDetail(c *gin.Context) {
 			docNumber = *m.DocumentNumber
 		}
 
+		var dtStr string
+		if m.DocType != nil {
+			dtStr = *m.DocType
+		}
 		g.Movements = append(g.Movements, movementJSON{
 			ID:                m.ID,
 			DocumentID:        m.DocumentID,
@@ -127,6 +137,12 @@ func (h *Handler) ProductStockDetail(c *gin.Context) {
 			DocumentCreatedAt: m.DocumentCreatedAt,
 			MovementAt:        m.MovementAt,
 			QuantityDelta:     m.QuantityDelta,
+			DocType:           dtStr,
+			UserID:            m.UserID,
+			WarehouseFrom:     m.WarehouseFrom,
+			WarehouseTo:       m.WarehouseTo,
+			WarehouseFromName: m.WarehouseFromName,
+			WarehouseToName:   m.WarehouseToName,
 			DaysOnStock:       days,
 			CostPrice:         p.CostPrice,
 			CostSum:           m.QuantityDelta * p.CostPrice,
@@ -156,6 +172,15 @@ func (h *Handler) ProductStockDetail(c *gin.Context) {
 		groupsList = append(groupsList, *groups[id])
 	}
 
+	reservedMap, err := h.svc.ReservedByProduct(ctx, productID)
+	if err != nil {
+		c.Error(apperr.Internal("reserved", err))
+		return
+	}
+	var totalReserve float64
+	for _, r := range reservedMap {
+		totalReserve += r
+	}
 	httpx.OK(c, gin.H{
 		"product": gin.H{
 			"id":         p.ID,
@@ -168,8 +193,8 @@ func (h *Handler) ProductStockDetail(c *gin.Context) {
 			"currency":   p.Currency,
 		},
 		"summary": gin.H{
-			"available":  totalQty,
-			"reserve":    0,
+			"available":  totalQty - totalReserve,
+			"reserve":    totalReserve,
 			"incoming":   0,
 			"quantity":   totalQty,
 			"min_stock":  p.MinStock,

@@ -290,6 +290,10 @@ func (s *Service) MovementsByProduct(ctx context.Context, productID uuid.UUID) (
 	return s.repo.MovementsByProduct(ctx, productID)
 }
 
+func (s *Service) ReservedByProduct(ctx context.Context, productID uuid.UUID) (map[uuid.UUID]float64, error) {
+	return s.repo.ReservedByProduct(ctx, productID)
+}
+
 func (s *Service) BalancesByProduct(ctx context.Context, productID uuid.UUID) ([]repository.BalanceByWarehouse, error) {
 	return s.repo.BalancesByProduct(ctx, productID)
 }

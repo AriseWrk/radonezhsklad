@@ -191,22 +191,22 @@ func (s *Service) PostDocument(ctx context.Context, id uuid.UUID) (*models.Docum
 		for _, it := range d.Items {
 			switch d.Type {
 			case "receipt":
-				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, d.ID, d.Type, d.CreatedBy, nil, d.WarehouseID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, &d.ID, nil, d.Type, d.CreatedBy, nil, d.WarehouseID); err != nil {
 					return apperr.Internal("apply receipt", err)
 				}
 			case "shipment", "purchase_return":
-				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, d.ID, d.Type, d.CreatedBy, d.WarehouseID, nil); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, &d.ID, nil, d.Type, d.CreatedBy, d.WarehouseID, nil); err != nil {
 					return apperr.Internal("apply shipment/return", err)
 				}
 			case "writeoff":
-				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, d.ID, d.Type, d.CreatedBy, d.WarehouseID, nil); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, &d.ID, nil, d.Type, d.CreatedBy, d.WarehouseID, nil); err != nil {
 					return apperr.Internal("apply writeoff", err)
 				}
 			case "transfer":
-				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, d.ID, d.Type, d.CreatedBy, d.WarehouseID, d.TargetWarehouseID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, &d.ID, nil, d.Type, d.CreatedBy, d.WarehouseID, d.TargetWarehouseID); err != nil {
 					return apperr.Internal("apply transfer out", err)
 				}
-				if err := s.repo.ApplyMovement(ctx, tx, *d.TargetWarehouseID, it.ProductID, it.Quantity, d.ID, d.Type, d.CreatedBy, d.WarehouseID, d.TargetWarehouseID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.TargetWarehouseID, it.ProductID, it.Quantity, &d.ID, nil, d.Type, d.CreatedBy, d.WarehouseID, d.TargetWarehouseID); err != nil {
 					return apperr.Internal("apply transfer in", err)
 				}
 			case "inventory":
@@ -215,7 +215,7 @@ func (s *Service) PostDocument(ctx context.Context, id uuid.UUID) (*models.Docum
 					return apperr.Internal("inventory balance", err)
 				}
 				delta := it.Quantity - cur
-				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, delta, d.ID, d.Type, d.CreatedBy, nil, d.WarehouseID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, delta, &d.ID, nil, d.Type, d.CreatedBy, nil, d.WarehouseID); err != nil {
 					return apperr.Internal("apply inventory", err)
 				}
 			case "purchase_order", "invoice_in", "facture_in":
@@ -249,22 +249,22 @@ func (s *Service) CancelDocument(ctx context.Context, id uuid.UUID) (*models.Doc
 		for _, it := range d.Items {
 			switch d.Type {
 			case "receipt":
-				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, d.ID, d.Type, d.CreatedBy, nil, d.WarehouseID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, &d.ID, nil, d.Type, d.CreatedBy, nil, d.WarehouseID); err != nil {
 					return apperr.Internal("revert receipt", err)
 				}
 			case "shipment", "purchase_return":
-				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, d.ID, d.Type, d.CreatedBy, d.WarehouseID, nil); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, &d.ID, nil, d.Type, d.CreatedBy, d.WarehouseID, nil); err != nil {
 					return apperr.Internal("revert shipment/return", err)
 				}
 			case "writeoff":
-				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, d.ID, d.Type, d.CreatedBy, d.WarehouseID, nil); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, &d.ID, nil, d.Type, d.CreatedBy, d.WarehouseID, nil); err != nil {
 					return apperr.Internal("revert writeoff", err)
 				}
 			case "transfer":
-				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, d.ID, d.Type, d.CreatedBy, d.WarehouseID, d.TargetWarehouseID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, &d.ID, nil, d.Type, d.CreatedBy, d.WarehouseID, d.TargetWarehouseID); err != nil {
 					return apperr.Internal("revert transfer out", err)
 				}
-				if err := s.repo.ApplyMovement(ctx, tx, *d.TargetWarehouseID, it.ProductID, -it.Quantity, d.ID, d.Type, d.CreatedBy, d.WarehouseID, d.TargetWarehouseID); err != nil {
+				if err := s.repo.ApplyMovement(ctx, tx, *d.TargetWarehouseID, it.ProductID, -it.Quantity, &d.ID, nil, d.Type, d.CreatedBy, d.WarehouseID, d.TargetWarehouseID); err != nil {
 					return apperr.Internal("revert transfer in", err)
 				}
 			case "inventory":

@@ -182,7 +182,7 @@ func (s *InternalOrderService) Issue(ctx context.Context, orderID uuid.UUID, in 
 		if err := tx.QueryRow(ctx, `SELECT product_id FROM internal_order_items WHERE id = $1`, in.ItemID).Scan(&productID); err != nil {
 			return apperr.Internal("get product_id", err)
 		}
-		if err := s.stockRepo.ApplyMovement(ctx, tx, *o.WarehouseID, productID, -in.Qty, orderID, "internal_order_issue", in.IssuedBy, o.WarehouseID, nil); err != nil {
+		if err := s.stockRepo.ApplyMovement(ctx, tx, *o.WarehouseID, productID, -in.Qty, nil, &orderID, "internal_order_issue", in.IssuedBy, o.WarehouseID, nil); err != nil {
 			return apperr.Internal("apply issue movement", err)
 		}
 		if err := s.stockRepo.ReleaseReserveItem(ctx, tx, orderID, productID, in.Qty); err != nil {

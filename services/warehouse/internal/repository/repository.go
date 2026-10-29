@@ -407,7 +407,7 @@ func (r *Repo) UpdateDocStatus(ctx context.Context, id uuid.UUID, status string,
 
 // ApplyMovement — атомарное изменение остатка + audit-запись с денормализацией.
 // docType — тип документа, userID — кто провёл, warehouseFrom/To — для перемещений.
-func (r *Repo) ApplyMovement(ctx context.Context, tx pgx.Tx, warehouseID, productID uuid.UUID, delta float64, docID uuid.UUID, docType string, userID, warehouseFrom, warehouseTo *uuid.UUID) error {
+func (r *Repo) ApplyMovement(ctx context.Context, tx pgx.Tx, warehouseID, productID uuid.UUID, delta float64, docID *uuid.UUID, internalOrderID *uuid.UUID, docType string, userID, warehouseFrom, warehouseTo *uuid.UUID) error {
 	_, err := tx.Exec(ctx,
 		`INSERT INTO stock_balances (warehouse_id, product_id, quantity)
  VALUES ($1, $2, $3)
@@ -425,9 +425,9 @@ func (r *Repo) ApplyMovement(ctx context.Context, tx pgx.Tx, warehouseID, produc
 		dt = &docType
 	}
 	_, err = tx.Exec(ctx,
-		`INSERT INTO stock_movements (warehouse_id, product_id, document_id, quantity_delta, doc_type, user_id, warehouse_from, warehouse_to)
- VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		warehouseID, productID, docID, delta, dt, userID, warehouseFrom, warehouseTo,
+		`INSERT INTO stock_movements (warehouse_id, product_id, document_id, internal_order_id, quantity_delta, doc_type, user_id, warehouse_from, warehouse_to)
+ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		warehouseID, productID, docID, internalOrderID, delta, dt, userID, warehouseFrom, warehouseTo,
 	)
 	return err
 }
@@ -487,6 +487,13 @@ func (r *Repo) ReleaseReserve(ctx context.Context, tx pgx.Tx, orderID uuid.UUID)
 func (r *Repo) ReleaseReserveItem(ctx context.Context, tx pgx.Tx, orderID, productID uuid.UUID, qty float64) error {
 	if qty <= 0 {
 		return nil
+	}
+	// Сначала удаляем строки, где резерва не больше, чем выдаём (чтобы не нарушить CHECK quantity > 0).
+	_, delErr := tx.Exec(ctx,
+		`DELETE FROM stock_reserves WHERE order_id = $1 AND product_id = $2 AND quantity <= $3`,
+		orderID, productID, qty)
+	if delErr != nil {
+		return delErr
 	}
 	_, err := tx.Exec(ctx,
 		`UPDATE stock_reserves SET quantity = quantity - $3 WHERE order_id = $1 AND product_id = $2 AND quantity > $3`,

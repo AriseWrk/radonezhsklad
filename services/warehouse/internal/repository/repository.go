@@ -94,20 +94,29 @@ func (r *Repo) DeleteWarehouse(ctx context.Context, id uuid.UUID) (bool, error) 
 // ---------- stock ----------
 
 func (r *Repo) ListStock(ctx context.Context, warehouseID, productID *uuid.UUID) ([]models.StockBalance, error) {
-	q := `SELECT id, warehouse_id, product_id, quantity, updated_at FROM stock_balances WHERE 1=1`
+	q := `SELECT sb.id, sb.warehouse_id, sb.product_id, sb.quantity,
+       COALESCE(r.reserved, 0) AS reserved,
+       sb.quantity - COALESCE(r.reserved, 0) AS available,
+       sb.updated_at
+FROM stock_balances sb
+LEFT JOIN (
+  SELECT warehouse_id, product_id, SUM(quantity) AS reserved
+  FROM stock_reserves GROUP BY warehouse_id, product_id
+) r ON r.warehouse_id = sb.warehouse_id AND r.product_id = sb.product_id
+WHERE 1=1`
 	args := []any{}
 	i := 1
 	if warehouseID != nil {
-		q += ` AND warehouse_id = $` + itoa(i)
+		q += ` AND sb.warehouse_id = $` + itoa(i)
 		args = append(args, *warehouseID)
 		i++
 	}
 	if productID != nil {
-		q += ` AND product_id = $` + itoa(i)
+		q += ` AND sb.product_id = $` + itoa(i)
 		args = append(args, *productID)
 		i++
 	}
-	q += ` ORDER BY updated_at DESC`
+	q += ` ORDER BY sb.updated_at DESC`
 
 	rows, err := r.db.Query(ctx, q, args...)
 	if err != nil {
@@ -117,7 +126,7 @@ func (r *Repo) ListStock(ctx context.Context, warehouseID, productID *uuid.UUID)
 	out := []models.StockBalance{}
 	for rows.Next() {
 		var b models.StockBalance
-		if err := rows.Scan(&b.ID, &b.WarehouseID, &b.ProductID, &b.Quantity, &b.UpdatedAt); err != nil {
+		if err := rows.Scan(&b.ID, &b.WarehouseID, &b.ProductID, &b.Quantity, &b.Reserved, &b.Available, &b.UpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, b)

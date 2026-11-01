@@ -46,6 +46,8 @@ type StockBalance struct {
 	WarehouseID uuid.UUID `json:"warehouse_id"`
 	ProductID   uuid.UUID `json:"product_id"`
 	Quantity    float64   `json:"quantity"`
+	Reserved    float64   `json:"reserved"`
+	Available   float64   `json:"available"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 

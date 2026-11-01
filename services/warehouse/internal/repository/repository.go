@@ -550,6 +550,8 @@ type ExtendedRow struct {
 	ProductID    uuid.UUID
 	WarehouseID  uuid.UUID
 	Quantity     float64
+	Reserved     float64
+	Available    float64
 	LastMovement *time.Time
 }
 
@@ -577,9 +579,9 @@ WITH base AS (
   WHERE sm.created_at <= $1
   GROUP BY sm.product_id, sm.warehouse_id
 )
-SELECT product_id, warehouse_id, quantity, last_movement
-FROM base
-WHERE quantity <> 0
+SELECT b.product_id, b.warehouse_id, b.quantity,       COALESCE((SELECT SUM(sr.quantity) FROM stock_reserves sr WHERE sr.product_id = b.product_id AND sr.warehouse_id = b.warehouse_id), 0) AS reserved,       b.quantity - COALESCE((SELECT SUM(sr.quantity) FROM stock_reserves sr WHERE sr.product_id = b.product_id AND sr.warehouse_id = b.warehouse_id), 0) AS available,       b.last_movement
+FROM base b
+WHERE b.quantity <> 0
 `
 	} else {
 		q = `
@@ -589,8 +591,8 @@ WITH base AS (
           WHERE sm.product_id = sb.product_id AND sm.warehouse_id = sb.warehouse_id) AS last_movement
   FROM stock_balances sb
 )
-SELECT product_id, warehouse_id, quantity, last_movement
-FROM base
+SELECT b.product_id, b.warehouse_id, b.quantity,       COALESCE((SELECT SUM(sr.quantity) FROM stock_reserves sr WHERE sr.product_id = b.product_id AND sr.warehouse_id = b.warehouse_id), 0) AS reserved,       b.quantity - COALESCE((SELECT SUM(sr.quantity) FROM stock_reserves sr WHERE sr.product_id = b.product_id AND sr.warehouse_id = b.warehouse_id), 0) AS available,       b.last_movement
+FROM base b
 WHERE 1=1
 `
 	}
@@ -661,7 +663,7 @@ WHERE 1=1
 	out := []ExtendedRow{}
 	for rows.Next() {
 		var e ExtendedRow
-		if err := rows.Scan(&e.ProductID, &e.WarehouseID, &e.Quantity, &e.LastMovement); err != nil {
+		if err := rows.Scan(&e.ProductID, &e.WarehouseID, &e.Quantity, &e.Reserved, &e.Available, &e.LastMovement); err != nil {
 			return nil, err
 		}
 		out = append(out, e)

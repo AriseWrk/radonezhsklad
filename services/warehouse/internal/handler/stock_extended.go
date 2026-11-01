@@ -132,8 +132,12 @@ func (h *Handler) StockExtended(c *gin.Context) {
 
 	for _, r := range rows {
 		p := products[r.ProductID]
-		if showMode == "normal" && p.IsArchived { continue }
-		if showMode == "archived" && !p.IsArchived { continue }
+		if showMode == "normal" && p.IsArchived {
+			continue
+		}
+		if showMode == "archived" && !p.IsArchived {
+			continue
+		}
 		inc := incoming[r.ProductID]
 
 		var days *int
@@ -149,7 +153,7 @@ func (h *Handler) StockExtended(c *gin.Context) {
 
 		costTotal := r.Quantity * p.CostPrice
 		saleTotal := r.Quantity * p.Price
-		available := r.Quantity
+		available := r.Available
 
 		items = append(items, extendedRow{
 			ProductID:   r.ProductID,
@@ -158,7 +162,7 @@ func (h *Handler) StockExtended(c *gin.Context) {
 			WarehouseID: &r.WarehouseID,
 			Quantity:    r.Quantity,
 			MinStock:    p.MinStock,
-			Reserve:     0,
+			Reserve:     r.Reserved,
 			Incoming:    inc,
 			Available:   available,
 			UnitShort:   unitShort,
@@ -173,6 +177,7 @@ func (h *Handler) StockExtended(c *gin.Context) {
 		totals.MinStock += p.MinStock
 		totals.Incoming += inc
 		totals.Available += available
+		totals.Reserve += r.Reserved
 		totals.CostTotal += costTotal
 		totals.SaleTotal += saleTotal
 	}

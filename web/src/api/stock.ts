@@ -48,6 +48,10 @@ export interface ProductStockMovement {
   document_type: string
   document_number: string
   document_created_at?: string
+  doc_type?: string
+  user_id?: string
+  warehouse_from_name?: string
+  warehouse_to_name?: string
   movement_at: string
   quantity_delta: number
   days_on_stock: number

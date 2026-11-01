@@ -129,6 +129,10 @@
           Из инвентаризации №{{ doc.number }} от {{ formatDateTime(doc.doc_date) }}
         </p>
         <div class="dialog-actions">
+          <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px">
+            <input type="checkbox" v-model="autoPostCorrection" />
+            Сразу провести документ (движение остатков)
+          </label>
           <MsButton :disabled="creating" @click="createCorrection('shortage')">Списать недостачи</MsButton>
           <MsButton :disabled="creating" @click="createCorrection('surplus')">Оприходовать избытки</MsButton>
         </div>
@@ -162,6 +166,7 @@ const error = ref<string | null>(null)
 const tab = ref<'main' | 'related'>('main')
 const showCreateDialog = ref(false)
 const creating = ref(false)
+const autoPostCorrection = ref(true)
 const createError = ref<string | null>(null)
 
 
@@ -263,7 +268,7 @@ async function createCorrection(kind: 'shortage' | 'surplus') {
   creating.value = true
   createError.value = null
   try {
-    const d = await createInventoryCorrection(doc.value.id, kind)
+    const d = await createInventoryCorrection(doc.value.id, kind, autoPostCorrection.value)
     showCreateDialog.value = false
     router.push('/documents/' + d.id)
   } catch (e) {

@@ -92,7 +92,7 @@ export async function exportInventoryInv3(id: string): Promise<{ blob: Blob; fil
   if (m && m[1]) filename = m[1]
   return { blob: resp.data as Blob, filename }
 }
-export async function createInventoryCorrection(id: string, kind: CorrectionKind): Promise<CorrectionDocument> {
-  const { data } = await http.post<CorrectionDocument>(`/inventories/${id}/create-correction`, { kind })
+export async function createInventoryCorrection(id: string, kind: CorrectionKind, autoPost = false): Promise<CorrectionDocument> {
+  const { data } = await http.post<CorrectionDocument>(`/inventories/${id}/create-correction`, { kind, auto_post: autoPost })
   return data
 }

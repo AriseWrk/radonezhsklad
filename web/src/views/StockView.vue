@@ -75,6 +75,8 @@ function formatDateTime(s: string): string {
 function typeLabel(t: string): string {
   return ({
     receipt: 'Приёмка', shipment: 'Отгрузка', transfer: 'Перемещение', inventory: 'Инвентаризация',
+    writeoff: 'Списание', purchase_return: 'Возврат поставщику',
+    internal_order_issue: 'Выдача ВЗ',
   } as Record<string, string>)[t] ?? (t || '—')
 }
 function warehouseName(id?: string): string {
@@ -577,7 +579,7 @@ onMounted(async () => {
                 <tr v-for="m in g.movements" :key="m.id">
                   <td></td>
                   <td>{{ typeLabel(m.document_type) }}</td>
-                  <td class="link mono">{{ m.document_number }}</td>
+                  <td class="link mono">{{ m.doc_type === 'internal_order_issue' ? 'ВЗ' : (m.document_number || '—') }}<div v-if="m.warehouse_from_name || m.warehouse_to_name" class="muted" style="font-size:11px">{{ m.warehouse_from_name || '—' }} → {{ m.warehouse_to_name || '—' }}</div></td>
                   <td class="muted">{{ m.document_created_at ? formatDateTime(m.document_created_at) : '—' }}</td>
                   <td class="muted">{{ formatDateTime(m.movement_at) }}</td>
                   <td class="num">{{ formatQty(m.quantity_delta) }}</td>

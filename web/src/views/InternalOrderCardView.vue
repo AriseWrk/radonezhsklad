@@ -11,7 +11,7 @@
       <div class="ms-status">
         <span class="st" :class="'st-' + form.status">{{ statusLabel(form.status) }}</span>
         <label v-if="canPost" class="posted-check">
-          <input type="checkbox" :checked="form.status === 'posted'" :disabled="!canEdit || form.status === 'cancelled'" @change="onTogglePosted" />
+          <input type="checkbox" :checked="form.status === 'posted' || form.status === 'shipped' || form.status === 'closed'" :disabled="!canEdit || form.status === 'cancelled' || form.status === 'shipped' || form.status === 'closed'" @change="onTogglePosted" />
           Проведено
         </label>
       </div>
@@ -24,7 +24,7 @@
       <MsButton v-if="canPost" icon="post" @click="onTogglePosted" :disabled="!canEdit || form.status === 'cancelled'">Провести</MsButton>
       <MsButton icon="print" @click="print">Печать</MsButton>
       <MsButton v-if="canPost" icon="send" @click="onSend" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отправить</MsButton>
-      <MsButton v-if="canPost" icon="close" @click="onCancel" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отменить</MsButton>
+      <MsButton v-if="canPost" icon="close" @click="onCancel" :disabled="!currentId || (form.status !== 'posted' && form.status !== 'shipped') || !canEdit">Отменить</MsButton>
       <MsButton variant="icon" icon="trash" title="Удалить" @click="onDelete" :disabled="(!currentId && !isNew) || (currentId !== null && form.status !== 'draft' && auth.role !== 'admin')" />
       <div class="toolbar-spacer"></div>
       <MsButton variant="icon" icon="close" @click="close" title="Закрыть" />
@@ -164,6 +164,7 @@
             <th class="col-sys">Система</th>
             <th class="col-num-right">Кол-во</th>
             <th class="col-num-right">Выдано</th>
+            <th class="col-num-right">Резерв</th>
             <th class="col-num-right">Доступно</th>
             <th class="col-act"></th>
             <th class="col-num-right">Цена</th>
@@ -189,11 +190,12 @@
               <QtyStepper v-model="it.quantity" :disabled="!canEditQty" :min="0" :step="0.001" />
             </td>
             <td class="col-num-right muted">
-              <span v-if="form.status === 'posted'">{{ formatQty(it.issued_qty ?? 0) }}</span>
+              <span v-if="form.status === 'posted' || form.status === 'shipped' || form.status === 'closed'">{{ formatQty(it.issued_qty ?? 0) }}</span>
               <span v-else>—</span>
             </td>
+            <td class="col-num-right muted">{{ formatQty(reservesMap.get(it.product_id) ?? 0) }}</td>
             <td class="col-act">
-              <button v-if="canPost && form.status === 'posted' && remainingFor(it) > 0" class="issue-btn" @click="openIssue(it.id || '', remainingFor(it))" title="Выдать">Выдать</button>
+              <button v-if="canPost && (form.status === 'posted' || form.status === 'shipped') && remainingFor(it) > 0" class="issue-btn" @click="openIssue(it.id || '', remainingFor(it))" title="Выдать">Выдать</button>
             </td>
             <td class="col-num-right muted">{{ formatQty(availableFor(it.product_id)) }}</td>
             <td class="col-num-right">
@@ -322,6 +324,7 @@ import {
   type IntOrderInput,
   exportInternalOrder,
   listInternalOrderIssues,
+  getInternalOrderReserves,
   issueInternalOrderItem,
   SYSTEMS,
   type IntOrderIssue,
@@ -383,6 +386,7 @@ const form = reactive({
 
 const currentId = ref<string | null>(null)
 const issues = ref<IntOrderIssue[]>([])
+const reservesMap = ref<Map<string, number>>(new Map())
 const showIssueModal = ref(false)
 const issueItemId = ref<string>('')
 const issueQty = ref<number>(0)
@@ -431,6 +435,7 @@ async function reload() {
     system_code: it.system_code ?? null, issued_qty: it.issued_qty ?? 0,
   }))
   try { issues.value = await listInternalOrderIssues(currentId.value) } catch { issues.value = [] }
+  refreshReserves()
 }
 
 function itemName(itemId: string) {
@@ -539,6 +544,17 @@ async function reloadStockMap() {
   }
 }
 
+async function refreshReserves() {
+  if (!currentId.value) { reservesMap.value = new Map(); return }
+  try {
+    const list = await getInternalOrderReserves(currentId.value)
+    const m = new Map<string, number>()
+    for (const it of list) m.set(it.product_id, it.reserved)
+    reservesMap.value = m
+  } catch {
+    reservesMap.value = new Map()
+  }
+}
 async function load() {
   loading.value = true; error.value = null
   try {
@@ -577,6 +593,7 @@ async function load() {
         id: it.id, product_id: it.product_id, quantity: it.quantity, price: it.price, vat_rate: it.vat_rate, system_code: it.system_code ?? null, issued_qty: it.issued_qty ?? 0,
       }))
       try { issues.value = await listInternalOrderIssues(currentId.value) } catch { issues.value = [] }
+  refreshReserves()
     } else {
       // новосоздаваемый — получаем следующий номер и дефолтные значения
       try { form.number = await nextInternalOrderNumber() } catch { /* ignore */ }
@@ -671,7 +688,7 @@ async function onTogglePosted(e: Event) {
 }
 
 function statusLabel(s: string) {
-  return { draft: 'Черновик', posted: 'Проведён', cancelled: 'Отменён' }[s] || s
+  return { draft: 'Черновик', posted: 'Проведён', shipped: 'Отгружен', closed: 'Закрыт', cancelled: 'Отменён' }[s] || s
 }
 
 function close() { router.push('/internal-orders') }

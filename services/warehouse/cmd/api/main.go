@@ -147,6 +147,7 @@ func main() {
 			readPts.GET("/internal-orders/:id", intOrderH.Get)
 			readPts.GET("/internal-orders/:id/export", intOrderH.Export)
 			readPts.GET("/internal-orders/:id/issues", intOrderH.ListIssues)
+			readPts.GET("/internal-orders/:id/reserves", intOrderH.Reserves)
 			readPts.GET("/organizations", supH.ListOrganizations)
 			readPts.GET("/projects", projectH.List)
 			readPts.GET("/projects/:id", projectH.Get)

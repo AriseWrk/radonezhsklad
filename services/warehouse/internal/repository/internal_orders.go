@@ -312,6 +312,24 @@ func (r *InternalOrderRepo) Delete(ctx context.Context, id uuid.UUID, force bool
 	return tag.RowsAffected() > 0, nil
 }
 
+// ReservedByItems — суммарный резерв по каждой позиции (товару) заказа.
+func (r *InternalOrderRepo) ReservedByItems(ctx context.Context, orderID uuid.UUID) (map[uuid.UUID]float64, error) {
+	rows, err := r.db.Query(ctx, `SELECT product_id, SUM(quantity) FROM stock_reserves WHERE order_id = $1 GROUP BY product_id`, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[uuid.UUID]float64{}
+	for rows.Next() {
+		var id uuid.UUID
+		var q float64
+		if err := rows.Scan(&id, &q); err != nil {
+			return nil, err
+		}
+		out[id] = q
+	}
+	return out, rows.Err()
+}
 func (r *InternalOrderRepo) NextNumber(ctx context.Context) (string, error) {
 	var n int
 	err := r.db.QueryRow(ctx, `SELECT COALESCE(MAX(CAST(SUBSTRING(number FROM '[0-9]+$') AS INTEGER)), 0) + 1 FROM internal_orders`).Scan(&n)

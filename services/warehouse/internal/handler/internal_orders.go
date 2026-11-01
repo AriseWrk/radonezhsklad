@@ -398,6 +398,27 @@ func (h *InternalOrderHandler) Issue(c *gin.Context) {
 	httpx.Created(c, iss)
 }
 
+func (h *InternalOrderHandler) Reserves(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.Error(apperr.BadRequest("invalid id"))
+		return
+	}
+	m, err := h.svc.Reserves(c.Request.Context(), id)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	type row struct {
+		ProductID uuid.UUID `json:"product_id"`
+		Reserved  float64   `json:"reserved"`
+	}
+	items := make([]row, 0, len(m))
+	for pid, q := range m {
+		items = append(items, row{ProductID: pid, Reserved: q})
+	}
+	httpx.OK(c, gin.H{"items": items})
+}
 func (h *InternalOrderHandler) ListIssues(c *gin.Context) {
 	orderID, err := uuid.Parse(c.Param("id"))
 	if err != nil {

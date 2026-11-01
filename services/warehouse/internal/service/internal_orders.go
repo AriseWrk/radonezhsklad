@@ -212,6 +212,14 @@ func (s *InternalOrderService) Issue(ctx context.Context, orderID uuid.UUID, in 
 	}
 	return iss, nil
 }
+
+// Reserves — резерв по позициям заказа.
+func (s *InternalOrderService) Reserves(ctx context.Context, orderID uuid.UUID) (map[uuid.UUID]float64, error) {
+	if _, err := s.Get(ctx, orderID); err != nil {
+		return nil, err
+	}
+	return s.repo.ReservedByItems(ctx, orderID)
+}
 func (s *InternalOrderService) ListIssues(ctx context.Context, orderID uuid.UUID) ([]models.InternalOrderIssue, error) {
 	if _, err := s.Get(ctx, orderID); err != nil {
 		return nil, err

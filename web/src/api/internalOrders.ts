@@ -1,6 +1,6 @@
 import { http } from './client'
 
-export type IntOrderStatus = 'draft' | 'posted' | 'cancelled'
+export type IntOrderStatus = 'draft' | 'posted' | 'shipped' | 'closed' | 'cancelled'
 
 export interface InternalOrderItem {
   id: string
@@ -149,6 +149,15 @@ export async function listInternalOrderIssues(orderId: string): Promise<IntOrder
   return data.items
 }
 
+export interface IntOrderReserve {
+  product_id: string
+  reserved: number
+}
+
+export async function getInternalOrderReserves(orderId: string): Promise<IntOrderReserve[]> {
+  const { data } = await http.get<{ items: IntOrderReserve[] }>('/internal-orders/' + orderId + '/reserves')
+  return data.items
+}
 export async function issueInternalOrderItem(orderId: string, input: IntOrderIssueInput): Promise<IntOrderIssue> {
   const { data } = await http.post<IntOrderIssue>('/internal-orders/' + orderId + '/issues', input)
   return data

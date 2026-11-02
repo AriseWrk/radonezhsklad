@@ -24,6 +24,11 @@
     <!-- Тулбар -->
     <div class="ms-toolbar">
       <MsButton variant="primary" icon="plus" @click="openCreate">Документ</MsButton>
+      <MsButton
+        v-if="auth.role === 'admin'"
+        :disabled="pulling"
+        @click="onPullMS"
+      >{{ pulling ? (pullMsg || 'Загружаю…') : 'Загрузить из МС' }}</MsButton>
       <MsButton icon="filter" @click="showFilter = !showFilter">Фильтр</MsButton>
       <input v-model="filters.search" class="ms-input" placeholder="Номер или комментарий" />
       <div class="ms-counter">{{ filtered.length }}</div>
@@ -76,42 +81,66 @@
     <div v-if="error" class="error-box">{{ error }}</div>
 
     <!-- Таблица -->
-    <table class="ms-table2">
-      <thead>
-        <tr>
-          <th class="col-num" @click="sortBy('number')">№<span v-if="sortKey === 'number'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
-          <th class="col-date" @click="sortBy('created_at')">Дата<span v-if="sortKey === 'created_at'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
-          <th class="col-type">Тип</th>
-          <th>Склад</th>
-          <th>Комментарий</th>
-          <th class="col-num-right">Позиций</th>
-          <th class="col-num-right" @click="sortBy('total')">Сумма<span v-if="sortKey === 'total'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
-          <th class="col-status">Статус</th>
-          <th class="col-actions"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-if="loading"><td colspan="9" class="empty">Загрузка...</td></tr>
-        <tr v-else-if="filtered.length === 0"><td colspan="9" class="empty">Нет документов</td></tr>
-        <tr v-else v-for="d in paginated" :key="d.id" class="row" @click="openCard(d)">
-          <td class="col-num"><span class="link">{{ d.number }}</span></td>
-          <td class="col-date">{{ formatDate(d.created_at) }}</td>
-          <td class="col-type">{{ typeLabel(d.type) }}</td>
-          <td>{{ warehouseName(d.warehouse_id) }}</td>
-          <td class="comment">{{ d.comment || '' }}</td>
-          <td class="col-num-right">{{ d.items_count ?? 0 }}</td>
-          <td class="col-num-right"><b>{{ formatMoney(d.total ?? 0) }}</b></td>
-          <td class="col-status">
-            <span class="badge" :class="'bg-' + d.status">{{ statusLabel(d.status) }}</span>
-          </td>
-          <td class="col-actions" @click.stop>
-            <button v-if="d.status === 'draft'" class="btn-link-ms" @click="onPost(d)">Провести</button>
-            <button v-if="d.status === 'posted'" class="btn-link-ms danger" @click="onCancel(d)">Отменить</button>
-            <button class="row-menu" @click="openCard(d)"><MsIcon name="dots" :size="14" /></button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div v-if='someChecked' class='bulk-bar'>
+  <span class='bulk-count'>Выбрано: {{ selected.size }}</span>
+  <MsButton variant='green' @click='onBulkPost'>Провести</MsButton>
+  <MsButton @click='onBulkCancel'>Отменить</MsButton>
+  <MsButton @click='clearSelection'>Снять выделение</MsButton>
+</div>
+<table class='ms-table2'>
+  <thead>
+    <tr>
+      <th class='col-check'>
+        <input type='checkbox' :checked='allChecked' :indeterminate.prop='someChecked && !allChecked' @change='toggleAll' />
+      </th>
+      <th class='col-type' @click='sortBy('type')'>Тип<span v-if='sortKey === 'type'' class='sort'>{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+      <th class='col-num' @click='sortBy('number')'>№<span v-if='sortKey === 'number'' class='sort'>{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+      <th class='col-date' @click='sortBy('created_at')'>Время<span v-if='sortKey === 'created_at'' class='sort'>{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+      <th class='col-num-right' @click='sortBy('total')'>Сумма<span v-if='sortKey === 'total'' class='sort'>{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+      <th>Со склада</th>
+      <th>На склад</th>
+      <th>Организация</th>
+      <th>Контрагент</th>
+      <th class='col-status'>Статус</th>
+      <th class='col-sent'>Отправлено</th>
+      <th class='col-printed'>Напечатано</th>
+      <th>Комментарий</th>
+      <th class='col-actions'></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr v-if='loading'><td colspan='14' class='empty'>Загрузка...</td></tr>
+    <tr v-else-if='filtered.length === 0'><td colspan='14' class='empty'>Нет документов</td></tr>
+    <tr v-else v-for='d in paginated' :key='d.id' class='row' @click='openCard(d)'>
+      <td class='col-check' @click.stop>
+        <input type='checkbox' :checked='selected.has(d.id)' @change='toggleOne(d.id)' />
+      </td>
+      <td class='col-type'>{{ typeLabel(d.type) }}</td>
+      <td class='col-num'><span class='link'>{{ d.number }}</span></td>
+      <td class='col-date'>{{ formatDate(d.created_at) }}</td>
+      <td class='col-num-right'><b>{{ formatMoney(d.total ?? 0) }}</b></td>
+      <td>{{ warehouseName(d.warehouse_id) }}</td>
+      <td>{{ warehouseName(d.target_warehouse_id) }}</td>
+      <td>{{ orgName(d.organization_id) }}</td>
+      <td>{{ supplierName(d.supplier_id) }}</td>
+      <td class='col-status'>
+        <span class='badge' :class='&#39;bg-&#39; + d.status'>{{ statusLabel(d.status) }}</span>
+      </td>
+      <td class='col-sent'>
+        <span v-if='d.sent_at' class='pill pill-blue'>Отправлен</span>
+      </td>
+      <td class='col-printed'>
+        <span v-if='d.printed_at' class='pill pill-blue'>Напечатан</span>
+      </td>
+      <td class='comment'>{{ d.comment || '' }}</td>
+      <td class='col-actions' @click.stop>
+        <button v-if="d.status === 'draft' && d.type !== 'internal_order'" class="btn-link-ms" @click="onPost(d)">Провести</button>
+        <button v-if="d.status === 'posted' && d.type !== 'internal_order'" class="btn-link-ms danger" @click="onCancel(d)">Отменить</button>
+        <button class='row-menu' @click='openCard(d)'><MsIcon name='dots' :size='14' /></button>
+      </td>
+    </tr>
+  </tbody>
+</table>
 
     <!-- Футер -->
     <div class="ms-footer2">
@@ -239,13 +268,16 @@ import {
   listDocuments, createDocument, postDocument, cancelDocument,
   type Document, type DocType,
 } from '../api/documents'
+import { listInternalOrders, postInternalOrder, cancelInternalOrder, type InternalOrder } from '../api/internalOrders'
+import { pullDocsForToday } from '../api/mspull'
+import { useAuthStore } from '../stores/auth'
 import { listWarehouses, type Warehouse } from '../api/warehouses'
 import { listProducts, type Product } from '../api/products'
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
 import MsIcon from '../components/MsIcon.vue'
 
-type TabKey = 'all' | 'receipt' | 'shipment' | 'transfer' | 'writeoff' | 'inventory' | 'draft' | 'posted' | 'cancelled'
+type TabKey = 'all' | 'receipt' | 'shipment' | 'transfer' | 'writeoff' | 'inventory' | 'internal_order' | 'draft' | 'posted' | 'cancelled'
 
 const items = ref<Document[]>([])
 const warehouses = ref<Warehouse[]>([])
@@ -254,7 +286,7 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const showFilter = ref(false)
 const page = ref(1)
-const perPage = 50
+const perPage = 100
 
 const activeTab = ref<TabKey>('all')
 
@@ -268,7 +300,7 @@ const filters = reactive({
   sumTo: null as number | null,
 })
 
-const sortKey = ref<'number' | 'created_at' | 'total'>('created_at')
+const sortKey = ref<'number' | 'created_at' | 'total' | 'type'>('created_at')
 const sortDir = ref<'asc' | 'desc'>('desc')
 
 const showCreate = ref(false)
@@ -282,6 +314,64 @@ const form = reactive({
   items: [] as Array<{ product_id: string; quantity: number; price: number }>,
 })
 
+const internalOrders = ref<InternalOrder[]>([])
+function asDoc(o: InternalOrder): Document {
+  const st = o.status === 'draft' ? 'draft' : o.status === 'cancelled' ? 'cancelled' : 'posted'
+  return {
+    id: o.id,
+    type: 'internal_order' as any,
+    number: o.number,
+    status: st as any,
+    warehouse_id: o.warehouse_id,
+    target_warehouse_id: (o as any).target_warehouse_id,
+    organization_id: o.organization_id,
+    supplier_id: undefined,
+    paid_amount: 0,
+    external_id: o.external_id ?? null,
+    printed_at: o.printed_at,
+    sent_at: o.sent_at,
+    comment: o.comment,
+    created_at: o.created_at,
+    updated_at: o.updated_at,
+    posted_at: o.posted_at,
+    cancelled_at: o.cancelled_at,
+    items_count: o.items_count,
+    total: o.total,
+  } as Document
+}
+const selected = ref<Set<string>>(new Set())
+const allChecked = computed(() => filtered.value.length > 0 && filtered.value.every((d) => selected.value.has(d.id)))
+const someChecked = computed(() => selected.value.size > 0)
+function toggleAll(e: Event) {
+  const on = (e.target as HTMLInputElement).checked
+  if (on) { for (const d of filtered.value) selected.value.add(d.id) }
+  else { selected.value.clear() }
+  selected.value = new Set(selected.value)
+}
+function toggleOne(id: string) {
+  if (selected.value.has(id)) selected.value.delete(id)
+  else selected.value.add(id)
+  selected.value = new Set(selected.value)
+}
+function clearSelection() { selected.value = new Set() }
+function orgName(id?: string) { return id ? id.slice(0, 8) : '' }
+function supplierName(id?: string) { return id ? id.slice(0, 8) : '' }
+async function onBulkPost() {
+  if (!confirm('Провести выделенные документы?')) return
+  for (const id of Array.from(selected.value)) {
+    try { await postDocument(id) } catch (e) { error.value = apiErrorMessage(e) }
+  }
+  clearSelection()
+  await load()
+}
+async function onBulkCancel() {
+  if (!confirm('Отменить выделенные документы?')) return
+  for (const id of Array.from(selected.value)) {
+    try { await cancelDocument(id) } catch (e) { error.value = apiErrorMessage(e) }
+  }
+  clearSelection()
+  await load()
+}
 const detailDoc = ref<Document | null>(null)
 const route = useRoute()
 
@@ -313,7 +403,7 @@ const tabs: Array<{ key: TabKey; label: string }> = [
 ]
 
 function typeLabel(t: string) {
-  return { receipt: 'Приёмка', shipment: 'Отгрузка', transfer: 'Перемещение', writeoff: 'Списание', inventory: 'Инвентаризация' }[t] ?? t
+  return { receipt: 'Приёмка', shipment: 'Отгрузка', transfer: 'Перемещение', writeoff: 'Списание', inventory: 'Инвентаризация', internal_order: 'Внутренний заказ' }[t] ?? t
 }
 function statusLabel(s: string) {
   return { draft: 'Черновик', posted: 'Проведён', cancelled: 'Отменён' }[s] ?? s
@@ -337,6 +427,7 @@ function formatQty(n: number) {
 
 function tabCount(key: TabKey): number {
   if (key === 'all') return items.value.length
+  if (key === 'internal_order') return internalOrders.value.length
   if (key === 'receipt' || key === 'shipment' || key === 'transfer' || key === 'writeoff' || key === 'inventory') {
     return items.value.filter((d) => d.type === key).length
   }
@@ -355,17 +446,16 @@ function sortBy(k: typeof sortKey.value) {
 }
 
 const filtered = computed(() => {
-  let rows = items.value
-
-  // Вкладка
-  if (activeTab.value !== 'all') {
-    if (['receipt', 'shipment', 'transfer', 'writeoff', 'inventory'].includes(activeTab.value)) {
-      rows = rows.filter((d) => d.type === activeTab.value)
-    } else {
-      rows = rows.filter((d) => d.status === activeTab.value)
-    }
+  let rows: Document[] = activeTab.value === 'internal_order'
+  ? internalOrders.value.map(asDoc)
+  : items.value
+if (activeTab.value !== 'all' && activeTab.value !== 'internal_order') {
+  if (['receipt', 'shipment', 'transfer', 'writeoff', 'inventory'].includes(activeTab.value)) {
+    rows = rows.filter((d) => d.type === activeTab.value)
+  } else {
+    rows = rows.filter((d) => d.status === activeTab.value)
   }
-
+}
   // Период
   if (filters.dateFrom) {
     const t = new Date(filters.dateFrom).getTime()
@@ -428,7 +518,9 @@ async function load() {
   loading.value = true
   error.value = null
   try {
-    items.value = await listDocuments()
+    const [docs, ios] = await Promise.all([listDocuments(), listInternalOrders()])
+    items.value = docs
+    internalOrders.value = ios
   } catch (e) {
     error.value = apiErrorMessage(e)
   } finally {
@@ -482,6 +574,23 @@ async function onCancel(d: Document) {
   try { await cancelDocument(d.id); await load() } catch (e) { error.value = apiErrorMessage(e) }
 }
 
+const auth = useAuthStore()
+const pulling = ref(false)
+const pullMsg = ref('')
+async function onPullMS() {
+  if (!confirm('Загрузить документы из МойСклад за сегодня?')) return
+  pulling.value = true; pullMsg.value = ''
+  try {
+    await pullDocsForToday((k) => { pullMsg.value = 'Тяну ' + k })
+    pullMsg.value = 'Готово, обновляю…'
+    await load()
+    pullMsg.value = ''
+  } catch (e) {
+    error.value = apiErrorMessage(e)
+  } finally {
+    pulling.value = false
+  }
+}
 const router = useRouter()
 function openCard(d: Document) { router.push('/documents/' + d.id) }
 
@@ -686,4 +795,12 @@ onMounted(async () => {
   gap: 8px 24px; font-size: 13px; margin-bottom: 12px;
 }
 .doc-info .lbl { color: #57606a; }
+
+.ms-table2 th.col-check, .ms-table2 td.col-check { width: 32px; padding-left: 12px; }
+.ms-table2 input[type=checkbox] { cursor: pointer; }
+.col-sent, .col-printed { width: 110px; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.pill-blue { background: #dbeafe; color: #1e40af; }
+.bulk-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding: 8px 12px; background: #e8f0fb; border: 1px solid #b6ccec; border-radius: 4px; }
+.bulk-bar .bulk-count { font-weight: 600; color: #1e40af; }
 </style>

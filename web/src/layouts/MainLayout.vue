@@ -103,6 +103,8 @@ const sections: Section[] = [
 
 const subTabsMap: Record<string, SubTab[]> = {
   company: [
+    { name: 'documents', label: 'Документы', path: '/documents', match: '/documents', roles: ['admin', 'warehouse'] },
+    { name: 'dashboard', label: 'Показатели',  path: '/',        match: '/',      exact: true },
     { name: 'dashboard', label: 'Показатели',  path: '/',        match: '/',      exact: true },
     { name: 'users',     label: 'Сотрудники',  path: '/users',   match: '/users',   roles: ['admin'] },
     { name: 'audit',     label: 'Аудит',       path: '/audit',   match: '/audit',   roles: ['admin'] },
@@ -155,7 +157,7 @@ const currentSection = computed(() => {
   if (p.startsWith('/orders') || p.startsWith('/customers') || p.startsWith('/sales')) return 'sales'
   if (p.startsWith('/stock') || p.startsWith('/internal-orders')) return 'stock'
   if (p.startsWith('/purchases') || p === '/inventory' || p === '/inventories') return 'purchases'
-  if (p.startsWith('/users') || p.startsWith('/audit')) return 'company'
+  if (p.startsWith('/documents') || p.startsWith('/users') || p.startsWith('/audit')) return 'company'
   return 'company'
 })
 

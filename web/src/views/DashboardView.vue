@@ -2,6 +2,30 @@
   <div class="page">
     <img src="/logo.png" class="page-watermark" alt="" aria-hidden="true" />
     <div class="page-content">
+      <div v-if="isPts" class="pts-dashboard">
+        <div class="ms-title">
+          <button class="ms-help" title="Справка"><MsIcon name="help" :size="14" /></button>
+          <span>Панель ПТС</span>
+        </div>
+        <div class="pts-row">
+          <button class="pts-card" @click="router.push('/internal-orders/new')">
+            <MsIcon name="plus" :size="56" class="pts-icon" />
+            <span class="pts-title">Создать<br/>Внутренний Заказ</span>
+          </button>
+          <button class="pts-card" @click="router.push('/stock')">
+            <MsIcon name="building" :size="56" class="pts-icon" />
+            <span class="pts-title">Открыть<br/>остатки</span>
+          </button>
+        </div>
+        <button class="pts-card-wide" @click="alert('Функционал в разработке')">
+          <div class="pts-wide-head">
+            <MsIcon name="cart" :size="28" class="pts-icon-small" />
+            <span class="pts-title-small">Проекты в работе</span>
+          </div>
+          <span class="pts-subtitle">Здесь будут появляться ВЗ проектов, которые в данный момент в работе</span>
+        </button>
+      </div>
+      <template v-else>
     <div class="ms-title">
       <button class="ms-help" title="Справка"><MsIcon name="help" :size="14" /></button>
       <span>Показатели</span>
@@ -53,19 +77,26 @@
         </div>
       </div>
     </div>
-    <RealtimeLogs />
-    </div>
+    <RealtimeLogs v-if="!isPts" />
+
+      </template>    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useAuthStore } from '../stores/auth'
+import { useRouter } from 'vue-router'
 import { listProducts } from '../api/products'
 import { listCategories } from '../api/categories'
 import { listUnits } from '../api/units'
 import MsIcon from '../components/MsIcon.vue'
 import { http } from '../api/client'
 import RealtimeLogs from '../components/RealtimeLogs.vue'
+
+const auth = useAuthStore()
+const router = useRouter()
+const isPts = computed(() => auth.role === 'pts')
 
 const productsCount = ref<number | string>('—')
 const categoriesCount = ref<number | string>('—')
@@ -157,4 +188,56 @@ onMounted(reload)
 .todo-tag.tag-idea { background: #f3e8ff; color: #6e40c9; }
 .todo-title { font-weight: 600; color: #1f2328; margin-bottom: 4px; }
 .todo-desc { font-size: 12px; color: #57606a; line-height: 1.4; }
+
+/* === Дашборд ПТС === */
+.pts-dashboard { display: flex; flex-direction: column; gap: 16px; max-width: 760px; margin: 40px auto 0; }
+.pts-row { display: flex; gap: 16px; }
+.pts-card {
+  flex: 1;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid #eaeef2;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.18s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  padding: 24px;
+  text-align: center;
+  font: inherit;
+}
+.pts-card:hover {
+  border-color: #2c5d9c;
+  box-shadow: 0 6px 20px rgba(44,93,156,0.14);
+  transform: translateY(-2px);
+}
+.pts-icon { color: #2c5d9c; margin-bottom: 16px; }
+.pts-title { font-size: 18px; font-weight: 600; color: #1f2328; line-height: 1.3; }
+.pts-card-wide {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  background: #fff;
+  border: 1px solid #eaeef2;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.18s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  padding: 24px;
+  text-align: left;
+  font: inherit;
+}
+.pts-card-wide:hover {
+  border-color: #2c5d9c;
+  box-shadow: 0 6px 20px rgba(44,93,156,0.14);
+  transform: translateY(-2px);
+}
+.pts-wide-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.pts-icon-small { color: #2c5d9c; }
+.pts-title-small { font-size: 18px; font-weight: 600; color: #1f2328; }
+.pts-subtitle { font-size: 13px; color: #57606a; line-height: 1.4; }
 </style>

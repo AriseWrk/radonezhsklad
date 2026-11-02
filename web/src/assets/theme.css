@@ -1,0 +1,129 @@
+/* RadonezhSklad — темы и бренд-цвета */
+html[data-theme="light"], html:not([data-theme]) {
+  --accent: #2c5d9c;
+  --accent-hover: #3d6eb0;
+  --accent-soft: #eaf3ff;
+  --bg-page: #f4f5f6;
+  --bg-card: #ffffff;
+  --bg-hover: #f6f8fa;
+  --text: #1f2328;
+  --text-muted: #57606a;
+  --text-faint: #8c959f;
+  --border: #d0d7de;
+  --border-light: #eaeef2;
+}
+
+html[data-theme="dark"] {
+  --accent: #8b1538;
+  --accent-hover: #a02045;
+  --accent-soft: #3d1220;
+  --bg-page: #0d1117;
+  --bg-card: #161b22;
+  --bg-hover: #21262d;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --text-faint: #6e7681;
+  --border: #30363d;
+  --border-light: #21262d;
+}
+
+/* === ГЛОБАЛЬНЫЕ ПЕРЕОПРЕДЕЛЕНИЯ === */
+/* Топбар — всегда бордовый (в обеих темах) */
+html .topbar { background: var(--accent) !important; }
+
+/* Активные табы/заголовки/ссылки — бордовые */
+.subtab.active { color: var(--accent) !important; border-bottom-color: var(--accent) !important; }
+.subtab:hover { color: var(--accent) !important; }
+.ms-tab.active, .tab.active, .doc-tab.active { color: var(--accent) !important; border-bottom-color: var(--accent) !important; }
+.ms-title, .dash-section-title { color: var(--text) !important; }
+.ms-title .ms-refresh:hover, .ms-refresh:hover { color: var(--accent) !important; }
+.link, .event-link { color: var(--accent) !important; }
+a { color: var(--accent); }
+
+/* Иконочные кружки на дашборде */
+.kpi-icon { background: var(--accent-soft) !important; color: var(--accent) !important; }
+
+/* Заголовки таблиц */
+.ms-items thead th, .ms-table2 thead th, .ms-table thead th { color: var(--accent) !important; }
+.issue-btn { color: var(--accent) !important; border-color: var(--accent) !important; }
+.issue-btn:hover { background: var(--accent-soft) !important; }
+
+/* Primary-кнопки */
+.btn.primary, button.primary { background: var(--accent) !important; border-color: var(--accent) !important; }
+.btn.primary:hover, button.primary:hover { background: var(--accent-hover) !important; }
+
+/* === DARK THEME SURFACES === */
+[data-theme="dark"] html,
+[data-theme="dark"] body,
+[data-theme="dark"] .app,
+[data-theme="dark"] .page-content,
+[data-theme="dark"] .page,
+[data-theme="dark"] .card-page { background: var(--bg-page) !important; color: var(--text) !important; }
+
+[data-theme="dark"] .subtabs { background: var(--bg-card) !important; border-bottom-color: var(--border) !important; }
+[data-theme="dark"] .subtab { color: var(--text-muted) !important; }
+
+[data-theme="dark"] .kpi-card,
+[data-theme="dark"] .svc-card,
+[data-theme="dark"] .todo-card,
+[data-theme="dark"] .card,
+[data-theme="dark"] .modal,
+[data-theme="dark"] .ms-items,
+[data-theme="dark"] .ms-table,
+[data-theme="dark"] .ms-table2,
+[data-theme="dark"] .totals-box,
+[data-theme="dark"] .ms-filter,
+[data-theme="dark"] .ms-footer2,
+[data-theme="dark"] .pts-card,
+[data-theme="dark"] .pts-card-wide,
+[data-theme="dark"] .empty-block,
+[data-theme="dark"] .suggest,
+[data-theme="dark"] .ac-dropdown {
+  background: var(--bg-card) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="dark"] .ms-items thead th,
+[data-theme="dark"] .ms-table2 thead th,
+[data-theme="dark"] .ms-table thead th {
+  background: var(--bg-card) !important;
+  border-bottom-color: var(--border) !important;
+}
+
+[data-theme="dark"] .ms-items tbody td,
+[data-theme="dark"] .ms-table2 tbody td,
+[data-theme="dark"] .ms-table tbody td { border-bottom-color: var(--border-light) !important; color: var(--text) !important; }
+[data-theme="dark"] .ms-items tbody tr:hover > td,
+[data-theme="dark"] .ms-table2 tbody tr.row:hover { background: var(--bg-hover) !important; }
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
+[data-theme="dark"] .cell-input,
+[data-theme="dark"] .qs-input,
+[data-theme="dark"] .ms-input,
+[data-theme="dark"] .ms-select,
+[data-theme="dark"] .cell-select,
+[data-theme="dark"] .num-input,
+[data-theme="dark"] .date-input,
+[data-theme="dark"] .add-input {
+  background: var(--bg-card) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="dark"] .muted,
+[data-theme="dark"] .svc-latency,
+[data-theme="dark"] .svc-status,
+[data-theme="dark"] .ms-items .empty,
+[data-theme="dark"] .ms-table2 .empty,
+[data-theme="dark"] .kpi-label,
+[data-theme="dark"] .filter-label { color: var(--text-muted) !important; }
+
+[data-theme="dark"] .svc-name,
+[data-theme="dark"] .kpi-value,
+[data-theme="dark"] .todo-title { color: var(--text) !important; }
+
+[data-theme="dark"] .todo-tag { background: var(--accent-soft) !important; color: var(--accent) !important; }
+[data-theme="dark"] .page-watermark { opacity: 0.03 !important; }

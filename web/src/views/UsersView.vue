@@ -151,12 +151,13 @@
         </label>
 
         <div class="modal-actions">
-          <button type="button" class="danger" v-if="modal.isEdit && form.email !== 'admin@radonezh.local'" @click="onArchive">Отключить</button>
-          <div style="flex:1"></div>
-          <button type="button" @click="closeModal">Отмена</button>
-          <button class="primary" type="submit" :disabled="modal.saving">
-            {{ modal.saving ? 'Сохранение...' : 'Сохранить' }}
-          </button>
+          <button v-if="modal.isEdit && form.email !== 'admin@radonezh.local'" type="button" class="danger btn-left" @click="onArchive">Отключить</button>
+          <div class="modal-actions-right">
+            <button type="button" @click="closeModal">Отмена</button>
+            <button class="primary" type="submit" :disabled="modal.saving">
+              {{ modal.saving ? 'Сохранение...' : 'Сохранить' }}
+            </button>
+          </div>
         </div>
       </form>
     </div>
@@ -165,7 +166,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { listUsers, createUser, updateUser, updateActive, type User, type UserInput } from '../api/users'
+import { listUsers, createUser, updateUser, updateRole, updateActive, type User, type UserInput } from '../api/users'
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
 import MsIcon from '../components/MsIcon.vue'
@@ -317,6 +318,9 @@ async function onSubmit() {
     if (modal.isEdit) {
       await updateUser(modal.editingId, payload)
       const u = items.value.find((x) => x.id === modal.editingId)
+      if (u && u.role !== form.role) {
+        await updateRole(modal.editingId, form.role)
+      }
       if (u && u.is_active !== form.is_active) {
         await updateActive(modal.editingId, form.is_active)
       }
@@ -394,4 +398,9 @@ label.chk input { width: auto; }
 .filter-label { font-size: 12px; color: #57606a; display: flex; align-items: center; gap: 5px; }
 .filter-label .dot { width: 8px; height: 8px; border-radius: 50%; background: #2c5d9c; flex-shrink: 0; }
 .filter-field input, .filter-field select { height: 28px; padding: 0 8px; font-size: 12px; border: 1px solid #d0d7de; border-radius: 3px; background: #fff; color: #1f2328; }
+
+.modal-actions { display: flex; align-items: center; gap: 10px; margin-top: 18px; padding-top: 12px; border-top: 1px solid #eaeef2; }
+.modal-actions .btn-left { margin-right: auto; }
+.modal-actions-right { display: flex; gap: 10px; margin-left: auto; }
+.modal-actions button { padding: 6px 14px; border-radius: 4px; cursor: pointer; }
 </style>

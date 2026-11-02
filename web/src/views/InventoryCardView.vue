@@ -17,7 +17,8 @@
         <MsButton icon="print" @click="togglePrintMenu">Печать</MsButton>
         <div v-if="printMenuOpen" class="print-menu" @mouseleave="printMenuOpen = false">
           <button class="pm-item" @click="printInv3">ИНВ-3 (инвентаризационная опись)</button>
-          <button class="pm-item" disabled title="Скоро">Сличительная ведомость</button>
+          <button class="pm-item" @click="print">Инвентаризация</button>
+          <button class="pm-item" @click="printInv19">Сличительная ведомость</button>
           <button class="pm-item" disabled title="Скоро">ИНВ-19 (инвентаризационная опись)</button>
           <button class="pm-item" disabled title="Скоро">Список инвентаризаций по ячейкам</button>
           <button class="pm-item" disabled title="Скоро">Инвентаризация с ячейками</button>
@@ -147,7 +148,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getInventory, getInventoryNeighbors, createInventoryCorrection, exportInventory, exportInventoryInv3, type Inventory, type InventoryItem } from '../api/inventories'
+import { getInventory, getInventoryNeighbors, createInventoryCorrection, exportInventory, exportInventoryInv3, exportInventoryInv19, type Inventory, type InventoryItem } from '../api/inventories'
 import { listOrganizations, type Organization } from '../api/suppliers'
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
@@ -243,6 +244,26 @@ async function printInv3() {
 }
 
 function close() { router.push('/inventories') }
+async function printInv19() {
+  printMenuOpen.value = false
+  if (!doc.value.id) {
+    error.value = 'Сначала сохраните документ'
+    return
+  }
+  try {
+    const { blob, filename } = await exportInventoryInv19(doc.value.id)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1500)
+  } catch (e) {
+    error.value = apiErrorMessage(e)
+  }
+}
 async function print() {
   if (!doc.value.id) {
     error.value = 'Сначала сохраните документ'

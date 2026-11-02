@@ -164,6 +164,7 @@ func main() {
 			readCore.GET("/inventories/:id/neighbors", invH.Neighbors)
 			readCore.GET("/inventories/:id/export", invH.Export)
 			readCore.GET("/inventories/:id/export-inv3", invH.ExportInv3)
+			readCore.GET("/inventories/:id/export-inv19", invH.ExportInv19)
 			readCore.GET("/documents", h.ListDocuments)
 			readCore.GET("/documents/:id", h.GetDocument)
 			readCore.GET("/suppliers", supH.List)

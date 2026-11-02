@@ -98,7 +98,8 @@ func (r *Runner) pullDocType(ctx context.Context, kind, entity, ourType string, 
 		q := url.Values{}
 		q.Set("limit", fmt.Sprint(pageSize))
 		q.Set("offset", fmt.Sprint(offset))
-		q.Set("filter", "updated>="+cursor)
+		q.Set("order", "moment,desc")
+		q.Set("filter", "moment>=2020-01-01 00:00:00")
 
 		var page msListResponse[msRowDoc]
 		if err := r.ms.Get(ctx, "/entity/"+entity, q, &page); err != nil {
@@ -120,6 +121,7 @@ func (r *Runner) pullDocType(ctx context.Context, kind, entity, ourType string, 
 
 			// Прогресс: писать last_line каждые 10 документов, чтобы UI видел движение.
 			if fetched%10 == 0 {
+			r.setProgress(ctx, jobID, fetched, total)
 				_ = r.jobs.SetLastLine(ctx, jobID,
 					fmt.Sprintf("[PROGRESS] fetched=%d total=%d (last=%s)", fetched, total, row.ID))
 			}
@@ -131,7 +133,7 @@ func (r *Runner) pullDocType(ctx context.Context, kind, entity, ourType string, 
 		}
 	}
 
-	r.afterSuccess(ctx, jobID)
+	// Для docs-* курсор не двигаем — фиксированная дата в cursorFor.
 	slog.Info("mspull: docs done",
 		"kind", kind, "fetched", fetched, "skipped_no_warehouse", skippedNoWH,
 		"skipped_no_product", skippedNoProd)

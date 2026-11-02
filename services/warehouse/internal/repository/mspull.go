@@ -315,6 +315,99 @@ func (r *MsPullRepo) LookupSupplierID(ctx context.Context, ext uuid.UUID) (*uuid
 	}
 	return &id, nil
 }
+// MsInternalOrder — шапка ВЗ из МС.
+type MsInternalOrder struct {
+ExternalID     uuid.UUID
+Number         string
+DocDate        *time.Time
+Status         string
+WarehouseID    *uuid.UUID
+OrganizationID *uuid.UUID
+Total          float64
+Description    *string
+Project        *string
+Printed        bool
+}
+
+// MsIntOrderItem — позиция ВЗ из МС.
+type MsIntOrderItem struct {
+ExternalID uuid.UUID
+ProductID  uuid.UUID
+Quantity   float64
+Price      float64
+Vat        float64
+Sum        float64
+SystemCode *string
+}
+
+// UpsertInternalOrder — upsert шапки ВЗ + full replace позиций.
+// source='ms', обновляется по external_id.
+func (r *MsPullRepo) UpsertInternalOrder(ctx context.Context, o MsInternalOrder, items []MsIntOrderItem) error {
+return r.WithTx(ctx, func(tx pgx.Tx) error {
+var postedAt *time.Time
+if o.Status == "posted" {
+postedAt = o.DocDate
+}
+var sentAt *time.Time
+if o.Printed {
+sentAt = o.DocDate
+}
+var orderID uuid.UUID
+err := tx.QueryRow(ctx, `
+INSERT INTO internal_orders (
+    number, doc_date, status, warehouse_id, target_warehouse_id,
+    organization_id, total, comment, project,
+    vat_enabled, vat_included,
+    posted_at, sent_at,
+    external_id, source, is_printed
+) VALUES (
+    $1, $2, $3, $4, NULL,
+    $5, $6, $7, $8,
+    true, true,
+    $9, $10,
+    $11::uuid, 'ms', $12
+)
+ON CONFLICT (external_id) DO UPDATE SET
+    number         = EXCLUDED.number,
+    doc_date       = EXCLUDED.doc_date,
+    status         = EXCLUDED.status,
+    warehouse_id   = EXCLUDED.warehouse_id,
+    organization_id= EXCLUDED.organization_id,
+    total          = EXCLUDED.total,
+    comment        = EXCLUDED.comment,
+    project        = EXCLUDED.project,
+    posted_at      = EXCLUDED.posted_at,
+    sent_at        = EXCLUDED.sent_at,
+    is_printed     = EXCLUDED.is_printed,
+    source         = 'ms',
+    updated_at     = NOW()
+RETURNING id`,
+o.Number, o.DocDate, o.Status, o.WarehouseID,
+o.OrganizationID, o.Total, o.Description, o.Project,
+postedAt, sentAt,
+o.ExternalID, o.Printed,
+).Scan(&orderID)
+if err != nil {
+return err
+}
+if _, err := tx.Exec(ctx, `DELETE FROM internal_order_items WHERE order_id = $1`, orderID); err != nil {
+return err
+}
+for _, it := range items {
+if _, err := tx.Exec(ctx, `
+INSERT INTO internal_order_items (
+    order_id, product_id, quantity, price, vat_rate, sum,
+    external_id, system_code, issued_qty
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0)`,
+orderID, it.ProductID, it.Quantity, it.Price, it.Vat, it.Sum,
+it.ExternalID, it.SystemCode,
+); err != nil {
+return err
+}
+}
+return nil
+})
+}
 func (r *MsPullRepo) WithTx(ctx context.Context, fn func(pgx.Tx) error) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {

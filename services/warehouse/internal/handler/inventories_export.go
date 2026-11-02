@@ -70,11 +70,11 @@ func (h *InventoryHandler) Export(c *gin.Context) {
 		return
 	}
 
-	filename := fmt.Sprintf("inventory-%s.xls", extractNumericTail(inv.Number))
-	c.Header("Content-Type", "application/vnd.ms-excel")
+	filename := fmt.Sprintf("inventory-%s.xlsx", extractNumericTail(inv.Number))
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	c.Header("X-Filename", filename)
-	c.Data(200, "application/vnd.ms-excel", data)
+	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", data)
 }
 
 // ExportInv3 — генерирует форму ИНВ-3 (ОКУД 0317004) и отдаёт файл.
@@ -163,4 +163,91 @@ func (h *InventoryHandler) ExportInv3(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	c.Header("X-Filename", filename)
 	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", data)
+}
+
+// ExportInv19 — генерирует сличительную ведомость ИНВ-19 (ОКУД 317017) и отдаёт файл.
+func (h *InventoryHandler) ExportInv19(c *gin.Context) {
+id, err := uuid.Parse(c.Param("id"))
+if err != nil {
+c.Error(apperr.BadRequest("invalid id"))
+return
+}
+
+ctx := c.Request.Context()
+token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+
+inv, err := h.svc.Get(ctx, id)
+if err != nil {
+c.Error(err)
+return
+}
+
+if len(inv.Items) > 0 {
+ids := make([]uuid.UUID, 0, len(inv.Items))
+seen := map[uuid.UUID]bool{}
+for _, it := range inv.Items {
+if !seen[it.ProductID] {
+seen[it.ProductID] = true
+ids = append(ids, it.ProductID)
+}
+}
+prods, err := h.productCli.ListByIDs(ctx, token, ids)
+if err == nil {
+pmap := make(map[uuid.UUID]product.Product, len(prods))
+for _, p := range prods {
+pmap[p.ID] = p
+}
+units, _ := h.productCli.ListUnits(ctx, token)
+umap := make(map[uuid.UUID]string, len(units))
+for _, u := range units {
+umap[u.ID] = u.ShortName
+}
+for i := range inv.Items {
+if p, ok := pmap[inv.Items[i].ProductID]; ok {
+inv.Items[i].ProductName = p.Name
+if p.SKU != nil {
+inv.Items[i].ProductSKU = *p.SKU
+}
+if p.UnitID != nil {
+inv.Items[i].ProductUnitShort = umap[*p.UnitID]
+}
+}
+}
+}
+}
+
+warehouseName := ""
+if inv.WarehouseID != nil && h.warehouseSvc != nil {
+if w, err := h.warehouseSvc.GetWarehouse(ctx, *inv.WarehouseID); err == nil && w != nil {
+warehouseName = w.Name
+}
+}
+
+var org *models.Organization
+if inv.OrganizationID != nil && h.supplierSvc != nil {
+if o, err := h.supplierSvc.GetOrganization(ctx, *inv.OrganizationID); err == nil {
+org = o
+}
+}
+if org == nil && h.supplierSvc != nil {
+if o, err := h.supplierSvc.DefaultOrganization(ctx); err == nil {
+org = o
+}
+}
+
+data, err := exporter.InventoryInv19XLSX(exporter.Inv19ExportCtx{
+Inventory:     inv,
+Organization:  org,
+WarehouseName: warehouseName,
+})
+if err != nil {
+c.Error(apperr.Internal("export inv19 xlsx", err))
+return
+}
+
+filename := fmt.Sprintf("inv19-%s.xlsx", extractNumericTail(inv.Number))
+c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+c.Header("X-Filename", filename)
+c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", data)
 }

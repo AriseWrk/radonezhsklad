@@ -408,10 +408,12 @@ function typeLabel(t: string) {
 function statusLabel(s: string) {
   return { draft: 'Черновик', posted: 'Проведён', cancelled: 'Отменён' }[s] ?? s
 }
-function warehouseName(id: string) {
+function warehouseName(id?: string) {
+  if (!id) return ''
   return warehouses.value.find((w) => w.id === id)?.name ?? id.slice(0, 8)
 }
-function productName(id: string) {
+function productName(id?: string) {
+  if (!id) return ''
   return products.value.find((p) => p.id === id)?.name ?? id.slice(0, 8)
 }
 function formatDate(s: string) {

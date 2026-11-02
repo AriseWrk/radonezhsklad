@@ -7,6 +7,7 @@ export type MspullKind =
   | 'docs-demand'
   | 'docs-loss'
   | 'docs-move'
+  | 'docs-internalorder'
   | 'docs-purchaseorder'
   | 'docs-invoicein'
   | 'docs-purchasereturn'
@@ -34,7 +35,7 @@ export async function getSyncJob(id: string): Promise<SyncJobShort> {
 }
 
 export async function pullDocsForToday(onProgress?: (kind: string) => void): Promise<void> {
-  const kinds: MspullKind[] = ['docs-enter', 'docs-demand', 'docs-loss', 'docs-move']
+  const kinds: MspullKind[] = ['docs-internalorder', 'docs-enter', 'docs-demand', 'docs-loss', 'docs-move']
   for (const k of kinds) {
     onProgress?.(k)
     const job = await startPull(k)

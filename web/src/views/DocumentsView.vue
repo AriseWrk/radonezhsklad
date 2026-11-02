@@ -91,12 +91,12 @@
   <thead>
     <tr>
       <th class='col-check'>
-        <input type='checkbox' :checked='allChecked' :indeterminate.prop='someChecked && !allChecked' @change='toggleAll' />
+        <input type="checkbox" :checked="allChecked" :indeterminate.prop="someChecked && !allChecked" @change="toggleAll" />
       </th>
-      <th class='col-type' @click='sortBy('type')'>Тип<span v-if='sortKey === 'type'' class='sort'>{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
-      <th class='col-num' @click='sortBy('number')'>№<span v-if='sortKey === 'number'' class='sort'>{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
-      <th class='col-date' @click='sortBy('created_at')'>Время<span v-if='sortKey === 'created_at'' class='sort'>{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
-      <th class='col-num-right' @click='sortBy('total')'>Сумма<span v-if='sortKey === 'total'' class='sort'>{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+      <th class='col-type' @click="sortBy('type')">Тип<span v-if="sortKey === 'type'" class='sort'>{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+      <th class='col-num' @click="sortBy('number')">№<span v-if="sortKey === 'number'" class='sort'>{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+      <th class='col-date' @click="sortBy('created_at')">Время<span v-if="sortKey === 'created_at'" class='sort'>{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+      <th class='col-num-right' @click="sortBy('total')">Сумма<span v-if="sortKey === 'total'" class='sort'>{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
       <th>Со склада</th>
       <th>На склад</th>
       <th>Организация</th>
@@ -111,9 +111,9 @@
   <tbody>
     <tr v-if='loading'><td colspan='14' class='empty'>Загрузка...</td></tr>
     <tr v-else-if='filtered.length === 0'><td colspan='14' class='empty'>Нет документов</td></tr>
-    <tr v-else v-for='d in paginated' :key='d.id' class='row' @click='openCard(d)'>
+    <tr v-else v-for='d in paginated' :key='d.id' class='row' @click="openCard(d)">
       <td class='col-check' @click.stop>
-        <input type='checkbox' :checked='selected.has(d.id)' @change='toggleOne(d.id)' />
+        <input type="checkbox" :checked="selected.has(d.id)" @change="toggleOne(d.id)" />
       </td>
       <td class='col-type'>{{ typeLabel(d.type) }}</td>
       <td class='col-num'><span class='link'>{{ d.number }}</span></td>
@@ -124,19 +124,19 @@
       <td>{{ orgName(d.organization_id) }}</td>
       <td>{{ supplierName(d.supplier_id) }}</td>
       <td class='col-status'>
-        <span class='badge' :class='&#39;bg-&#39; + d.status'>{{ statusLabel(d.status) }}</span>
+        <span class='badge' :class="'bg-' + d.status">{{ statusLabel(d.status) }}</span>
       </td>
       <td class='col-sent'>
-        <span v-if='d.sent_at' class='pill pill-blue'>Отправлен</span>
+        <span v-if="d.sent_at" class='pill pill-blue'>Отправлен</span>
       </td>
       <td class='col-printed'>
-        <span v-if='d.printed_at' class='pill pill-blue'>Напечатан</span>
+        <span v-if="d.printed_at" class='pill pill-blue'>Напечатан</span>
       </td>
       <td class='comment'>{{ d.comment || '' }}</td>
       <td class='col-actions' @click.stop>
         <button v-if="d.status === 'draft' && d.type !== 'internal_order'" class="btn-link-ms" @click="onPost(d)">Провести</button>
         <button v-if="d.status === 'posted' && d.type !== 'internal_order'" class="btn-link-ms danger" @click="onCancel(d)">Отменить</button>
-        <button class='row-menu' @click='openCard(d)'><MsIcon name='dots' :size='14' /></button>
+        <button class='row-menu' @click="openCard(d)"><MsIcon name='dots' :size='14' /></button>
       </td>
     </tr>
   </tbody>

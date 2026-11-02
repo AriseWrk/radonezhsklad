@@ -36,6 +36,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'purchases/invoices', name: 'purchases-invoices', component: () => import('../views/PurchasesDocView.vue'), meta: { roles: ['admin', 'warehouse'], docType: 'invoice_in' } },
       { path: 'purchases/returns',  name: 'purchases-returns',  component: () => import('../views/PurchasesDocView.vue'), meta: { roles: ['admin', 'warehouse'], docType: 'purchase_return' } },
       { path: 'purchases/factures', name: 'purchases-factures', component: () => import('../views/PurchasesDocView.vue'), meta: { roles: ['admin', 'warehouse'], docType: 'facture_in' } },
+      { path: 'suppliers', name: 'suppliers', component: () => import('../views/SuppliersView.vue'), meta: { roles: ['admin', 'warehouse'] } },
       { path: 'purchases/planning', name: 'purchases-planning', component: () => import('../views/PurchasesPlanningView.vue'), meta: { roles: ['admin', 'warehouse'] } },
       { path: 'inventory',  name: 'inventory',  component: () => import('../views/InventoryView.vue'),  meta: { roles: ['admin', 'warehouse'] } },
       { path: 'inventories', name: 'inventories', component: () => import('../views/InventoriesView.vue'), meta: { roles: ['admin', 'warehouse'] }, },

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app">
     <header class="topbar">
       <div class="logo" @click="go('/')">
@@ -20,10 +20,7 @@
 
       <div class="top-right">
         <button class="theme-btn" @click="themeStore.toggle()" :title="themeStore.theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'">{{ themeStore.theme === 'dark' ? '\u2600' : '\u263E' }}</button>
-        <button v-if="auth.can('warehouse')" class="sync-btn" @click="openSync" title="Синхронизировать с МойСклад">
-          <MsIcon name="refresh" :size="16" />
-          <span>Синхронизировать</span>
-        </button>
+
         <button class="top-icon" title="Чат"><MsIcon name="chat" :size="18" /></button>
         <button class="top-icon" title="Уведомления"><MsIcon name="bell" :size="18" /></button>
         <button class="top-icon" title="Помощь"><MsIcon name="help" :size="18" /></button>
@@ -56,15 +53,14 @@
       <router-view :key="route.fullPath" />
     </main>
 
-    <SyncModal ref="syncRef" />
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore, type Role } from '../stores/auth'
-import SyncModal from '../components/SyncModal.vue'
 import MsIcon from '../components/MsIcon.vue'
 import { useThemeStore } from '../stores/theme'
 
@@ -73,8 +69,7 @@ const route = useRoute()
 const router = useRouter()
 
 const themeStore = useThemeStore()
-const syncRef = ref<InstanceType<typeof SyncModal> | null>(null)
-function openSync() { syncRef.value?.open() }
+
 
 interface Section {
   key: string
@@ -105,10 +100,8 @@ const subTabsMap: Record<string, SubTab[]> = {
   company: [
     { name: 'documents', label: 'Документы', path: '/documents', match: '/documents', roles: ['admin', 'warehouse'] },
     { name: 'dashboard', label: 'Показатели',  path: '/',        match: '/',      exact: true },
-    { name: 'dashboard', label: 'Показатели',  path: '/',        match: '/',      exact: true },
     { name: 'users',     label: 'Сотрудники',  path: '/users',   match: '/users',   roles: ['admin'] },
     { name: 'audit',     label: 'Аудит',       path: '/audit',   match: '/audit',   roles: ['admin'] },
-    { name: 'sync',      label: 'Синхронизация', path: '/sync', match: '/sync',    roles: ['admin', 'warehouse'] },
   ],
   crm: [
     { name: 'counterparties', label: 'Контрагенты', path: '/counterparties', match: '/counterparties' },

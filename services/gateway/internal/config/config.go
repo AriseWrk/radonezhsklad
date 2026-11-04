@@ -15,6 +15,7 @@ OrderURL      string
 CORSOrigins   []string
 AuditURL      string
 InternalToken string
+JWTSecret     string
 }
 
 func Load() *Config {
@@ -27,5 +28,6 @@ OrderURL:      shcfg.GetString("ORDER_URL", "http://localhost:8084"),
 CORSOrigins:   strings.Split(shcfg.GetString("CORS_ORIGINS", "*"), ","),
 AuditURL:      shcfg.GetString("AUDIT_URL", "http://localhost:8085"),
 InternalToken: shcfg.GetString("INTERNAL_TOKEN", "dev-audit-internal-token"),
+JWTSecret:     shcfg.GetString("JWT_SECRET", "dev-secret-change-me"),
 }
 }

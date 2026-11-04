@@ -53,7 +53,6 @@
           </p>
           <ul class="promo-list">
             <li>Учёт остатков в реальном времени</li>
-            <li>Синхронизация с МойСклад</li>
             <li>Отчётность и аналитика продаж</li>
           </ul>
           <div class="promo-art" aria-hidden="true">

@@ -17,10 +17,10 @@ func New(db *pgxpool.Pool) *Repo { return &Repo{db: db} }
 func (r *Repo) Create(ctx context.Context, l *models.AuditLog) error {
 return r.db.QueryRow(ctx,
 `INSERT INTO audit_logs
- (user_id, user_email, method, path, resource, resource_id, status, request_body, client_ip, request_id)
- VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+ (user_id, user_email, user_name, method, path, resource, resource_id, status, request_body, client_ip, request_id)
+ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
  RETURNING id, created_at`,
-l.UserID, l.UserEmail, l.Method, l.Path, l.Resource, l.ResourceID,
+l.UserID, l.UserEmail, l.UserName, l.Method, l.Path, l.Resource, l.ResourceID,
 l.Status, l.RequestBody, l.ClientIP, l.RequestID,
 ).Scan(&l.ID, &l.CreatedAt)
 }
@@ -36,7 +36,6 @@ Offset   int
 }
 
 func (r *Repo) List(ctx context.Context, f ListFilters) ([]models.AuditLog, int, error) {
-// Собираем условия WHERE
 where := []string{"1=1"}
 args := []any{}
 i := 1
@@ -69,15 +68,13 @@ i++
 
 whereSQL := strings.Join(where, " AND ")
 
-// Считаем total
 var total int
 countSQL := "SELECT COUNT(*) FROM audit_logs WHERE " + whereSQL
 if err := r.db.QueryRow(ctx, countSQL, args...).Scan(&total); err != nil {
 return nil, 0, err
 }
 
-// Собираем список
-listSQL := `SELECT id, user_id, user_email, method, path, resource, resource_id,
+listSQL := `SELECT id, user_id, user_email, user_name, method, path, resource, resource_id,
                    status, request_body, client_ip, request_id, created_at
             FROM audit_logs WHERE ` + whereSQL + `
             ORDER BY created_at DESC
@@ -94,7 +91,7 @@ defer rows.Close()
 out := []models.AuditLog{}
 for rows.Next() {
 var l models.AuditLog
-if err := rows.Scan(&l.ID, &l.UserID, &l.UserEmail, &l.Method, &l.Path,
+if err := rows.Scan(&l.ID, &l.UserID, &l.UserEmail, &l.UserName, &l.Method, &l.Path,
 &l.Resource, &l.ResourceID, &l.Status, &l.RequestBody, &l.ClientIP,
 &l.RequestID, &l.CreatedAt); err != nil {
 return nil, 0, err

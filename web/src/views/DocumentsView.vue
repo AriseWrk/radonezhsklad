@@ -24,11 +24,7 @@
     <!-- Тулбар -->
     <div class="ms-toolbar">
       <MsButton variant="primary" icon="plus" @click="openCreate">Документ</MsButton>
-      <MsButton
-        v-if="auth.role === 'admin'"
-        :disabled="pulling"
-        @click="onPullMS"
-      >{{ pulling ? (pullMsg || 'Загружаю…') : 'Загрузить из МС' }}</MsButton>
+
       <MsButton icon="filter" @click="showFilter = !showFilter">Фильтр</MsButton>
       <input v-model="filters.search" class="ms-input" placeholder="Номер или комментарий" />
       <div class="ms-counter">{{ filtered.length }}</div>
@@ -269,7 +265,6 @@ import {
   type Document, type DocType,
 } from '../api/documents'
 import { listInternalOrders, postInternalOrder, cancelInternalOrder, type InternalOrder } from '../api/internalOrders'
-import { pullDocsForToday } from '../api/mspull'
 import { useAuthStore } from '../stores/auth'
 import { listWarehouses, type Warehouse } from '../api/warehouses'
 import { listProducts, type Product } from '../api/products'
@@ -577,22 +572,6 @@ async function onCancel(d: Document) {
 }
 
 const auth = useAuthStore()
-const pulling = ref(false)
-const pullMsg = ref('')
-async function onPullMS() {
-  if (!confirm('Загрузить документы из МойСклад за сегодня?')) return
-  pulling.value = true; pullMsg.value = ''
-  try {
-    await pullDocsForToday((k) => { pullMsg.value = 'Тяну ' + k })
-    pullMsg.value = 'Готово, обновляю…'
-    await load()
-    pullMsg.value = ''
-  } catch (e) {
-    error.value = apiErrorMessage(e)
-  } finally {
-    pulling.value = false
-  }
-}
 const router = useRouter()
 function openCard(d: Document) { router.push('/documents/' + d.id) }
 

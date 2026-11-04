@@ -10,6 +10,7 @@ type AuditLog struct {
 ID          uuid.UUID  `json:"id"`
 UserID      *uuid.UUID `json:"user_id,omitempty"`
 UserEmail   *string    `json:"user_email,omitempty"`
+UserName    *string    `json:"user_name,omitempty"`
 Method      string     `json:"method"`
 Path        string     `json:"path"`
 Resource    *string    `json:"resource,omitempty"`

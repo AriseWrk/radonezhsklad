@@ -60,7 +60,7 @@ break
 
 // Параллельно по 8 документов.
 g, gctx := errgroup.WithContext(ctx)
-g.SetLimit(8)
+g.SetLimit(2)
 var mu sync.Mutex
 for _, row := range page.Rows {
 row := row
@@ -99,17 +99,17 @@ mu *sync.Mutex, skippedNoWH, skippedNoProd *int,
 // Склад обязателен.
 if row.Store == nil {
 mu.Lock(); *skippedNoWH++; mu.Unlock()
-return fmt.Errorf("нет store")
+return nil // нет store — пропускаем без ошибки
 }
 storeExt := hrefUUID(row.Store.Meta.Href)
 if storeExt == nil {
 mu.Lock(); *skippedNoWH++; mu.Unlock()
 return fmt.Errorf("bad store href")
 }
-whID, err := r.repo.LookupWarehouseID(ctx, *storeExt)
+whID, err := r.repo.EnsureWarehouseByExternalID(ctx, *storeExt)
 if err != nil || whID == nil {
 mu.Lock(); *skippedNoWH++; mu.Unlock()
-return fmt.Errorf("склад %s не найден локально", storeExt)
+return fmt.Errorf("склад %s: %w", storeExt, err)
 }
 
 // Организация (опционально).
@@ -178,7 +178,7 @@ Sum:        sumRub,
 })
 }
 if len(docItems) == 0 {
-return fmt.Errorf("после маппинга не осталось позиций")
+return nil // нет смэппленных позиций — пропускаем
 }
 
 status := "draft"

@@ -1,4 +1,4 @@
-﻿import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore, type Role } from '../stores/auth'
 
 declare module 'vue-router' {
@@ -27,10 +27,10 @@ const routes: RouteRecordRaw[] = [
       { path: 'stock',      name: 'stock',      component: () => import('../views/StockView.vue'),      meta: { roles: ['admin', 'warehouse', 'pts'] } },
       { path: 'documents',  name: 'documents',  component: () => import('../views/DocumentsView.vue'),  meta: { roles: ['admin', 'warehouse'] } },
       { path: 'stock/receipts', name: 'stock-receipts', component: () => import('../views/DocumentsView.vue'), meta: { roles: ['admin', 'warehouse'], docType: 'receipt' } },
-      { path: 'stock/writeoffs', name: 'stock-writeoffs', component: () => import('../views/DocumentsView.vue'), meta: { roles: ['admin', 'warehouse'], docType: 'writeoff' } },
-      { path: 'stock/transfers', name: 'stock-transfers', component: () => import('../views/DocumentsView.vue'), meta: { roles: ['admin', 'warehouse'], docType: 'transfer' } },
+      { path: 'stock/writeoffs', name: 'stock-writeoffs', component: () => import('../views/DocumentsView.vue'), meta: { roles: ['admin', 'warehouse'], docType: 'writeoff'} },
+      { path: 'stock/transfers', name: 'stock-transfers', component: () => import('../views/DocumentsView.vue'), meta: { roles: ['admin', 'warehouse'], docType: 'transfer'} },
       { path: 'stock/turnover', name: 'stock-turnover', component: () => import('../views/StockTurnoverView.vue'), meta: { roles: ['admin', 'warehouse'] } },
-  { path: 'documents/:id', name: 'document-card', component: () => import('../views/DocumentCardView.vue'), meta: { roles: ['admin', 'warehouse'] } },
+      { path: 'documents/:id', name: 'document-card', component: () => import('../views/DocumentCardView.vue'), meta: { roles: ['admin', 'warehouse'] } },
       { path: 'purchases/receipts', name: 'purchases-receipts', component: () => import('../views/PurchasesDocView.vue'), meta: { roles: ['admin', 'warehouse'], docType: 'receipt' } },
       { path: 'purchases/orders',   name: 'purchases-orders',   component: () => import('../views/PurchasesDocView.vue'), meta: { roles: ['admin', 'warehouse'], docType: 'purchase_order' } },
       { path: 'purchases/invoices', name: 'purchases-invoices', component: () => import('../views/PurchasesDocView.vue'), meta: { roles: ['admin', 'warehouse'], docType: 'invoice_in' } },
@@ -51,7 +51,6 @@ const routes: RouteRecordRaw[] = [
       { path: 'internal-orders/:id', name: 'internal-order-card', component: () => import('../views/InternalOrderCardView.vue'), meta: { roles: ['admin', 'warehouse', 'pts'] } },
       { path: 'users',      name: 'users',      component: () => import('../views/UsersView.vue'),      meta: { roles: ['admin'] } },
       { path: 'audit',      name: 'audit',      component: () => import('../views/AuditView.vue'),      meta: { roles: ['admin'] } },
-			{ path: 'sync',       name: 'sync',       component: () => import('../views/SyncJobsView.vue'),  meta: { roles: ['admin', 'warehouse'] } },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },

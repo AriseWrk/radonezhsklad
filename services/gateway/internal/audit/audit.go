@@ -32,6 +32,7 @@ client:        &http.Client{Timeout: 5 * time.Second},
 type event struct {
 UserID      string `json:"user_id,omitempty"`
 UserEmail   string `json:"user_email,omitempty"`
+UserName    string `json:"user_name,omitempty"`
 Method      string `json:"method"`
 Path        string `json:"path"`
 Resource    string `json:"resource,omitempty"`
@@ -47,7 +48,6 @@ func (l *Logger) Middleware() gin.HandlerFunc {
 return func(c *gin.Context) {
 method := c.Request.Method
 
-// читаем тело только для мутаций
 var bodyCopy []byte
 if method == http.MethodPost || method == http.MethodPut || method == http.MethodPatch || method == http.MethodDelete {
 if c.Request.Body != nil {
@@ -65,16 +65,15 @@ if c.Writer.Status() < 200 || c.Writer.Status() >= 300 {
 return
 }
 
-// кто
-var uidStr, email string
+var uidStr string
 if uid := mw.CurrentUserID(c); uid != uuid.Nil {
 uidStr = uid.String()
 }
-// email берём из заголовка X-User-Email (у нас его нет, оставим пустым)
+email := c.GetString("user_email")
+name := c.GetString("user_name")
 
 resource, resourceID := parseResource(c.Request.URL.Path)
 
-// не логируем сами audit-запросы
 if strings.HasPrefix(c.Request.URL.Path, "/api/v1/audit") {
 return
 }
@@ -82,6 +81,7 @@ return
 ev := event{
 UserID:      uidStr,
 UserEmail:   email,
+UserName:    name,
 Method:      method,
 Path:        c.Request.URL.Path,
 Resource:    resource,
@@ -92,7 +92,6 @@ ClientIP:    c.ClientIP(),
 RequestID:   c.GetString(mw.CtxRequestID),
 }
 
-// асинхронно
 go l.send(ev)
 }
 }
@@ -121,10 +120,8 @@ slog.Warn("audit service rejected", "status", resp.StatusCode)
 }
 }
 
-// parseResource: /api/v1/products/abc-123 → ("products", "abc-123")
 func parseResource(path string) (string, string) {
 parts := strings.Split(strings.Trim(path, "/"), "/")
-// api, v1, products, abc-123
 if len(parts) < 3 {
 return "", ""
 }
@@ -132,7 +129,6 @@ resource := parts[2]
 id := ""
 if len(parts) >= 4 {
 id = parts[3]
-// если id — не UUID, оставляем как есть
 }
 return resource, id
 }
@@ -144,7 +140,6 @@ return s
 return s[:n] + "...[truncated]"
 }
 
-// sensitiveKeys — поля, значения которых нельзя логировать в открытом виде.
 var sensitiveKeys = map[string]bool{
 "password":      true,
 "password_hash": true,
@@ -154,8 +149,6 @@ var sensitiveKeys = map[string]bool{
 "secret":        true,
 }
 
-// sanitizeBody рекурсивно маскирует значения чувствительных полей в JSON.
-// Если тело не является JSON — возвращает его как есть.
 func sanitizeBody(raw []byte) []byte {
 if len(raw) == 0 {
 return raw

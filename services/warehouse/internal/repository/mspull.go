@@ -274,6 +274,28 @@ INSERT INTO document_items (
 	})
 }
 
+// EnsureWarehouseByExternalID — вернуть локальный id склада по external_id.
+// Если склада нет — создать локально с временным именем (source='ms').
+func (r *MsPullRepo) EnsureWarehouseByExternalID(ctx context.Context, ext uuid.UUID) (*uuid.UUID, error) {
+var id uuid.UUID
+err := r.db.QueryRow(ctx, `SELECT id FROM warehouses WHERE external_id = $1`, ext).Scan(&id)
+if err == nil {
+return &id, nil
+}
+if !errors.Is(err, pgx.ErrNoRows) {
+return nil, err
+}
+name := "Склад из МС " + ext.String()
+err = r.db.QueryRow(ctx, `
+INSERT INTO warehouses (external_id, name, is_active, source)
+VALUES ($1, $2, true, 'ms')
+ON CONFLICT (external_id) WHERE external_id IS NOT NULL DO UPDATE SET external_id = EXCLUDED.external_id
+RETURNING id`, ext, name).Scan(&id)
+if err != nil {
+return nil, err
+}
+return &id, nil
+}
 // LookupWarehouseID — наш UUID склада по external_id (MS UUID). nil если нет.
 func (r *MsPullRepo) LookupWarehouseID(ctx context.Context, ext uuid.UUID) (*uuid.UUID, error) {
 	var id uuid.UUID

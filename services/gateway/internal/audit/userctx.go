@@ -33,6 +33,12 @@ c.Set(mw.CtxUserID, id.String())
 if role, ok := claims["role"].(string); ok {
 c.Set(mw.CtxRole, role)
 }
+if email, ok := claims["email"].(string); ok {
+c.Set("user_email", email)
+}
+if name, ok := claims["name"].(string); ok {
+c.Set("user_name", name)
+}
 }
 }
 }

@@ -6,6 +6,7 @@ import (
 "crypto/sha256"
 "encoding/hex"
 "errors"
+"strings"
 "time"
 
 "github.com/golang-jwt/jwt/v5"
@@ -141,9 +142,17 @@ return s.issueTokens(ctx, u)
 
 func (s *AuthService) issueTokens(ctx context.Context, u *models.User) (*TokenPair, error) {
 accessExp := time.Now().Add(time.Duration(s.cfg.AccessTTLMin) * time.Minute)
+name := u.FullName
+if name == "" {
+	name = strings.TrimSpace(u.LastName + " " + u.FirstName)
+}
 accessClaims := jwt.MapClaims{
-"sub": u.ID.String(), "role": u.Role,
-"iat": time.Now().Unix(), "exp": accessExp.Unix(),
+"sub":   u.ID.String(),
+"role":  u.Role,
+"email": u.Email,
+"name":  name,
+"iat":   time.Now().Unix(),
+"exp":   accessExp.Unix(),
 }
 accessToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims).SignedString([]byte(s.cfg.JWTSecret))
 if err != nil { return nil, err }

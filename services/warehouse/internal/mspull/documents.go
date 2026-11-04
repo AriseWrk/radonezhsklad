@@ -155,11 +155,11 @@ func (r *Runner) processDocRow(
 	}
 	var whID *uuid.UUID
 	if storeExt := hrefUUID(storeHref); storeExt != nil {
-		id, err := r.repo.LookupWarehouseID(ctx, *storeExt)
+		id, err := r.repo.EnsureWarehouseByExternalID(ctx, *storeExt)
 		if err != nil || id == nil {
 			if !optionalWH {
 				*skippedNoWH++
-				return fmt.Errorf("склад %s не найден локально", storeExt)
+				return fmt.Errorf("склад %s: %w", storeExt, err)
 			}
 		} else {
 			whID = id
@@ -173,7 +173,7 @@ func (r *Runner) processDocRow(
 	var targetID *uuid.UUID
 	if entity == "move" && row.TargetStore != nil {
 		if ext := hrefUUID(row.TargetStore.Meta.Href); ext != nil {
-			if tid, err := r.repo.LookupWarehouseID(ctx, *ext); err == nil && tid != nil {
+			if tid, err := r.repo.EnsureWarehouseByExternalID(ctx, *ext); err == nil && tid != nil {
 				targetID = tid
 			} else {
 				return fmt.Errorf("склад-цель %s не найден локально", ext)

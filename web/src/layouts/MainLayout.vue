@@ -129,13 +129,13 @@ const subTabsMap: Record<string, SubTab[]> = {
     { name: 'sales-analytics', label: 'Аналитика',  path: '/sales/analytics', match: '/sales/analytics', roles: ['admin','warehouse'] },
   ],
   stock: [
-    { name: 'stock',           label: 'Остатки',           path: '/stock',           match: '/stock' },
-    { name: 'internal-orders', label: 'Внутренние заказы', path: '/internal-orders', match: '/internal-orders' },
     { name: 'stock-receipts',  label: 'Оприходования',     path: '/stock/receipts',  match: '/stock/receipts',  roles: ['admin','warehouse'] },
     { name: 'stock-writeoffs', label: 'Списания',          path: '/stock/writeoffs', match: '/stock/writeoffs', roles: ['admin','warehouse'] },
     { name: 'stock-transfers', label: 'Перемещения',       path: '/stock/transfers', match: '/stock/transfers', roles: ['admin','warehouse'] },
-    { name: 'stock-turnover',  label: 'Обороты',           path: '/stock/turnover',  match: '/stock/turnover',  roles: ['admin','warehouse'] },
     { name: 'inventories',     label: 'Инвентаризации',    path: '/inventories',     match: '/inventories',     roles: ['admin','warehouse'] },
+    { name: 'internal-orders', label: 'Внутренние заказы', path: '/internal-orders', match: '/internal-orders' },
+    { name: 'stock',           label: 'Остатки',           path: '/stock',           match: '/stock' },
+    { name: 'stock-turnover',  label: 'Обороты',           path: '/stock/turnover',  match: '/stock/turnover',  roles: ['admin','warehouse'] },
     { name: 'warehouses',      label: 'Склады',            path: '/warehouses',      match: '/warehouses',      roles: ['admin','warehouse'] },
   ],
 }

@@ -161,7 +161,7 @@ const documentSelect = `
 SELECT d.id, d.type, d.number, d.status, d.warehouse_id, d.target_warehouse_id,
        d.supplier_id, d.organization_id, d.incoming_number, d.incoming_date, d.paid_amount,
        d.printed_at, d.sent_at, d.comment, d.created_by,
-       d.created_at, d.updated_at, d.posted_at, d.cancelled_at, d.external_id,
+       d.created_at, d.updated_at, d.posted_at, d.cancelled_at, d.deleted_at, d.external_id,
        d.ms_synced_at, d.ms_sync_error, d.source_inventory_id, d.source,
        (SELECT COUNT(*) FROM document_items di WHERE di.document_id = d.id) AS items_count,
        (SELECT COALESCE(SUM(
@@ -179,7 +179,7 @@ func scanDocument(row pgx.Row) (*models.Document, error) {
 	err := row.Scan(&d.ID, &d.Type, &d.Number, &d.Status, &d.WarehouseID, &d.TargetWarehouseID,
 		&d.SupplierID, &d.OrganizationID, &d.IncomingNumber, &d.IncomingDate, &d.PaidAmount,
 		&d.PrintedAt, &d.SentAt, &d.Comment, &d.CreatedBy,
-		&d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt, &d.ExternalID,
+		&d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt, &d.DeletedAt, &d.ExternalID,
 		&d.MSSyncedAt, &d.MSSyncError, &d.SourceInventoryID, &d.Source,
 		&d.ItemsCount, &d.Total)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -283,6 +283,7 @@ func (r *Repo) itemsByDoc(ctx context.Context, docID uuid.UUID) ([]models.DocIte
 }
 
 type DocumentFilters struct {
+	IncludeDeleted   bool
 	Type             *string
 	Status           *string
 	WarehouseID      *uuid.UUID
@@ -301,6 +302,9 @@ type DocumentFilters struct {
 
 func (r *Repo) ListDocuments(ctx context.Context, f DocumentFilters) ([]models.Document, error) {
 	q := documentSelect + ` WHERE 1=1`
+	if !f.IncludeDeleted {
+		q += ` AND d.deleted_at IS NULL`
+		}
 	args := []any{}
 	i := 1
 	if f.Type != nil {
@@ -390,7 +394,7 @@ func (r *Repo) ListDocuments(ctx context.Context, f DocumentFilters) ([]models.D
 		if err := rows.Scan(&d.ID, &d.Type, &d.Number, &d.Status, &d.WarehouseID, &d.TargetWarehouseID,
 			&d.SupplierID, &d.OrganizationID, &d.IncomingNumber, &d.IncomingDate, &d.PaidAmount,
 			&d.PrintedAt, &d.SentAt, &d.Comment, &d.CreatedBy,
-			&d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt, &d.ExternalID,
+			&d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt, &d.DeletedAt, &d.ExternalID,
 			&d.MSSyncedAt, &d.MSSyncError, &d.SourceInventoryID, &d.Source,
 			&d.ItemsCount, &d.Total); err != nil {
 			return nil, err
@@ -826,4 +830,40 @@ SELECT EXISTS(
   WHERE source_inventory_id = $1 AND type = $2 AND status != 'cancelled'
 )`, inventoryID, docType).Scan(&exists)
 	return exists, err
+}
+
+func (r *Repo) SoftDeleteDocument(ctx context.Context, id uuid.UUID) (bool, error) {
+tag, err := r.db.Exec(ctx,
+`UPDATE documents SET deleted_at = NOW() WHERE id=$1 AND deleted_at IS NULL AND status='draft'`,
+id)
+if err != nil {
+return false, err
+}
+return tag.RowsAffected() > 0, nil
+}
+
+func (r *Repo) RestoreDocument(ctx context.Context, id uuid.UUID) (bool, error) {
+tag, err := r.db.Exec(ctx,
+`UPDATE documents SET deleted_at = NULL WHERE id=$1 AND deleted_at IS NOT NULL`, id)
+if err != nil {
+return false, err
+}
+return tag.RowsAffected() > 0, nil
+}
+
+func (r *Repo) HardDeleteDocument(ctx context.Context, id uuid.UUID) (bool, error) {
+tag, err := r.db.Exec(ctx,
+`DELETE FROM documents WHERE id=$1 AND deleted_at IS NOT NULL`, id)
+if err != nil {
+return false, err
+}
+return tag.RowsAffected() > 0, nil
+}
+
+func (r *Repo) HardDeleteAllTrashDocuments(ctx context.Context) (int64, error) {
+tag, err := r.db.Exec(ctx, `DELETE FROM documents WHERE deleted_at IS NOT NULL`)
+if err != nil {
+return 0, err
+}
+return tag.RowsAffected(), nil
 }

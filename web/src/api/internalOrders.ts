@@ -65,10 +65,11 @@ export interface IntOrderInput {
   }>
 }
 
-export async function listInternalOrders(filters?: { status?: string; warehouse_id?: string }): Promise<InternalOrder[]> {
+export async function listInternalOrders(filters?: { status?: string; warehouse_id?: string; include_deleted?: boolean }): Promise<InternalOrder[]> {
   const params = new URLSearchParams()
   if (filters?.status) params.set('status', filters.status)
   if (filters?.warehouse_id) params.set('warehouse_id', filters.warehouse_id)
+  if (filters?.include_deleted) params.set('include_deleted', '1')
   const qs = params.toString()
   const url = qs ? `/internal-orders?${qs}` : '/internal-orders'
   const { data } = await http.get<{ items: InternalOrder[] }>(url)
@@ -171,3 +172,16 @@ export const SYSTEMS: Array<{ code: string; name: string }> = [
   { code: 'SOT',  name: 'СОТ'  },
   { code: 'SKS',  name: 'СКС'  },
 ]
+// ---------- trash ----------
+
+export async function softDeleteInternalOrder(id: string): Promise<void> {
+  await http.delete(`/internal-orders/${id}`)
+}
+
+export async function restoreInternalOrder(id: string): Promise<void> {
+  await http.post(`/internal-orders/${id}/restore`)
+}
+
+export async function hardDeleteInternalOrder(id: string): Promise<void> {
+  await http.delete(`/internal-orders/${id}/hard`)
+}

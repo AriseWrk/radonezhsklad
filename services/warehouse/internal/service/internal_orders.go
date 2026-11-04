@@ -226,3 +226,46 @@ func (s *InternalOrderService) ListIssues(ctx context.Context, orderID uuid.UUID
 	}
 	return s.issueRepo.ListByOrder(ctx, orderID)
 }
+
+// ---------- trash ----------
+
+func (s *InternalOrderService) SoftDelete(ctx context.Context, id uuid.UUID) error {
+ok, err := s.repo.SoftDelete(ctx, id)
+if err != nil {
+return apperr.Internal("soft delete order", err)
+}
+if !ok {
+return apperr.Conflict("в корзину можно отправить только черновик")
+}
+return nil
+}
+
+func (s *InternalOrderService) Restore(ctx context.Context, id uuid.UUID) error {
+ok, err := s.repo.Restore(ctx, id)
+if err != nil {
+return apperr.Internal("restore order", err)
+}
+if !ok {
+return apperr.NotFound("заказ не в корзине")
+}
+return nil
+}
+
+func (s *InternalOrderService) HardDelete(ctx context.Context, id uuid.UUID) error {
+ok, err := s.repo.HardDelete(ctx, id)
+if err != nil {
+return apperr.Internal("hard delete order", err)
+}
+if !ok {
+return apperr.NotFound("заказ не в корзине")
+}
+return nil
+}
+
+func (s *InternalOrderService) ClearTrash(ctx context.Context) (int64, error) {
+n, err := s.repo.HardDeleteAllTrash(ctx)
+if err != nil {
+return 0, apperr.Internal("clear trash orders", err)
+}
+return n, nil
+}

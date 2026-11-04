@@ -1,4 +1,4 @@
-﻿import { http } from './client'
+import { http } from './client'
 
 export type DocType = 'receipt' | 'shipment' | 'transfer' | 'writeoff' | 'inventory' | 'purchase_order' | 'invoice_in' | 'purchase_return' | 'facture_in'
 export type DocStatus = 'draft' | 'posted' | 'cancelled'
@@ -66,6 +66,7 @@ export interface DocFilters {
   paid_max?: number
   printed?: boolean
   sent?: boolean
+  include_deleted?: boolean
 }
 
 export async function listDocuments(filters?: DocFilters): Promise<Document[]> {
@@ -97,4 +98,22 @@ export async function postDocument(id: string): Promise<Document> {
 export async function cancelDocument(id: string): Promise<Document> {
   const { data } = await http.post<Document>(`/documents/${id}/cancel`)
   return data
+}
+// ---------- trash ----------
+
+export async function softDeleteDocument(id: string): Promise<void> {
+  await http.delete(`/documents/${id}`)
+}
+
+export async function restoreDocument(id: string): Promise<void> {
+  await http.post(`/documents/${id}/restore`)
+}
+
+export async function hardDeleteDocument(id: string): Promise<void> {
+  await http.delete(`/documents/${id}/hard`)
+}
+
+export async function clearTrashDocuments(): Promise<number> {
+  const { data } = await http.delete<{ documents: number; internal_orders: number }>('/trash/clear')
+  return data.documents ?? 0
 }

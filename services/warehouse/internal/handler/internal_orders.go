@@ -178,6 +178,7 @@ func (h *InternalOrderHandler) List(c *gin.Context) {
 	}
 	items, err := h.svc.List(c.Request.Context(), repository.InternalOrderFilters{
 		Status: statusF, WarehouseID: whID,
+		IncludeDeleted: c.Query("include_deleted") == "1" || c.Query("include_deleted") == "true",
 	})
 	if err != nil {
 		c.Error(err)
@@ -431,4 +432,54 @@ func (h *InternalOrderHandler) ListIssues(c *gin.Context) {
 		return
 	}
 	httpx.OK(c, gin.H{"items": list})
+}
+
+// ---------- trash (internal orders) ----------
+
+func (h *InternalOrderHandler) SoftDelete(c *gin.Context) {
+id, err := uuid.Parse(c.Param("id"))
+if err != nil {
+c.Error(apperr.BadRequest("invalid id"))
+return
+}
+if err := h.svc.SoftDelete(c.Request.Context(), id); err != nil {
+c.Error(err)
+return
+}
+c.Status(http.StatusNoContent)
+}
+
+func (h *InternalOrderHandler) Restore(c *gin.Context) {
+id, err := uuid.Parse(c.Param("id"))
+if err != nil {
+c.Error(apperr.BadRequest("invalid id"))
+return
+}
+if err := h.svc.Restore(c.Request.Context(), id); err != nil {
+c.Error(err)
+return
+}
+c.Status(http.StatusNoContent)
+}
+
+func (h *InternalOrderHandler) HardDelete(c *gin.Context) {
+id, err := uuid.Parse(c.Param("id"))
+if err != nil {
+c.Error(apperr.BadRequest("invalid id"))
+return
+}
+if err := h.svc.HardDelete(c.Request.Context(), id); err != nil {
+c.Error(err)
+return
+}
+c.Status(http.StatusNoContent)
+}
+
+func (h *InternalOrderHandler) ClearTrash(c *gin.Context) {
+n, err := h.svc.ClearTrash(c.Request.Context())
+if err != nil {
+c.Error(err)
+return
+}
+httpx.OK(c, gin.H{"deleted": n})
 }

@@ -98,10 +98,13 @@ const sections: Section[] = [
 
 const subTabsMap: Record<string, SubTab[]> = {
   company: [
-    { name: 'documents', label: 'Документы', path: '/documents', match: '/documents', roles: ['admin', 'warehouse'] },
-    { name: 'dashboard', label: 'Показатели',  path: '/',        match: '/',      exact: true },
-    { name: 'users',     label: 'Сотрудники',  path: '/users',   match: '/users',   roles: ['admin'] },
-    { name: 'audit',     label: 'Аудит',       path: '/audit',   match: '/audit',   roles: ['admin'] },
+    { name: 'dashboard',         label: 'Показатели',         path: '/',        match: '/',        exact: true },
+    { name: 'company-settings',  label: 'Настройки компании', path: '/company/settings', match: '/company/settings' },
+    { name: 'organizations',     label: 'Юр. лица',           path: '/organizations', match: '/organizations', roles: ['admin', 'warehouse'] },
+    { name: 'users',             label: 'Сотрудники',         path: '/users',   match: '/users',   roles: ['admin'] },
+    { name: 'documents',         label: 'Документы',          path: '/documents', match: '/documents', roles: ['admin', 'warehouse'] },
+		{ name: 'trash',             label: 'Корзина',            path: '/trash',     match: '/trash',     roles: ['admin', 'warehouse'] },
+    { name: 'audit',             label: 'Аудит',              path: '/audit',   match: '/audit',   roles: ['admin'] },
   ],
   crm: [
     { name: 'counterparties', label: 'Контрагенты', path: '/counterparties', match: '/counterparties' },

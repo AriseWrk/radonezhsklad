@@ -141,6 +141,11 @@ func main() {
                 api.Any("/analytics", orderProxy)
                 api.Any("/analytics/*path", orderProxy)
 
+                api.Any("/company", warehouseProxy)
+		api.Any("/company/*path", warehouseProxy)
+
+
+
                 api.Any("/audit", auditProxy)
                 api.Any("/audit/*path", auditProxy)
         }

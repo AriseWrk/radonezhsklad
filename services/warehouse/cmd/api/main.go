@@ -14,7 +14,8 @@ import (
 
         shcfg "github.com/radonezhsklad/shared/config"
         "github.com/radonezhsklad/shared/logger"
-        mw "github.com/radonezhsklad/shared/middleware"
+        "github.com/radonezhsklad/shared/httpx"
+	mw "github.com/radonezhsklad/shared/middleware"
         "github.com/radonezhsklad/shared/msapi"
         "github.com/radonezhsklad/warehouse/internal/config"
         "github.com/radonezhsklad/warehouse/internal/db"
@@ -48,6 +49,7 @@ func main() {
         projectRepo := repository.NewProjectRepo(pool)
         invRepo := repository.NewInventoryRepo(pool)
         orgRepo := repository.NewOrganizationRepo(pool)
+        companySettingsRepo := repository.NewCompanySettingsRepo(pool)
         syncJobRepo := repository.NewSyncJobRepo(pool)
         msSyncErrRepo := repository.NewMsSyncErrorRepo(pool)
 
@@ -107,6 +109,7 @@ func main() {
         intOrderH := handler.NewInternalOrderHandler(intOrderSvc, svc, supSvc, pc, pusher)
         projectH := handler.NewProjectHandler(projectSvc)
         invH := handler.NewInventoryHandler(invSvc, svc, supSvc, pc)
+        companySettingsH := handler.NewCompanySettingsHandler(companySettingsRepo)
 
         if env == "prod" {
                 gin.SetMode(gin.ReleaseMode)
@@ -138,6 +141,7 @@ func main() {
                         readPts.GET("/organizations", supH.ListOrganizations)
                         readPts.GET("/projects", projectH.List)
                         readPts.GET("/projects/:id", projectH.Get)
+                        readPts.GET("/company/settings", companySettingsH.Get)
                 }
 
                 // readCore — только админ/склад
@@ -181,7 +185,9 @@ func main() {
                         intOrderPost.POST("/internal-orders/:id/cancel", intOrderH.Cancel)
                         intOrderPost.POST("/internal-orders/:id/send", intOrderH.Send)
                         intOrderPost.POST("/internal-orders/:id/issues", intOrderH.Issue)
-                        intOrderPost.DELETE("/internal-orders/:id", intOrderH.Delete)
+                        intOrderPost.DELETE("/internal-orders/:id", intOrderH.SoftDelete)
+			intOrderPost.POST("/internal-orders/:id/restore", intOrderH.Restore)
+			intOrderPost.DELETE("/internal-orders/:id/hard", intOrderH.HardDelete)
                 }
 
                 supWrite := api.Group("")
@@ -202,6 +208,29 @@ func main() {
                         docWrite.POST("/documents/:id/post", h.PostDocument)
                         docWrite.POST("/documents/:id/cancel", h.CancelDocument)
                         docWrite.POST("/inventories/:id/create-correction", invH.CreateCorrection)
+			docWrite.DELETE("/documents/:id", h.SoftDeleteDocument)
+			docWrite.POST("/documents/:id/restore", h.RestoreDocument)
+			docWrite.DELETE("/documents/:id/hard", h.HardDeleteDocument)
+                }
+
+                // company settings: только админ
+                adminWrite := api.Group("")
+                adminWrite.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin"))
+                {
+                        adminWrite.PUT("/company/settings", companySettingsH.Update)
+			adminWrite.DELETE("/trash/clear", func(c *gin.Context) {
+				nDocs, err := h.ClearTrashDocumentsCount(c.Request.Context())
+				if err != nil {
+					c.Error(err)
+					return
+				}
+				nOrders, err := intOrderSvc.ClearTrash(c.Request.Context())
+				if err != nil {
+					c.Error(err)
+					return
+				}
+				httpx.OK(c, gin.H{"documents": nDocs, "internal_orders": nOrders})
+			})
                 }
         }
 

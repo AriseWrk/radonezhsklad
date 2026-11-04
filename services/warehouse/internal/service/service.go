@@ -297,3 +297,46 @@ func (s *Service) ReservedByProduct(ctx context.Context, productID uuid.UUID) (m
 func (s *Service) BalancesByProduct(ctx context.Context, productID uuid.UUID) ([]repository.BalanceByWarehouse, error) {
 	return s.repo.BalancesByProduct(ctx, productID)
 }
+
+// ---------- trash ----------
+
+func (s *Service) SoftDeleteDocument(ctx context.Context, id uuid.UUID) error {
+ok, err := s.repo.SoftDeleteDocument(ctx, id)
+if err != nil {
+return apperr.Internal("soft delete document", err)
+}
+if !ok {
+return apperr.Conflict("в корзину можно отправить только черновик")
+}
+return nil
+}
+
+func (s *Service) RestoreDocument(ctx context.Context, id uuid.UUID) error {
+ok, err := s.repo.RestoreDocument(ctx, id)
+if err != nil {
+return apperr.Internal("restore document", err)
+}
+if !ok {
+return apperr.NotFound("документ не в корзине")
+}
+return nil
+}
+
+func (s *Service) HardDeleteDocument(ctx context.Context, id uuid.UUID) error {
+ok, err := s.repo.HardDeleteDocument(ctx, id)
+if err != nil {
+return apperr.Internal("hard delete document", err)
+}
+if !ok {
+return apperr.NotFound("документ не в корзине")
+}
+return nil
+}
+
+func (s *Service) ClearTrashDocuments(ctx context.Context) (int64, error) {
+n, err := s.repo.HardDeleteAllTrashDocuments(ctx)
+if err != nil {
+return 0, apperr.Internal("clear trash documents", err)
+}
+return n, nil
+}

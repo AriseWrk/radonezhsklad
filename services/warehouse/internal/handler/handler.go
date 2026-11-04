@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"strings"
@@ -273,6 +274,7 @@ func (h *Handler) ListDocuments(c *gin.Context) {
 	f.PaidMax = parseFloatOpt(c.Query("paid_max"))
 	f.Printed = parseBoolOpt(c.Query("printed"))
 	f.Sent = parseBoolOpt(c.Query("sent"))
+	f.IncludeDeleted = c.Query("include_deleted") == "1" || c.Query("include_deleted") == "true"
 	items, err := h.svc.ListDocuments(c.Request.Context(), f)
 	if err != nil {
 		c.Error(err)
@@ -367,4 +369,58 @@ func (h *Handler) CancelDocument(c *gin.Context) {
 		}
 	}
 	httpx.OK(c, d)
+}
+
+// ---------- trash (documents) ----------
+
+func (h *Handler) SoftDeleteDocument(c *gin.Context) {
+id, err := uuid.Parse(c.Param("id"))
+if err != nil {
+c.Error(apperr.BadRequest("invalid id"))
+return
+}
+if err := h.svc.SoftDeleteDocument(c.Request.Context(), id); err != nil {
+c.Error(err)
+return
+}
+c.Status(http.StatusNoContent)
+}
+
+func (h *Handler) RestoreDocument(c *gin.Context) {
+id, err := uuid.Parse(c.Param("id"))
+if err != nil {
+c.Error(apperr.BadRequest("invalid id"))
+return
+}
+if err := h.svc.RestoreDocument(c.Request.Context(), id); err != nil {
+c.Error(err)
+return
+}
+c.Status(http.StatusNoContent)
+}
+
+func (h *Handler) HardDeleteDocument(c *gin.Context) {
+id, err := uuid.Parse(c.Param("id"))
+if err != nil {
+c.Error(apperr.BadRequest("invalid id"))
+return
+}
+if err := h.svc.HardDeleteDocument(c.Request.Context(), id); err != nil {
+c.Error(err)
+return
+}
+c.Status(http.StatusNoContent)
+}
+
+func (h *Handler) ClearTrashDocuments(c *gin.Context) {
+n, err := h.svc.ClearTrashDocuments(c.Request.Context())
+if err != nil {
+c.Error(err)
+return
+}
+httpx.OK(c, gin.H{"deleted": n})
+}
+// ClearTrashDocumentsCount — только счётчик удалённых (для /trash/clear).
+func (h *Handler) ClearTrashDocumentsCount(ctx context.Context) (int64, error) {
+return h.svc.ClearTrashDocuments(ctx)
 }

@@ -93,7 +93,7 @@ import { createDocument } from '../api/documents'
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
 import MsIcon from '../components/MsIcon.vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 interface Row extends InventoryPrepareRow {
   fact_quantity: number
@@ -107,6 +107,7 @@ const saving = ref(false)
 const error = ref<string | null>(null)
 
 const router = useRouter()
+const route = useRoute()
 
 function formatQty(n: number) { return n.toLocaleString('ru-RU', { maximumFractionDigits: 3 }) }
 function formatMoney(n: number) {
@@ -182,6 +183,11 @@ async function save() {
 
 onMounted(async () => {
   try { warehouses.value = await listWarehouses() } catch { /* ignore */ }
+  const q = route.query.warehouse_id
+  if (typeof q === 'string' && q) {
+    warehouseId.value = q
+    await load()
+  }
 })
 </script>
 

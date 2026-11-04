@@ -91,8 +91,8 @@ const sections: Section[] = [
   { key: 'company',   label: 'Компания', icon: 'building', path: '/' },
   { key: 'purchases', label: 'Закупки',  icon: 'cart',     path: '/purchases/planning', roles: ['admin', 'warehouse'] },
   { key: 'sales',     label: 'Продажи',  icon: 'send',     path: '/orders',             roles: ['admin', 'warehouse'] },
-  { key: 'crm',       label: 'CRM',      icon: 'user',     path: '/counterparties' },
   { key: 'products',  label: 'Товары',   icon: 'package',  path: '/products' },
+  { key: 'crm',       label: 'CRM',      icon: 'user',     path: '/counterparties' },
   { key: 'stock',     label: 'Склад',    icon: 'building', path: '/stock',              roles: ['admin', 'warehouse', 'pts'] },
 ]
 
@@ -112,7 +112,7 @@ const subTabsMap: Record<string, SubTab[]> = {
     { name: 'contracts',      label: 'Договоры',    path: '/contracts',      match: '/contracts',      roles: ['admin', 'warehouse'] },
   ],
   products: [
-    { name: 'products',   label: 'Товары',    path: '/products',   match: '/products' },
+    { name: 'products',   label: 'Товары и услуги', path: '/products',   match: '/products' },
     { name: 'categories', label: 'Категории', path: '/categories', match: '/categories' },
   ],
   purchases: [

@@ -134,7 +134,7 @@ const subTabsMap: Record<string, SubTab[]> = {
     { name: 'stock-transfers', label: 'Перемещения',       path: '/stock/transfers', match: '/stock/transfers', roles: ['admin','warehouse'] },
     { name: 'inventories',     label: 'Инвентаризации',    path: '/inventories',     match: '/inventories',     roles: ['admin','warehouse'] },
     { name: 'internal-orders', label: 'Внутренние заказы', path: '/internal-orders', match: '/internal-orders' },
-    { name: 'stock',           label: 'Остатки',           path: '/stock',           match: '/stock' },
+    { name: 'stock',           label: 'Остатки',           path: '/stock',           match: '/stock',           exact: true },
     { name: 'stock-turnover',  label: 'Обороты',           path: '/stock/turnover',  match: '/stock/turnover',  roles: ['admin','warehouse'] },
     { name: 'warehouses',      label: 'Склады',            path: '/warehouses',      match: '/warehouses',      roles: ['admin','warehouse'] },
   ],

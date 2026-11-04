@@ -35,7 +35,7 @@
             <button @click="openCreate('internal_order')">Внутренние заказы</button>
             <button @click="openCreate('transfer')">Перемещения</button>
             <button @click="openCreate('inventory')">Инвентаризация</button>
-            <button @click="openCreate('receipt')">Оприходование</button>
+            <button @click="openCreate('enter')">Оприходование</button>
             <button @click="openCreate('writeoff')">Списание</button>
             
             <div class="dd-group">Производство</div>

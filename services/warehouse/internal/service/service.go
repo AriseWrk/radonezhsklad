@@ -87,13 +87,13 @@ func (s *Service) BookStockForInventory(ctx context.Context, warehouseID uuid.UU
 // ---------- documents ----------
 
 var validTypes = map[string]bool{
-	"receipt": true, "shipment": true, "transfer": true, "writeoff": true, "inventory": true,
+	"receipt": true, "enter": true, "shipment": true, "transfer": true, "writeoff": true, "inventory": true,
 	"purchase_order": true, "invoice_in": true, "purchase_return": true, "facture_in": true,
 }
 
 // requiresWarehouse — типы, для которых warehouse_id обязателен.
 var requiresWarehouse = map[string]bool{
-	"receipt": true, "shipment": true, "transfer": true, "writeoff": true, "inventory": true,
+	"receipt": true, "enter": true, "shipment": true, "transfer": true, "writeoff": true, "inventory": true,
 	"purchase_return": true,
 }
 
@@ -190,7 +190,7 @@ func (s *Service) PostDocument(ctx context.Context, id uuid.UUID) (*models.Docum
 	err = s.repo.WithTx(ctx, func(tx pgx.Tx) error {
 		for _, it := range d.Items {
 			switch d.Type {
-			case "receipt":
+			case "receipt", "enter":
 				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, it.Quantity, &d.ID, nil, d.Type, d.CreatedBy, nil, d.WarehouseID); err != nil {
 					return apperr.Internal("apply receipt", err)
 				}
@@ -248,7 +248,7 @@ func (s *Service) CancelDocument(ctx context.Context, id uuid.UUID) (*models.Doc
 	err = s.repo.WithTx(ctx, func(tx pgx.Tx) error {
 		for _, it := range d.Items {
 			switch d.Type {
-			case "receipt":
+			case "receipt", "enter":
 				if err := s.repo.ApplyMovement(ctx, tx, *d.WarehouseID, it.ProductID, -it.Quantity, &d.ID, nil, d.Type, d.CreatedBy, nil, d.WarehouseID); err != nil {
 					return apperr.Internal("revert receipt", err)
 				}

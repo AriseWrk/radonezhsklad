@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div>
     <div class="ms-title">
       <button class="ms-help" title="Справка"><MsIcon name="help" :size="14" /></button>
@@ -7,7 +7,7 @@
     </div>
 
     <div class="ms-toolbar">
-      <MsButton variant="primary" icon="plus" @click="openCreate">{{ docLabel }}</MsButton>
+      <MsButton variant="green" icon="plus" @click="openCreate">{{ docLabel }}</MsButton>
       <MsButton icon="filter" @click="showFilter = !showFilter">Фильтр</MsButton>
       <input v-model="search" class="ms-input" placeholder="Номер или комментарий" />
       <div class="ms-counter">{{ filtered.length }}</div>
@@ -36,7 +36,7 @@
       </div>
       <div class="filter-grid">
         <div class="filter-field">
-          <label class="filter-label"><span class="dot"></span>Период</label>
+          <label class="filter-label"><span class="dot"></span>Период: <span class="link">вч·сг·нед·мес</span></label>
           <div class="filter-range">
             <select class="range-quick" v-model="filterDateQuick">
               <option value="">вс</option>
@@ -54,7 +54,7 @@
           <input v-model="filterIncomingNumber" />
         </div>
         <div class="filter-field">
-          <label class="filter-label"><span class="dot"></span>Входящая дата</label>
+          <label class="filter-label"><span class="dot"></span>Входящая дата: <span class="link">вч·сг·нед·мес</span></label>
           <div class="filter-range">
             <select class="range-quick" v-model="filterIncDateQuick">
               <option value="">вс</option>
@@ -79,17 +79,47 @@
           <label class="filter-label"><span class="dot"></span>Товар или группа</label>
           <select disabled><option>—</option></select>
         </div>
+
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Тип возврата</label>
+          <select disabled><option>—</option></select>
+        </div>
         <div class="filter-field">
           <label class="filter-label"><span class="dot"></span>Склад</label>
           <MsCombo v-model="filterWarehouse" :items="warehouses" placeholder="—" />
+        </div>
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Проект</label>
+          <select disabled><option>—</option></select>
         </div>
         <div class="filter-field">
           <label class="filter-label"><span class="dot"></span>Контрагент</label>
           <MsCombo v-model="filterSupplier" :items="suppliers" placeholder="—" />
         </div>
         <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Группа контрагента</label>
+          <select disabled><option>—</option></select>
+        </div>
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Счёт контрагента</label>
+          <select disabled><option>—</option></select>
+        </div>
+
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Договор</label>
+          <select disabled><option>—</option></select>
+        </div>
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Владелец контрагента</label>
+          <select disabled><option>—</option></select>
+        </div>
+        <div class="filter-field">
           <label class="filter-label"><span class="dot"></span>Организация</label>
           <MsCombo v-model="filterOrganization" :items="organizations" placeholder="—" />
+        </div>
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Счёт организации</label>
+          <select disabled><option>—</option></select>
         </div>
         <div class="filter-field">
           <label class="filter-label"><span class="dot"></span>Статус</label>
@@ -108,6 +138,7 @@
             <option value="draft">Нет</option>
           </select>
         </div>
+
         <div class="filter-field">
           <label class="filter-label"><span class="dot"></span>Напечатано</label>
           <select v-model="filterPrinted">
@@ -124,9 +155,41 @@
             <option value="no">Нет</option>
           </select>
         </div>
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Владелец-сотрудник</label>
+          <select disabled><option>—</option></select>
+        </div>
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Владелец-отдел</label>
+          <select disabled><option>—</option></select>
+        </div>
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Общий доступ</label>
+          <select disabled><option>—</option></select>
+        </div>
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Когда изменен: <span class="link">вч·сг·нед·мес</span></label>
+          <div class="filter-range">
+            <input type="date" disabled />
+            <span class="range-dash">—</span>
+            <input type="date" disabled />
+          </div>
+        </div>
+        <div class="filter-field">
+          <label class="filter-label"><span class="dot"></span>Кто изменил</label>
+          <select disabled><option>—</option></select>
+        </div>
       </div>
     </div>
     <div v-if="error" class="error-box">{{ error }}</div>
+
+    <div v-if="selected.size > 0" class="bulk-bar">
+      <span class="bulk-count">Выбрано: {{ selected.size }}</span>
+      <button class="bulk-btn" @click="onBulkPost">Провести</button>
+      <button class="bulk-btn" @click="onBulkCancel">Отменить</button>
+      <button class="bulk-btn danger" @click="onBulkTrash">В корзину</button>
+      <button class="bulk-btn" @click="selected = new Set()">Снять выделение</button>
+    </div>
 
     <table class="ms-table">
       <thead>
@@ -141,10 +204,11 @@
           <th class="num">Оплачено</th>
           <th style="width:110px">Входящая дата</th>
           <th>Входящий номер</th>
+          <th>Статус</th>
           <th>Отправлено</th>
           <th>Напечатано</th>
           <th>Комментарий</th>
-          <th class="actions-col"></th>
+          <th class="actions-col"><button class="gear-btn" title="Настройки колонок"><MsIcon name="gear" :size="14" /></button></th>
         </tr>
       </thead>
       <tbody>
@@ -167,6 +231,7 @@
           <td class="num">{{ formatMoney(d.paid_amount ?? 0) }}</td>
           <td class="muted">{{ d.incoming_date ? formatShortDate(d.incoming_date) : '—' }}</td>
           <td class="muted">{{ d.incoming_number || '—' }}</td>
+          <td><span class="badge-status" :class="'bg-' + d.status">{{ statusLabel(d.status) }}</span></td>
           <td class="muted">{{ d.sent_at ? 'да' : '—' }}</td>
           <td class="muted">{{ d.printed_at ? 'да' : '—' }}</td>
           <td class="muted">{{ d.comment || '—' }}</td>
@@ -375,7 +440,7 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const showFilter = ref(false)
 const page = ref(1)
-const perPage = 50
+const perPage = 100
 
 const search = ref('')
 const filterStatus = ref('')
@@ -488,6 +553,34 @@ function toggleSelect(id: string) {
   const s = new Set(selected.value)
   s.has(id) ? s.delete(id) : s.add(id)
   selected.value = s
+}
+
+async function onBulkPost() {
+  if (!confirm(`Провести выбранные (${selected.value.size})?`)) return
+  for (const id of Array.from(selected.value)) {
+    try { await postDocument(id) } catch (e) { error.value = apiErrorMessage(e) }
+  }
+  selected.value = new Set()
+  await load()
+}
+
+async function onBulkCancel() {
+  if (!confirm(`Отменить выбранные (${selected.value.size})?`)) return
+  for (const id of Array.from(selected.value)) {
+    try { await cancelDocument(id) } catch (e) { error.value = apiErrorMessage(e) }
+  }
+  selected.value = new Set()
+  await load()
+}
+
+async function onBulkTrash() {
+  if (!confirm(`Переместить в корзину (${selected.value.size})?`)) return
+  const { softDeleteDocument } = await import('../api/documents')
+  for (const id of Array.from(selected.value)) {
+    try { await softDeleteDocument(id) } catch (e) { error.value = apiErrorMessage(e) }
+  }
+  selected.value = new Set()
+  await load()
 }
 
 function applyFilters() {
@@ -674,10 +767,10 @@ tr.clickable { cursor: pointer; }
 .ms-refresh:hover { color: #2c5d9c; }
 .ms-toolbar {
   display: flex; align-items: center; gap: 6px;
-  margin-bottom: 12px; flex-wrap: wrap;
+  margin-bottom: 12px; flex-wrap: wrap; gap: 4px;
 }
 .ms-input {
-  flex: 1; max-width: 320px; height: 30px; padding: 0 10px;
+  flex: 1 1 150px; max-width: 280px; min-width: 120px; height: 30px; padding: 0 10px;
   font-size: 13px; border: 1px solid #d0d7de; border-radius: 4px;
   background: #fff; color: #1f2328;
 }
@@ -692,7 +785,7 @@ tr.clickable { cursor: pointer; }
 .ms-select {
   height: 30px; padding: 0 8px; font-size: 13px;
   border: 1px solid #d0d7de; border-radius: 4px;
-  background: #fff; color: #1f2328; max-width: 160px;
+  background: #fff; color: #1f2328; max-width: 140px; flex-shrink: 0;
 }
 .ms-filter {
   background: #eef1f5; border: 1px solid #d8dee4;
@@ -710,8 +803,10 @@ tr.clickable { cursor: pointer; }
 }
 .filter-label .dot {
   width: 8px; height: 8px; border-radius: 50%;
-  background: #2c5d9c; flex-shrink: 0;
+  background: #8c959f; flex-shrink: 0;
 }
+.filter-label .link { color: #0969da; cursor: pointer; margin-left: 2px; }
+.filter-label .link:hover { text-decoration: underline; }
 .filter-field input, .filter-field select {
   height: 28px; padding: 0 8px; font-size: 12px;
   border: 1px solid #d0d7de; border-radius: 3px;
@@ -732,7 +827,8 @@ tr.clickable { cursor: pointer; }
 .ms-pager button:hover:not(:disabled) { background: #f6f8fa; }
 .ms-pager button:disabled { opacity: .4; cursor: default; }
 .ms-pager-info { margin: 0 6px; color: #57606a; }
-.ms-select-bulk, .ms-select-edo { max-width: none; }
+.ms-select-bulk { width: 130px; flex: 0 0 130px; }
+.ms-select-edo { width: 100px; flex: 0 0 100px; }
 .filter-ico {
   width: 30px; height: 30px; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;

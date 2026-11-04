@@ -156,6 +156,7 @@ type docReq struct {
 	TargetWarehouseID string       `json:"target_warehouse_id"`
 	SupplierID        string       `json:"supplier_id"`
 	OrganizationID    string       `json:"organization_id"`
+ContractID        string       `json:"contract_id"`
 	IncomingNumber    string       `json:"incoming_number"`
 	IncomingDate      string       `json:"incoming_date"`
 	Comment           string       `json:"comment"`
@@ -239,6 +240,7 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 		TargetWarehouseID: parseUUIDOpt(req.TargetWarehouseID),
 		SupplierID:        parseUUIDOpt(req.SupplierID),
 		OrganizationID:    parseUUIDOpt(req.OrganizationID),
+ContractID:        parseUUIDOpt(req.ContractID),
 		IncomingNumber:    strPtr(req.IncomingNumber),
 		IncomingDate:      parseDate(req.IncomingDate),
 		Comment:           strPtr(req.Comment),

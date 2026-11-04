@@ -201,7 +201,8 @@ func main() {
                 supWrite := api.Group("")
                 supWrite.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "warehouse"))
                 {
-                        supWrite.POST("/suppliers", supH.Create)
+                        supWrite.POST("/organizations", supH.CreateOrganization)
+supWrite.POST("/suppliers", supH.Create)
                         supWrite.PUT("/suppliers/:id", supH.Update)
                         supWrite.DELETE("/suppliers/:id", supH.Delete)
                         supWrite.POST("/projects", projectH.Create)

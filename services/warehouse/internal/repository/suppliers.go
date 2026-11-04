@@ -76,6 +76,15 @@ func (r *SupplierRepo) Delete(ctx context.Context, id uuid.UUID) (bool, error) {
 type OrganizationRepo struct{ db *pgxpool.Pool }
 
 func NewOrganizationRepo(db *pgxpool.Pool) *OrganizationRepo { return &OrganizationRepo{db: db} }
+func (r *OrganizationRepo) Create(ctx context.Context, o *models.Organization) error {
+err := r.db.QueryRow(ctx,
+`INSERT INTO organizations (name, full_name, inn, kpp, ogrn, okpo, legal_address, is_default)
+ VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+ RETURNING id, created_at`,
+o.Name, o.FullName, o.INN, o.KPP, o.OGRN, o.OKPO, o.LegalAddress, o.IsDefault,
+).Scan(&o.ID, &o.CreatedAt)
+return err
+}
 
 func (r *OrganizationRepo) List(ctx context.Context) ([]models.Organization, error) {
 	rows, err := r.db.Query(ctx,

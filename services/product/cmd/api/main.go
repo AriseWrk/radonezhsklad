@@ -83,7 +83,8 @@ func main() {
 		write := api.Group("")
 		write.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "warehouse"))
 		{
-			write.POST("/categories", h.CreateCategory)
+			write.POST("/units", h.CreateUnit)
+write.POST("/categories", h.CreateCategory)
 			write.PUT("/categories/:id", h.UpdateCategory)
 			write.DELETE("/categories/:id", h.DeleteCategory)
 			write.POST("/products", h.CreateProduct)

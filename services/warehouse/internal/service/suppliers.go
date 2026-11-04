@@ -94,6 +94,36 @@ func (s *SupplierService) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+type OrganizationInput struct {
+Name         string
+FullName     *string
+INN          *string
+KPP          *string
+OGRN         *string
+OKPO         *string
+LegalAddress *string
+IsDefault    bool
+}
+
+func (s *SupplierService) CreateOrganization(ctx context.Context, in OrganizationInput) (*models.Organization, error) {
+if in.Name == "" {
+return nil, apperr.BadRequest("name is required")
+}
+org := &models.Organization{
+Name:         in.Name,
+FullName:     in.FullName,
+INN:          in.INN,
+KPP:          in.KPP,
+OGRN:         in.OGRN,
+OKPO:         in.OKPO,
+LegalAddress: in.LegalAddress,
+IsDefault:    in.IsDefault,
+}
+if err := s.orgs.Create(ctx, org); err != nil {
+return nil, apperr.Internal("create organization", err)
+}
+return org, nil
+}
 func (s *SupplierService) ListOrganizations(ctx context.Context) ([]models.Organization, error) {
 	return s.orgs.List(ctx)
 }

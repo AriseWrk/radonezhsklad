@@ -113,6 +113,25 @@ func (h *Handler) DeleteCategory(c *gin.Context) {
 
 // ---------- units ----------
 
+type unitReq struct {
+Code      string `json:"code"`
+Name      string `json:"name" binding:"required"`
+ShortName string `json:"short_name" binding:"required"`
+}
+
+func (h *Handler) CreateUnit(c *gin.Context) {
+var req unitReq
+if err := c.ShouldBindJSON(&req); err != nil {
+c.Error(apperr.BadRequest(err.Error()))
+return
+}
+u, err := h.svc.CreateUnit(c.Request.Context(), req.Code, req.Name, req.ShortName)
+if err != nil {
+c.Error(err)
+return
+}
+httpx.Created(c, u)
+}
 func (h *Handler) ListUnits(c *gin.Context) {
 	units, err := h.svc.ListUnits(c.Request.Context())
 	if err != nil {

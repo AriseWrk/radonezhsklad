@@ -103,6 +103,13 @@ func (r *Repo) ListUnits(ctx context.Context) ([]models.Unit, error) {
 	return out, rows.Err()
 }
 
+func (r *Repo) CreateUnit(ctx context.Context, u *models.Unit) error {
+err := r.db.QueryRow(ctx,
+`INSERT INTO units (code, name, short_name) VALUES ($1, $2, $3) RETURNING id, created_at`,
+u.Code, u.Name, u.ShortName,
+).Scan(&u.ID, &u.CreatedAt)
+return err
+}
 // ---------- products ----------
 
 type ProductInput struct {

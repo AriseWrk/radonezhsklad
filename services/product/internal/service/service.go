@@ -58,6 +58,19 @@ func (s *Service) DeleteCategory(ctx context.Context, id uuid.UUID) error {
 }
 
 func (s *Service) ListUnits(ctx context.Context) ([]models.Unit, error) { return s.repo.ListUnits(ctx) }
+func (s *Service) CreateUnit(ctx context.Context, code, name, shortName string) (*models.Unit, error) {
+if name == "" {
+return nil, apperr.BadRequest("name is required")
+}
+if shortName == "" {
+return nil, apperr.BadRequest("short_name is required")
+}
+u := &models.Unit{Code: code, Name: name, ShortName: shortName}
+if err := s.repo.CreateUnit(ctx, u); err != nil {
+return nil, apperr.Internal("create unit", err)
+}
+return u, nil
+}
 
 func (s *Service) CreateProduct(ctx context.Context, in repository.ProductInput) (*models.Product, error) {
 	if in.Name == "" {

@@ -100,6 +100,39 @@ func (h *SupplierHandler) Delete(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+type organizationReq struct {
+Name         string `json:"name" binding:"required"`
+FullName     string `json:"full_name"`
+INN          string `json:"inn"`
+KPP          string `json:"kpp"`
+OGRN         string `json:"ogrn"`
+OKPO         string `json:"okpo"`
+LegalAddress string `json:"legal_address"`
+IsDefault    bool   `json:"is_default"`
+}
+
+func (h *SupplierHandler) CreateOrganization(c *gin.Context) {
+var req organizationReq
+if err := c.ShouldBindJSON(&req); err != nil {
+c.Error(apperr.BadRequest(err.Error()))
+return
+}
+org, err := h.svc.CreateOrganization(c.Request.Context(), service.OrganizationInput{
+Name:         req.Name,
+FullName:     strPtr(req.FullName),
+INN:          strPtr(req.INN),
+KPP:          strPtr(req.KPP),
+OGRN:         strPtr(req.OGRN),
+OKPO:         strPtr(req.OKPO),
+LegalAddress: strPtr(req.LegalAddress),
+IsDefault:    req.IsDefault,
+})
+if err != nil {
+c.Error(err)
+return
+}
+httpx.Created(c, org)
+}
 func (h *SupplierHandler) ListOrganizations(c *gin.Context) {
 	items, err := h.svc.ListOrganizations(c.Request.Context())
 	if err != nil {

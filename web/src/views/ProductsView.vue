@@ -148,88 +148,20 @@
       </div>
     </div>
 
-    <!-- Модалка создания/редактирования -->
-    <div v-if="modal.open" class="modal-backdrop" @click.self="closeModal">
-      <form class="card modal big" @submit.prevent="onSubmit">
-        <h2>{{ modal.isEdit ? 'Карточка товара' : 'Новый товар' }}</h2>
-        <div v-if="modal.error" class="error-box">{{ modal.error }}</div>
-
-        <label>Наименование*
-          <input v-model="form.name" required />
-        </label>
-
-        <div class="grid2">
-          <label>Артикул
-            <input v-model="form.sku" placeholder="SKU" />
-          </label>
-          <label>Штрихкод
-            <input v-model="form.barcode" />
-          </label>
-        </div>
-
-        <div class="grid2">
-          <label>Категория
-            <select v-model="form.category_id">
-              <option value="">— не выбрана —</option>
-              <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
-            </select>
-          </label>
-          <label>Единица измерения
-            <select v-model="form.unit_id">
-              <option value="">— не выбрана —</option>
-              <option v-for="u in units" :key="u.id" :value="u.id">
-                {{ u.name }} ({{ u.short_name }})
-              </option>
-            </select>
-          </label>
-        </div>
-
-        <div class="grid3">
-          <label>Цена продажи
-            <input v-model.number="form.price" type="number" step="0.01" min="0" />
-          </label>
-          <label>Себестоимость
-            <input v-model.number="form.cost_price" type="number" step="0.01" min="0" />
-          </label>
-          <label>Несниж. остаток
-            <input v-model.number="form.min_stock" type="number" step="0.001" min="0" />
-          </label>
-        </div>
-
-        <label>Описание
-          <textarea v-model="form.description" rows="2"></textarea>
-        </label>
-
-        <div class="modal-actions">
-          <button
-            v-if="modal.isEdit && !form.is_archived"
-            type="button"
-            class="danger"
-            @click="onArchive"
-          >Архивировать</button>
-          <div style="flex:1"></div>
-          <button type="button" @click="closeModal">Отмена</button>
-          <button class="primary" type="submit" :disabled="modal.saving">
-            {{ modal.saving ? 'Сохранение...' : 'Сохранить' }}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
 </template>
 
 <script setup lang="ts">
 import { smartFilter } from '../utils/smartSearch'
-import { computed, onMounted, reactive, ref } from 'vue'
-import {
-  listProducts, createProduct, updateProduct, archiveProduct,
-  type Product,
-} from '../api/products'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { listProducts, type Product } from '../api/products'
 import { listCategories, type Category } from '../api/categories'
 import { listUnits, type Unit } from '../api/units'
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
 import MsIcon from '../components/MsIcon.vue'
+
+const router = useRouter()
 
 const products = ref<Product[]>([])
 const categories = ref<Category[]>([])
@@ -372,72 +304,11 @@ async function load() {
 }
 
 function openCreate() {
-  Object.assign(form, {
-    name: '', sku: '', barcode: '',
-    category_id: selectedCategory.value || '',
-    unit_id: '', description: '',
-    price: 0, cost_price: 0, min_stock: 0,
-    currency: 'RUB', is_archived: false,
-  })
-  modal.open = true; modal.isEdit = false; modal.error = null; modal.editingId = ''
+  router.push({ name: 'product-new' })
 }
 
 function openEdit(p: Product) {
-  Object.assign(form, {
-    name: p.name,
-    sku: p.sku ?? '',
-    barcode: p.barcode ?? '',
-    category_id: p.category_id ?? '',
-    unit_id: p.unit_id ?? '',
-    description: p.description ?? '',
-    price: p.price,
-    cost_price: p.cost_price ?? 0,
-    min_stock: p.min_stock ?? 0,
-    currency: p.currency || 'RUB',
-    is_archived: p.is_archived,
-  })
-  modal.open = true; modal.isEdit = true; modal.error = null; modal.editingId = p.id
-}
-
-function closeModal() { modal.open = false }
-
-async function onSubmit() {
-  modal.error = null
-  modal.saving = true
-  try {
-    const payload = {
-      name: form.name,
-      sku: form.sku || undefined,
-      barcode: form.barcode || undefined,
-      category_id: form.category_id || undefined,
-      unit_id: form.unit_id || undefined,
-      description: form.description || undefined,
-      price: form.price,
-      cost_price: form.cost_price,
-      min_stock: form.min_stock,
-      currency: form.currency || 'RUB',
-    }
-    if (modal.isEdit) {
-      await updateProduct(modal.editingId, payload)
-    } else {
-      await createProduct(payload)
-    }
-    closeModal()
-    await load()
-  } catch (e) {
-    modal.error = apiErrorMessage(e)
-  } finally {
-    modal.saving = false
-  }
-}
-
-async function onArchive() {
-  if (!confirm(`Заархивировать «${form.name}»?`)) return
-  try {
-    await archiveProduct(modal.editingId)
-    closeModal()
-    await load()
-  } catch (e) { modal.error = apiErrorMessage(e) }
+  router.push({ name: 'product-edit', params: { id: p.id } })
 }
 
 function clearFilters() {

@@ -1,0 +1,44 @@
+{
+  "Сличительная ведомость.xlsx": {
+    "created_at": "2026-11-04T18:14:40Z",
+    "uploaded_by_name": "—",
+    "name": "Сличительная ведомость.xlsx",
+    "category": "Инвентаризации",
+    "size_bytes": 17231
+  },
+  "intorder1.xlsx": {
+    "created_at": "2026-11-04T18:15:07Z",
+    "uploaded_by_name": "—",
+    "name": "intorder1.xlsx",
+    "category": "Внутренние заказы",
+    "size_bytes": 11922
+  },
+  "Отгрузка со склада.xlsx": {
+    "created_at": "2026-11-04T18:14:11Z",
+    "uploaded_by_name": "—",
+    "name": "Отгрузка со склада.xlsx",
+    "category": "Отгрузки",
+    "size_bytes": 14045
+  },
+  "Внутренний заказ через.xlsx": {
+    "created_at": "2026-11-04T18:15:18Z",
+    "uploaded_by_name": "—",
+    "name": "Внутренний заказ через.xlsx",
+    "category": "Внутренние заказы",
+    "size_bytes": 11972
+  },
+  "blank-inv-19 (1).xlsx": {
+    "created_at": "2026-11-04T18:14:55Z",
+    "uploaded_by_name": "—",
+    "name": "blank-inv-19 (1).xlsx",
+    "category": "Инвентаризации",
+    "size_bytes": 20432
+  },
+  "torg13new.xlsx": {
+    "created_at": "2026-11-04T18:14:28Z",
+    "uploaded_by_name": "—",
+    "name": "torg13new.xlsx",
+    "category": "Перемещения",
+    "size_bytes": 14754
+  }
+}

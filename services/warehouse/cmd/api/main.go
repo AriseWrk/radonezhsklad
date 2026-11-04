@@ -111,6 +111,14 @@ func main() {
         invH := handler.NewInventoryHandler(invSvc, svc, supSvc, pc)
         companySettingsH := handler.NewCompanySettingsHandler(companySettingsRepo)
 
+	fileRepo, err := repository.NewFileRepo(cfg.UploadsDir)
+	if err != nil {
+	slog.Error("file repo init", "error", err)
+		os.Exit(1)
+	}
+	filesH := handler.NewFilesHandler(fileRepo)
+	slog.Info("uploads dir", "dir", cfg.UploadsDir)
+
         if env == "prod" {
                 gin.SetMode(gin.ReleaseMode)
         }
@@ -218,6 +226,11 @@ func main() {
                 adminWrite.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin"))
                 {
                         adminWrite.PUT("/company/settings", companySettingsH.Update)
+		adminWrite.GET("/files", filesH.List)
+		adminWrite.POST("/files", filesH.Upload)
+		adminWrite.GET("/files/:name/download", filesH.Download)
+		adminWrite.DELETE("/files/:name", filesH.Delete)
+		adminWrite.PATCH("/files/:name", filesH.UpdateCategory)
 			adminWrite.DELETE("/trash/clear", func(c *gin.Context) {
 				nDocs, err := h.ClearTrashDocumentsCount(c.Request.Context())
 				if err != nil {

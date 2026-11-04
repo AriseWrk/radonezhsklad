@@ -143,6 +143,8 @@ func main() {
 
                 api.Any("/company", warehouseProxy)
 		api.Any("/company/*path", warehouseProxy)
+		api.Any("/files", warehouseProxy)
+		api.Any("/files/*path", warehouseProxy)
 
 
 

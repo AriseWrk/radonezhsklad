@@ -105,6 +105,7 @@ const subTabsMap: Record<string, SubTab[]> = {
     { name: 'documents',         label: 'Документы',          path: '/documents', match: '/documents', roles: ['admin', 'warehouse'] },
 		{ name: 'trash',             label: 'Корзина',            path: '/trash',     match: '/trash',     roles: ['admin', 'warehouse'] },
     { name: 'audit',             label: 'Аудит',              path: '/audit',   match: '/audit',   roles: ['admin'] },
+    { name: 'files',             label: 'Файлы',              path: '/files',   match: '/files',   roles: ['admin'] },
   ],
   crm: [
     { name: 'counterparties', label: 'Контрагенты', path: '/counterparties', match: '/counterparties' },

@@ -2,7 +2,7 @@
 import MsIcon from './MsIcon.vue'
 
 withDefaults(defineProps<{
-  variant?: 'default' | 'primary' | 'green' | 'ghost' | 'danger' | 'icon'
+  variant?: 'default' | 'primary' | 'green' | 'yellow' | 'ghost' | 'danger' | 'icon'
   icon?: string
   iconRight?: string
   size?: 'sm' | 'md'
@@ -62,6 +62,14 @@ withDefaults(defineProps<{
   font-weight: 600;
 }
 .ms-btn.v-green:hover:not(:disabled) { background: #97bd4b; border-color: #97bd4b; }
+
+.ms-btn.v-yellow {
+  background: #f5c242;
+  border-color: #f5c242;
+  color: #1f2328;
+  font-weight: 600;
+}
+.ms-btn.v-yellow:hover:not(:disabled) { background: #edb52a; border-color: #edb52a; }
 
 .ms-btn.v-ghost {
   background: transparent;

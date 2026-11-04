@@ -32,9 +32,10 @@
 
       <!-- Тулбар -->
       <div class="ms-toolbar">
-        <MsButton variant="primary" icon="plus" @click="openCreate">Товар</MsButton>
-        <MsButton icon="package" disabled>Услуга</MsButton>
-        <MsButton icon="package" disabled>Комплект</MsButton>
+        <MsButton variant="green" icon="plus" @click="openCreate">Товар</MsButton>
+        <MsButton variant="yellow" icon="package" disabled>Услуга</MsButton>
+        <MsButton variant="primary" icon="package" disabled>Комплект</MsButton>
+        <MsButton variant="primary" icon="bookmark" disabled>Группа</MsButton>
         <MsButton icon="filter" @click="showFilter = !showFilter">Фильтр</MsButton>
         <input v-model="search" class="ms-input" placeholder="Наименование, код или артикул" />
         <div class="ms-counter" :class="{ active: selected.size > 0 }">{{ selected.size }}</div>
@@ -44,7 +45,8 @@
           <option>Архивировать</option>
         </select>
         <MsButton icon="print" @click="printList">Печать</MsButton>
-        <MsButton icon="excel" @click="importCsv" disabled>Импорт</MsButton>`n        <MsButton icon="excel" @click="exportCsv">Экспорт</MsButton>
+        <MsButton icon="excel" @click="importCsv" disabled>Импорт</MsButton>
+        <MsButton icon="excel" @click="exportCsv">Экспорт</MsButton>
         <MsButton variant="icon" icon="gear" title="Настройки" />
       </div>
 

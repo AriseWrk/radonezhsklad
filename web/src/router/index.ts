@@ -22,6 +22,8 @@ const routes: RouteRecordRaw[] = [
     children: [
       { path: '',           name: 'dashboard',  component: () => import('../views/DashboardView.vue') },
       { path: 'products',   name: 'products',   component: () => import('../views/ProductsView.vue'),   meta: { roles: ['admin', 'warehouse', 'pts'] } },
+      { path: 'products/new',     name: 'product-new',  component: () => import('../views/ProductFormView.vue'), meta: { roles: ['admin', 'warehouse', 'pts'] } },
+      { path: 'products/:id',     name: 'product-edit', component: () => import('../views/ProductFormView.vue'), meta: { roles: ['admin', 'warehouse', 'pts'] } },
       { path: 'categories', name: 'categories', component: () => import('../views/CategoriesView.vue'), meta: { roles: ['admin', 'warehouse', 'pts'] } },
       { path: 'warehouses', name: 'warehouses', component: () => import('../views/WarehousesView.vue'), meta: { roles: ['admin', 'warehouse'] } },
       { path: 'stock',      name: 'stock',      component: () => import('../views/StockView.vue'),      meta: { roles: ['admin', 'warehouse', 'pts'] } },

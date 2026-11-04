@@ -147,6 +147,7 @@
         </div>
       </div>
     </div>
+  </div>
 
 </template>
 
@@ -185,27 +186,6 @@ const sortDir = ref<'asc' | 'desc'>('asc')
 
 const selected = ref<Set<string>>(new Set())
 
-const modal = reactive({
-  open: false,
-  isEdit: false,
-  saving: false,
-  error: null as string | null,
-  editingId: '' as string,
-})
-
-const form = reactive({
-  name: '',
-  sku: '',
-  barcode: '',
-  category_id: '',
-  unit_id: '',
-  description: '',
-  price: 0,
-  cost_price: 0,
-  min_stock: 0,
-  currency: 'RUB',
-  is_archived: false,
-})
 
 function shortId(id: string) { return id.slice(0, 8) }
 function unitShort(id?: string) {

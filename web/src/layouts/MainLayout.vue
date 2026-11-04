@@ -122,9 +122,6 @@ const subTabsMap: Record<string, SubTab[]> = {
     { name: 'purchases-returns',  label: 'Возвраты поставщикам', path: '/purchases/returns',  match: '/purchases/returns',  roles: ['admin','warehouse'] },
     { name: 'purchases-factures', label: 'Счета-фактуры полученные', path: '/purchases/factures', match: '/purchases/factures', roles: ['admin','warehouse'] },
     { name: 'purchases-planning', label: 'Управление закупками', path: '/purchases/planning', match: '/purchases/planning', roles: ['admin','warehouse'] },
-    { name: 'purchases-suppliers',label: 'Поставщики',           path: '/suppliers',          match: '/suppliers',          roles: ['admin','warehouse'] },
-    { name: 'inventory',          label: 'Инвентаризации',       path: '/inventory',          match: '/inventory',          roles: ['admin','warehouse'] },
-    { name: 'warehouses',         label: 'Склады',               path: '/warehouses',         match: '/warehouses',         roles: ['admin','warehouse'] },
   ],
   sales: [
     { name: 'orders',          label: 'Заказы',     path: '/orders',          match: '/orders',          roles: ['admin','warehouse'] },

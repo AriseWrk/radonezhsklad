@@ -27,6 +27,32 @@
         <MsButton @click="clearFilters">Очистить</MsButton>
       </div>
       <div class="filter-grid">
+        <!-- Ряд 1 -->
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Период</label>
+          <div class="filter-dates">
+            <input v-model="filterDateFrom" type="date" />
+            <span class="dash">—</span>
+            <input v-model="filterDateTo" type="date" />
+          </div>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Показывать</label>
+          <select><option>Только обычные</option><option>Все</option></select>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Контрагент</label>
+          <select v-model="filterCustomer">
+            <option value="">—</option>
+            <option v-for="c in customers" :key="c.id" :value="c.id">{{ c.name }}</option>
+          </select>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Группа контрагента</label>
+          <input disabled placeholder="—" />
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Организация</label>
+          <select v-model="filterOrganization">
+            <option value="">—</option>
+            <option v-for="o in organizations" :key="o.id" :value="o.id">{{ o.name }}</option>
+          </select>
+        </div>
         <div class="filter-field">
           <label class="filter-label"><span class="dot"></span>Архивные</label>
           <select v-model="includeArchived" @change="load">
@@ -34,20 +60,42 @@
             <option :value="true">Показать</option>
           </select>
         </div>
-        <div class="filter-field">
-          <label class="filter-label"><span class="dot"></span>Контрагент</label>
-          <select v-model="filterCustomer">
+
+        <!-- Ряд 2 -->
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Статус</label>
+          <select v-model="filterContractStatus">
             <option value="">—</option>
-            <option v-for="c in customers" :key="c.id" :value="c.id">{{ c.name }}</option>
+            <option value="Черновик">Черновик</option>
+            <option value="Активный">Активный</option>
+            <option value="Закрыт">Закрыт</option>
           </select>
         </div>
-        <div class="filter-field">
-          <label class="filter-label"><span class="dot"></span>Период с</label>
-          <input v-model="filterDateFrom" type="date" />
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Отправлено</label>
+          <select disabled><option>—</option></select>
         </div>
-        <div class="filter-field">
-          <label class="filter-label"><span class="dot"></span>Период по</label>
-          <input v-model="filterDateTo" type="date" />
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Напечатано</label>
+          <select disabled><option>—</option></select>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Владелец-сотрудник</label>
+          <select disabled><option>—</option></select>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Владелец-отдел</label>
+          <select disabled><option>—</option></select>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Общий доступ</label>
+          <select disabled><option>—</option></select>
+        </div>
+
+        <!-- Ряд 3 -->
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Когда изменен</label>
+          <div class="filter-dates">
+            <input v-model="filterChangedFrom" type="date" />
+            <span class="dash">—</span>
+            <input v-model="filterChangedTo" type="date" />
+          </div>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Кто изменил</label>
+          <select disabled><option>—</option></select>
         </div>
       </div>
     </div>
@@ -151,6 +199,10 @@ const filterCustomer = ref('')
 const filterDateFrom = ref('')
 const filterDateTo = ref('')
 const filterStatus = ref('')
+const filterOrganization = ref('')
+const filterContractStatus = ref('')
+const filterChangedFrom = ref('')
+const filterChangedTo = ref('')
 
 const sortKey = ref<'number' | 'doc_date' | 'amount'>('doc_date')
 const sortDir = ref<'asc' | 'desc'>('desc')
@@ -203,6 +255,10 @@ const filtered = computed(() => {
   if (filterStatus.value === 'unpaid')    rows = rows.filter((c) => c.paid === 0)
   if (filterStatus.value === 'partial')   rows = rows.filter((c) => c.paid > 0 && c.paid < c.amount)
   if (filterStatus.value === 'paid')      rows = rows.filter((c) => c.paid >= c.amount && c.amount > 0)
+  if (filterOrganization.value) rows = rows.filter((c) => (c as any).organization_id === filterOrganization.value)
+  if (filterContractStatus.value) rows = rows.filter((c) => (c as any).status === filterContractStatus.value)
+  if (filterChangedFrom.value) rows = rows.filter((c) => ((c as any).updated_at ?? '').slice(0,10) >= filterChangedFrom.value)
+  if (filterChangedTo.value)   rows = rows.filter((c) => ((c as any).updated_at ?? '').slice(0,10) <= filterChangedTo.value)
 
   return [...rows].sort((a, b) => {
     const av = a[sortKey.value]; const bv = b[sortKey.value]
@@ -268,6 +324,10 @@ function clearFilters() {
   filterDateTo.value = ''
   filterStatus.value = ''
   page.value = 1
+  filterOrganization.value = ''
+  filterContractStatus.value = ''
+  filterChangedFrom.value = ''
+  filterChangedTo.value = ''
 }
 
 function printList() { window.print() }
@@ -327,6 +387,10 @@ tr.clickable.row-warning:hover { background: #fceec9; }
 .ms-filter { background: #eef1f5; border: 1px solid #d8dee4; border-radius: 4px; padding: 10px 14px 12px; margin-bottom: 12px; }
 .filter-actions { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
 .filter-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 14px; }
+.filter-dates, .filter-range { display: flex; align-items: center; gap: 4px; }
+.filter-dates input, .filter-range input { flex: 1; min-width: 0; height: 28px; padding: 0 6px; font-size: 12px; border: 1px solid #d0d7de; border-radius: 3px; background: #fff; color: #1f2328; }
+.filter-dates input:disabled, .filter-range input:disabled { background: #f6f8fa; color: #8c959f; }
+.dash { color: #8c959f; font-size: 12px; flex-shrink: 0; }
 .filter-field { display: flex; flex-direction: column; gap: 3px; }
 .filter-label { font-size: 12px; color: #57606a; display: flex; align-items: center; gap: 5px; }
 .filter-label .dot { width: 8px; height: 8px; border-radius: 50%; background: #2c5d9c; flex-shrink: 0; }

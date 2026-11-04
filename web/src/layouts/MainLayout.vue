@@ -147,7 +147,7 @@ const visibleSections = computed(() =>
 const currentSection = computed(() => {
   const p = route.path
   if (p.startsWith('/products') || p.startsWith('/categories')) return 'products'
-  if (p.startsWith('/counterparties') || p.startsWith('/customers')) return 'crm'
+  if (p.startsWith('/counterparties') || p.startsWith('/contracts') || p.startsWith('/customers')) return 'crm'
   if (p.startsWith('/orders') || p.startsWith('/customers') || p.startsWith('/sales')) return 'sales'
   if (p.startsWith('/stock') || p.startsWith('/internal-orders')) return 'stock'
   if (p.startsWith('/purchases') || p === '/inventory' || p === '/inventories') return 'purchases'

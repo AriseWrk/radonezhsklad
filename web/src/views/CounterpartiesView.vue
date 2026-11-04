@@ -32,6 +32,26 @@
         <MsButton @click="clearFilters">Очистить</MsButton>
       </div>
       <div class="filter-grid">
+        <!-- Ряд 1 -->
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Создан</label>
+          <div class="filter-dates">
+            <input v-model="filterCreatedFrom" type="date" />
+            <span class="dash">—</span>
+            <input v-model="filterCreatedTo" type="date" />
+          </div>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Дата события</label>
+          <div class="filter-dates"><input type="date" disabled /><span class="dash">—</span><input type="date" disabled /></div>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Текст события</label>
+          <input disabled placeholder="—" />
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Наименование</label>
+          <input v-model="filterName" placeholder="" />
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Полное наименование</label>
+          <input v-model="filterFullName" placeholder="" />
+        </div>
         <div class="filter-field">
           <label class="filter-label"><span class="dot"></span>Архивные</label>
           <select v-model="includeArchived" @change="load">
@@ -39,21 +59,119 @@
             <option :value="true">Показать</option>
           </select>
         </div>
-        <div class="filter-field">
-          <label class="filter-label"><span class="dot"></span>ИНН</label>
-          <input v-model="filterInn" placeholder="ИНН" />
+
+        <!-- Ряд 2 -->
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Код</label>
+          <input v-model="filterCode" placeholder="" />
         </div>
-        <div class="filter-field">
-          <label class="filter-label"><span class="dot"></span>Группа</label>
-          <input v-model="filterGroup" placeholder="Группа" />
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>ИНН</label>
+          <input v-model="filterInn" placeholder="" />
         </div>
-        <div class="filter-field">
-          <label class="filter-label"><span class="dot"></span>Тип</label>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Телефон</label>
+          <input v-model="filterPhone" placeholder="" />
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>E-mail</label>
+          <input v-model="filterEmail" placeholder="" />
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Дата рождения</label>
+          <div class="filter-dates"><input type="date" disabled /><span class="dash">—</span><input type="date" disabled /></div>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Пол</label>
+          <select disabled><option>—</option></select>
+        </div>
+
+        <!-- Ряд 3 -->
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Адрес</label>
+          <input v-model="filterAddress" placeholder="" />
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Показывать</label>
+          <select><option>Только обычные</option><option>Все</option></select>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Баланс</label>
+          <div class="filter-range"><input type="number" disabled placeholder="от" /><span class="dash">—</span><input type="number" disabled placeholder="до" /></div>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Прибыль</label>
+          <div class="filter-range"><input type="number" disabled placeholder="от" /><span class="dash">—</span><input type="number" disabled placeholder="до" /></div>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Средний чек</label>
+          <div class="filter-range"><input type="number" disabled placeholder="от" /><span class="dash">—</span><input type="number" disabled placeholder="до" /></div>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Сумма продаж</label>
+          <div class="filter-range"><input type="number" disabled placeholder="от" /><span class="dash">—</span><input type="number" disabled placeholder="до" /></div>
+        </div>
+
+        <!-- Ряд 4 -->
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Количество продаж</label>
+          <div class="filter-range"><input type="number" disabled placeholder="от" /><span class="dash">—</span><input type="number" disabled placeholder="до" /></div>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Первая продажа</label>
+          <div class="filter-dates"><input type="date" disabled /><span class="dash">—</span><input type="date" disabled /></div>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Последняя продажа</label>
+          <div class="filter-dates"><input type="date" disabled /><span class="dash">—</span><input type="date" disabled /></div>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Проданные товары / группа</label>
+          <select disabled><option>—</option></select>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Сумма возвратов</label>
+          <div class="filter-range"><input type="number" disabled placeholder="от" /><span class="dash">—</span><input type="number" disabled placeholder="до" /></div>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Количество возвратов</label>
+          <div class="filter-range"><input type="number" disabled placeholder="от" /><span class="dash">—</span><input type="number" disabled placeholder="до" /></div>
+        </div>
+
+        <!-- Ряд 5 -->
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Сумма скидок</label>
+          <div class="filter-range"><input type="number" disabled placeholder="от" /><span class="dash">—</span><input type="number" disabled placeholder="до" /></div>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Дисконтная карта</label>
+          <input disabled placeholder="—" />
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Баллы</label>
+          <div class="filter-range"><input type="number" disabled placeholder="от" /><span class="dash">—</span><input type="number" disabled placeholder="до" /></div>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Цены</label>
+          <select disabled><option>—</option></select>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Тип контрагента</label>
           <select v-model="filterType">
             <option value="">Все</option>
             <option value="Юридическое лицо. Россия">Юридическое лицо</option>
             <option value="Индивидуальный предприниматель. Россия">ИП</option>
           </select>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Группа контрагента</label>
+          <input v-model="filterGroup" placeholder="" />
+        </div>
+
+        <!-- Ряд 6 -->
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>КПП контрагента</label>
+          <input disabled placeholder="—" />
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Статус</label>
+          <select v-model="filterStatus">
+            <option value="">Все</option>
+            <option value="Новый">Новый</option>
+            <option value="Активный">Активный</option>
+            <option value="Закрыт">Закрыт</option>
+          </select>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Владелец-сотрудник</label>
+          <select disabled><option>—</option></select>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Владелец-отдел</label>
+          <select disabled><option>—</option></select>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Общий доступ</label>
+          <select disabled><option>—</option></select>
+        </div>
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Когда изменен</label>
+          <div class="filter-dates"><input v-model="filterChangedFrom" type="date" /><span class="dash">—</span><input v-model="filterChangedTo" type="date" /></div>
+        </div>
+
+        <!-- Ряд 7 -->
+        <div class="filter-field"><label class="filter-label"><span class="dot"></span>Кто изменил</label>
+          <select disabled><option>—</option></select>
         </div>
       </div>
     </div>
@@ -257,6 +375,16 @@ const filterStatus = ref('')
 const filterInn = ref('')
 const filterGroup = ref('')
 const filterType = ref('')
+const filterName = ref('')
+const filterFullName = ref('')
+const filterCode = ref('')
+const filterPhone = ref('')
+const filterEmail = ref('')
+const filterAddress = ref('')
+const filterCreatedFrom = ref('')
+const filterCreatedTo = ref('')
+const filterChangedFrom = ref('')
+const filterChangedTo = ref('')
 
 const sortKey = ref<'name' | 'created_at'>('name')
 const sortDir = ref<'asc' | 'desc'>('asc')
@@ -307,6 +435,16 @@ const filtered = computed(() => {
   if (filterInn.value) rows = rows.filter((c) => (c.inn ?? '').includes(filterInn.value))
   if (filterGroup.value) rows = rows.filter((c) => (c.group_name ?? '').toLowerCase().includes(filterGroup.value.toLowerCase()))
   if (filterType.value) rows = rows.filter((c) => c.counterparty_type === filterType.value)
+  if (filterName.value) rows = rows.filter((c) => c.name.toLowerCase().includes(filterName.value.toLowerCase()))
+  if (filterFullName.value) rows = rows.filter((c) => (c.full_name ?? '').toLowerCase().includes(filterFullName.value.toLowerCase()))
+  if (filterCode.value) rows = rows.filter((c) => (c.external_code ?? '').toLowerCase().includes(filterCode.value.toLowerCase()))
+  if (filterPhone.value) rows = rows.filter((c) => (c.phone ?? '').toLowerCase().includes(filterPhone.value.toLowerCase()))
+  if (filterEmail.value) rows = rows.filter((c) => (c.email ?? '').toLowerCase().includes(filterEmail.value.toLowerCase()))
+  if (filterAddress.value) rows = rows.filter((c) => ((c.actual_address ?? '') + ' ' + (c.legal_address ?? '')).toLowerCase().includes(filterAddress.value.toLowerCase()))
+  if (filterCreatedFrom.value) rows = rows.filter((c) => (c.created_at ?? '').slice(0,10) >= filterCreatedFrom.value)
+  if (filterCreatedTo.value)   rows = rows.filter((c) => (c.created_at ?? '').slice(0,10) <= filterCreatedTo.value)
+  if (filterChangedFrom.value) rows = rows.filter((c) => (c.updated_at ?? '').slice(0,10) >= filterChangedFrom.value)
+  if (filterChangedTo.value)   rows = rows.filter((c) => (c.updated_at ?? '').slice(0,10) <= filterChangedTo.value)
 
   return [...rows].sort((a, b) => {
     const av = a[sortKey.value]; const bv = b[sortKey.value]
@@ -421,6 +559,16 @@ function clearFilters() {
   filterInn.value = ''
   filterGroup.value = ''
   filterType.value = ''
+  filterName.value = ''
+  filterFullName.value = ''
+  filterCode.value = ''
+  filterPhone.value = ''
+  filterEmail.value = ''
+  filterAddress.value = ''
+  filterCreatedFrom.value = ''
+  filterCreatedTo.value = ''
+  filterChangedFrom.value = ''
+  filterChangedTo.value = ''
   page.value = 1
 }
 
@@ -549,6 +697,10 @@ label.chk input { width: auto; }
   display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px 14px;
 }
+.filter-dates, .filter-range { display: flex; align-items: center; gap: 4px; }
+.filter-dates input, .filter-range input { flex: 1; min-width: 0; height: 28px; padding: 0 6px; font-size: 12px; border: 1px solid #d0d7de; border-radius: 3px; background: #fff; color: #1f2328; }
+.filter-dates input:disabled, .filter-range input:disabled { background: #f6f8fa; color: #8c959f; }
+.dash { color: #8c959f; font-size: 12px; flex-shrink: 0; }
 .filter-field { display: flex; flex-direction: column; gap: 3px; }
 .filter-label {
   font-size: 12px; color: #57606a;

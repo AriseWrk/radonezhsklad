@@ -141,6 +141,12 @@
               <option v-for="o in organizations" :key="o.id" :value="o.id">{{ o.name }}</option>
             </select>
           </label>
+          <label>Договор
+            <select v-model="form.contract_id">
+              <option value="">— не выбран —</option>
+              <option v-for="ct in contracts" :key="ct.id" :value="ct.id">{{ ct.number }}</option>
+            </select>
+          </label>
         </div>
         <label>Комментарий
           <input v-model="form.comment" />
@@ -172,20 +178,24 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   listDocuments, createDocument, getDocument, type Document,
 } from '../api/documents'
 import { listWarehouses, type Warehouse } from '../api/warehouses'
 import { listProducts, type Product } from '../api/products'
 import { listOrganizations, type Organization } from '../api/suppliers'
+import { listContracts, type Contract } from '../api/contracts'
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
 import MsIcon from '../components/MsIcon.vue'
 
+const router = useRouter()
 const items = ref<Document[]>([])
 const warehouses = ref<Warehouse[]>([])
 const products = ref<Product[]>([])
 const organizations = ref<Organization[]>([])
+const contracts = ref<Contract[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const showFilter = ref(false)
@@ -209,6 +219,7 @@ const createError = ref<string | null>(null)
 const form = reactive({
   warehouse_id: '',
   organization_id: '',
+  contract_id: '',
   comment: '',
   items: [] as Array<{ product_id: string; quantity: number; price: number }>,
 })
@@ -302,8 +313,12 @@ async function load() {
 }
 
 function openCreate() {
+  router.push('/documents/new?type=enter')
+  return
+  // @ts-ignore старый код ниже не выполняется
   form.warehouse_id = warehouses.value[0]?.id ?? ''
   form.organization_id = organizations.value.find((o) => o.is_default)?.id ?? ''
+  form.contract_id = ''
   form.comment = ''
   form.items = [{ product_id: '', quantity: 1, price: 0 }]
   createError.value = null
@@ -324,6 +339,7 @@ async function onCreate() {
       type: 'enter',
       warehouse_id: form.warehouse_id,
       organization_id: form.organization_id || undefined,
+      contract_id: form.contract_id || undefined,
       comment: form.comment || undefined,
       items: form.items,
     })
@@ -337,17 +353,21 @@ async function onCreate() {
 }
 
 async function openEdit(d: Document) {
+  router.push('/documents/' + d.id)
+  return
+  // @ts-ignore
   try { await getDocument(d.id) } catch (e) { error.value = apiErrorMessage(e) }
 }
 
 onMounted(async () => {
   try {
-    const [w, p, o] = await Promise.all([
-      listWarehouses(), listProducts(true), listOrganizations(),
+    const [w, p, o, c] = await Promise.all([
+      listWarehouses(), listProducts(true), listOrganizations(), listContracts(),
     ])
     warehouses.value = w
     products.value = p
     organizations.value = o
+    contracts.value = c
   } catch { /* ignore */ }
   await load()
 })

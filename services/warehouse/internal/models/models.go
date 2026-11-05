@@ -61,6 +61,7 @@ TargetWarehouseID *uuid.UUID `json:"target_warehouse_id,omitempty"`
 SupplierID        *uuid.UUID `json:"supplier_id,omitempty"`
 OrganizationID    *uuid.UUID `json:"organization_id,omitempty"`
 	ContractID        *uuid.UUID `json:"contract_id,omitempty"`
+	ExpenseItem       *string    `json:"expense_item,omitempty"`
 IncomingNumber    *string    `json:"incoming_number,omitempty"`
 IncomingDate      *time.Time `json:"incoming_date,omitempty"`
 PaidAmount        float64    `json:"paid_amount"`

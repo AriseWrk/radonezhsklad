@@ -32,6 +32,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'stock/writeoffs', name: 'stock-writeoffs', component: () => import('../views/StockWriteoffsView.vue'), meta: { roles: ['admin', 'warehouse'], docType: 'writeoff'} },
       { path: 'stock/transfers', name: 'stock-transfers', component: () => import('../views/StockTransfersView.vue'), meta: { roles: ['admin', 'warehouse'], docType: 'transfer'} },
       { path: 'stock/turnover', name: 'stock-turnover', component: () => import('../views/StockTurnoverView.vue'), meta: { roles: ['admin', 'warehouse'] } },
+      { path: 'documents/new', name: 'document-new', component: () => import('../views/DocumentCardView.vue'), meta: { roles: ['admin', 'warehouse'] } },
       { path: 'documents/:id', name: 'document-card', component: () => import('../views/DocumentCardView.vue'), meta: { roles: ['admin', 'warehouse'] } },
       { path: 'purchases/receipts', name: 'purchases-receipts', component: () => import('../views/PurchasesDocView.vue'), meta: { roles: ['admin', 'warehouse'], docType: 'receipt' } },
       { path: 'purchases/orders',   name: 'purchases-orders',   component: () => import('../views/PurchasesDocView.vue'), meta: { roles: ['admin', 'warehouse'], docType: 'purchase_order' } },

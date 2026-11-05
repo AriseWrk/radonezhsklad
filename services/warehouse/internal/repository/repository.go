@@ -144,6 +144,7 @@ type DocumentInput struct {
 	SupplierID        *uuid.UUID
 	OrganizationID    *uuid.UUID
 	ContractID        *uuid.UUID
+	ExpenseItem       *string
 	IncomingNumber    *string
 	IncomingDate      *time.Time
 	Comment           *string
@@ -160,7 +161,7 @@ type DocItemInput struct {
 
 const documentSelect = `
 SELECT d.id, d.type, d.number, d.status, d.warehouse_id, d.target_warehouse_id,
-       d.supplier_id, d.organization_id, d.contract_id, d.incoming_number, d.incoming_date, d.paid_amount,
+       d.supplier_id, d.organization_id, d.contract_id, d.expense_item, d.incoming_number, d.incoming_date, d.paid_amount,
        d.printed_at, d.sent_at, d.comment, d.created_by,
        d.created_at, d.updated_at, d.posted_at, d.cancelled_at, d.deleted_at, d.external_id,
        d.ms_synced_at, d.ms_sync_error, d.source_inventory_id, d.source,
@@ -178,7 +179,7 @@ FROM documents d`
 func scanDocument(row pgx.Row) (*models.Document, error) {
 	d := &models.Document{}
 	err := row.Scan(&d.ID, &d.Type, &d.Number, &d.Status, &d.WarehouseID, &d.TargetWarehouseID,
-		&d.SupplierID, &d.OrganizationID, &d.ContractID, &d.IncomingNumber, &d.IncomingDate, &d.PaidAmount,
+		&d.SupplierID, &d.OrganizationID, &d.ContractID, &d.ExpenseItem, &d.IncomingNumber, &d.IncomingDate, &d.PaidAmount,
 		&d.PrintedAt, &d.SentAt, &d.Comment, &d.CreatedBy,
 		&d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt, &d.DeletedAt, &d.ExternalID,
 		&d.MSSyncedAt, &d.MSSyncError, &d.SourceInventoryID, &d.Source,
@@ -195,12 +196,12 @@ func (r *Repo) CreateDocument(ctx context.Context, in DocumentInput) (*models.Do
 		var id uuid.UUID
 		err := tx.QueryRow(ctx,
 			`INSERT INTO documents (type, number, warehouse_id, target_warehouse_id,
-                        supplier_id, organization_id, contract_id, incoming_number, incoming_date,
+                        supplier_id, organization_id, contract_id, expense_item, incoming_number, incoming_date,
                         comment, created_by, source_inventory_id)
- VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
  RETURNING id`,
 			in.Type, in.Number, in.WarehouseID, in.TargetWarehouseID,
-			in.SupplierID, in.OrganizationID, in.ContractID, in.IncomingNumber, in.IncomingDate,
+			in.SupplierID, in.OrganizationID, in.ContractID, in.ExpenseItem, in.IncomingNumber, in.IncomingDate,
 			in.Comment, in.CreatedBy, in.SourceInventoryID,
 		).Scan(&id)
 		if err != nil {
@@ -393,7 +394,7 @@ func (r *Repo) ListDocuments(ctx context.Context, f DocumentFilters) ([]models.D
 	for rows.Next() {
 		d := &models.Document{}
 		if err := rows.Scan(&d.ID, &d.Type, &d.Number, &d.Status, &d.WarehouseID, &d.TargetWarehouseID,
-			&d.SupplierID, &d.OrganizationID, &d.ContractID, &d.IncomingNumber, &d.IncomingDate, &d.PaidAmount,
+			&d.SupplierID, &d.OrganizationID, &d.ContractID, &d.ExpenseItem, &d.IncomingNumber, &d.IncomingDate, &d.PaidAmount,
 			&d.PrintedAt, &d.SentAt, &d.Comment, &d.CreatedBy,
 			&d.CreatedAt, &d.UpdatedAt, &d.PostedAt, &d.CancelledAt, &d.DeletedAt, &d.ExternalID,
 			&d.MSSyncedAt, &d.MSSyncError, &d.SourceInventoryID, &d.Source,

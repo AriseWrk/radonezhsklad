@@ -22,6 +22,8 @@ export interface Document {
   target_warehouse_id?: string
   supplier_id?: string
   organization_id?: string
+  contract_id?: string
+  expense_item?: string
   incoming_number?: string
   incoming_date?: string
   paid_amount: number
@@ -45,6 +47,8 @@ export interface DocumentInput {
   target_warehouse_id?: string
   supplier_id?: string
   organization_id?: string
+  contract_id?: string
+  expense_item?: string
   incoming_number?: string
   incoming_date?: string
   comment?: string
@@ -57,6 +61,8 @@ export interface DocFilters {
   warehouse_id?: string
   supplier_id?: string
   organization_id?: string
+  contract_id?: string
+  expense_item?: string
   date_from?: string
   date_to?: string
   incoming_number?: string

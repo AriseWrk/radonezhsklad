@@ -311,9 +311,6 @@ function openCreate() {
   router.push('/documents/new?type=writeoff')
   return
   // @ts-ignore
-  form.warehouse_id = warehouses.value[0]?.id ?? ''
-  form.organization_id = organizations.value.find((o) => o.is_default)?.id ?? ''
-  form.comment = ''
   form.reason = ''
   form.items = [{ product_id: '', quantity: 1, price: 0 }]
   createError.value = null
@@ -332,8 +329,6 @@ async function onCreate() {
 
     await createDocument({
       type: 'writeoff',
-      warehouse_id: form.warehouse_id,
-      organization_id: form.organization_id || undefined,
       comment: form.comment || undefined,
       reason: form.reason || undefined,
       items: form.items,

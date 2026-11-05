@@ -28,6 +28,8 @@
     <!-- Тулбар -->
     <div class="toolbar">
       <button class="btn-save" :disabled="saving" @click="save">{{ saving ? 'Сохранение...' : 'Сохранить' }}</button>
+      <button class="btn-plain" v-if="doc && doc.status === 'draft'" :disabled="saving" @click="doPost">Провести</button>
+      <button class="btn-plain" v-if="doc && doc.status === 'posted'" :disabled="saving" @click="doCancel">Отменить</button>
       <button class="btn-plain" @click="close">Закрыть</button>
       <button class="btn-plain" :disabled="!doc?.id">Изменить ▾</button>
       <button class="btn-plain" :disabled="!doc?.id">Печать ▾</button>
@@ -59,7 +61,7 @@
         <div class="field">
           <label>* Склад</label>
           <div class="with-plus">
-            <select v-model="form.warehouse_id" @change="onWarehouseChange">
+            <select v-model="form.warehouse_id">
               <option value="">—</option>
               <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
             </select>

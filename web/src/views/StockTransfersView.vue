@@ -330,7 +330,7 @@ function openCreate() {
   router.push('/documents/new?type=transfer')
   return
   // @ts-ignore
-  form.warehouse_id = warehouses.value[0]?.id ?? ''
+  router.push('/documents/new?type=transfer')
   form.target_warehouse_id = warehouses.value[1]?.id ?? ''
   form.organization_id = organizations.value.find((o) => o.is_default)?.id ?? ''
   form.comment = ''
@@ -370,6 +370,9 @@ async function onCreate() {
 }
 
 async function openEdit(d: Document) {
+  router.push('/documents/' + d.id)
+  return
+  // @ts-ignore
   router.push('/documents/' + d.id)
   return
   // @ts-ignore

@@ -4,7 +4,8 @@ import (
         "context"
         "log/slog"
         "net/http"
-        "os"
+	"os"
+	"path/filepath"
         "os/signal"
         "syscall"
         "time"
@@ -20,6 +21,7 @@ import (
         "github.com/radonezhsklad/warehouse/internal/config"
         "github.com/radonezhsklad/warehouse/internal/db"
         "github.com/radonezhsklad/warehouse/internal/handler"
+"github.com/radonezhsklad/warehouse/internal/printing"
         "github.com/radonezhsklad/warehouse/internal/mspush"
         "github.com/radonezhsklad/warehouse/internal/product"
         "github.com/radonezhsklad/warehouse/internal/repository"
@@ -104,7 +106,14 @@ func main() {
         autoSync := worker.NewAutoSync(syncJobRepo, pusher, internalToken, autoSyncInterval, autoSyncEnabled)
         autoSync.Start(context.Background())
 
-        h := handler.New(svc, pc, pusher)
+        templatesDir := cfg.UploadsDir
+if _, err := os.Stat(templatesDir); err != nil {
+exe, _ := os.Executable()
+templatesDir = filepath.Join(filepath.Dir(exe), "internal", "uploads", "templates")
+}
+slog.Info("templates dir", "dir", templatesDir)
+	printer := printing.New(templatesDir)
+	h := handler.New(svc, pc, pusher, printer)
         supH := handler.NewSupplierHandler(supSvc)
         intOrderH := handler.NewInternalOrderHandler(intOrderSvc, svc, supSvc, pc, pusher)
         projectH := handler.NewProjectHandler(projectSvc)
@@ -166,6 +175,7 @@ func main() {
                         readCore.GET("/inventories/:id/export-inv19", invH.ExportInv19)
                         readCore.GET("/documents", h.ListDocuments)
                         readCore.GET("/documents/:id", h.GetDocument)
+readCore.GET("/documents/:id/print/:template", h.PrintDocument)
                         readCore.GET("/suppliers", supH.List)
                         readCore.GET("/suppliers/:id", supH.Get)
                 }

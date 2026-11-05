@@ -16,17 +16,19 @@ import (
 	"github.com/radonezhsklad/warehouse/internal/mspush"
 	"github.com/radonezhsklad/warehouse/internal/product"
 	"github.com/radonezhsklad/warehouse/internal/repository"
-	"github.com/radonezhsklad/warehouse/internal/service"
+	"github.com/radonezhsklad/warehouse/internal/printing"
+"github.com/radonezhsklad/warehouse/internal/service"
 )
 
 type Handler struct {
 	svc           *service.Service
 	productClient *product.Client
 	pusher        *mspush.Pusher
+	printer       *printing.Printer
 }
 
-func New(svc *service.Service, pc *product.Client, pusher *mspush.Pusher) *Handler {
-	return &Handler{svc: svc, productClient: pc, pusher: pusher}
+func New(svc *service.Service, pc *product.Client, pusher *mspush.Pusher, printer *printing.Printer) *Handler {
+	return &Handler{svc: svc, productClient: pc, pusher: pusher, printer: printer}
 }
 
 func parseUUIDOpt(s string) *uuid.UUID {
@@ -383,6 +385,78 @@ func (h *Handler) GetDocument(c *gin.Context) {
 	}
 
 	httpx.OK(c, d)
+}
+
+func (h *Handler) PrintDocument(c *gin.Context) {
+id, err := uuid.Parse(c.Param("id"))
+if err != nil {
+c.Error(apperr.BadRequest("invalid id"))
+return
+}
+tpl := c.Param("template")
+if tpl == "" {
+c.Error(apperr.BadRequest("template required"))
+return
+}
+d, err := h.svc.GetDocument(c.Request.Context(), id)
+if err != nil {
+c.Error(err)
+return
+}
+if d == nil {
+c.Error(apperr.NotFound("document not found"))
+return
+}
+
+// Обогатить позиции (product_name, sku) — если есть productClient.
+if len(d.Items) > 0 && h.productClient != nil {
+token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+ids := make([]uuid.UUID, 0, len(d.Items))
+seen := map[uuid.UUID]bool{}
+for _, it := range d.Items {
+if !seen[it.ProductID] {
+seen[it.ProductID] = true
+ids = append(ids, it.ProductID)
+}
+}
+prods, err := h.productClient.ListByIDs(c.Request.Context(), token, ids)
+if err == nil {
+pmap := make(map[uuid.UUID]product.Product, len(prods))
+for _, p := range prods {
+pmap[p.ID] = p
+}
+for i := range d.Items {
+if p, ok := pmap[d.Items[i].ProductID]; ok {
+d.Items[i].ProductName = p.Name
+if p.SKU != nil {
+d.Items[i].ProductSKU = *p.SKU
+}
+}
+}
+}
+}
+
+// Склады / организация
+whName, twhName, orgName := "", "", ""
+if d.WarehouseID != nil {
+if w, err := h.svc.GetWarehouse(c.Request.Context(), *d.WarehouseID); err == nil && w != nil {
+whName = w.Name
+}
+}
+if d.TargetWarehouseID != nil {
+if w, err := h.svc.GetWarehouse(c.Request.Context(), *d.TargetWarehouseID); err == nil && w != nil {
+twhName = w.Name
+}
+}
+
+
+data, err := h.printer.Render(d, tpl, whName, twhName, orgName)
+if err != nil {
+c.Error(apperr.Internal("print", err))
+return
+}
+c.Header("Content-Disposition", "attachment; filename=\""+tpl+"\"")
+c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", data)
 }
 
 func (h *Handler) PostDocument(c *gin.Context) {

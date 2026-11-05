@@ -233,6 +233,48 @@ func (r *Repo) CreateDocument(ctx context.Context, in DocumentInput) (*models.Do
 	return out, err
 }
 
+func (r *Repo) UpdateDocument(ctx context.Context, id uuid.UUID, in DocumentInput) (*models.Document, error) {
+var out *models.Document
+err := r.WithTx(ctx, func(tx pgx.Tx) error {
+_, err := tx.Exec(ctx,
+`UPDATE documents SET
+warehouse_id = $1, target_warehouse_id = $2, supplier_id = $3,
+organization_id = $4, contract_id = $5, expense_item = $6,
+incoming_number = $7, incoming_date = $8, comment = $9
+ WHERE id = $10 AND status = 'draft'`,
+in.WarehouseID, in.TargetWarehouseID, in.SupplierID,
+in.OrganizationID, in.ContractID, in.ExpenseItem,
+in.IncomingNumber, in.IncomingDate, in.Comment, id,
+)
+if err != nil {
+return err
+}
+if _, err := tx.Exec(ctx, `DELETE FROM document_items WHERE document_id = $1`, id); err != nil {
+return err
+}
+for _, it := range in.Items {
+if _, err := tx.Exec(ctx,
+`INSERT INTO document_items (document_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
+id, it.ProductID, it.Quantity, it.Price,
+); err != nil {
+return err
+}
+}
+d, err := scanDocument(tx.QueryRow(ctx, documentSelect+` WHERE d.id = $1`, id))
+if err != nil {
+return err
+}
+items, err := loadItemsTx(ctx, tx, id)
+if err != nil {
+return err
+}
+d.Items = items
+out = d
+return nil
+})
+return out, err
+}
+
 func loadItemsTx(ctx context.Context, tx pgx.Tx, docID uuid.UUID) ([]models.DocItem, error) {
 	rows, err := tx.Query(ctx,
 		`SELECT id, document_id, product_id, quantity, price, created_at

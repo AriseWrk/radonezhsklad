@@ -91,6 +91,11 @@ export async function getDocument(id: string): Promise<Document> {
   return data
 }
 
+export async function updateDocument(id: string, input: DocumentInput): Promise<Document> {
+  const { data } = await http.put<Document>(`/documents/${id}`, input)
+  return data
+}
+
 export async function createDocument(input: DocumentInput): Promise<Document> {
   const { data } = await http.post<Document>('/documents', input)
   return data

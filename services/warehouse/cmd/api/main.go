@@ -214,6 +214,7 @@ supWrite.POST("/suppliers", supH.Create)
                 docWrite.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "warehouse"))
                 {
                         docWrite.POST("/documents", h.CreateDocument)
+docWrite.PUT("/documents/:id", h.UpdateDocument)
                         docWrite.POST("/documents/:id/post", h.PostDocument)
                         docWrite.POST("/documents/:id/cancel", h.CancelDocument)
                         docWrite.POST("/inventories/:id/create-correction", invH.CreateCorrection)

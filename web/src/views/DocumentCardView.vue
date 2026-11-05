@@ -226,7 +226,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getDocument, postDocument, cancelDocument, createDocument, type Document } from '../api/documents'
+import { getDocument, postDocument, cancelDocument, createDocument, updateDocument, type Document } from '../api/documents'
 import { listWarehouses, type Warehouse } from '../api/warehouses'
 import { listOrganizations, type Organization } from '../api/suppliers'
 import { listProducts, type Product } from '../api/products'
@@ -395,8 +395,18 @@ async function save() {
       } as any)
       router.replace('/documents/' + d.id)
     } else if (doc.value) {
-      // TODO: updateDocument — обновим позже; пока просто сохраняем комментарий через API
-      // (сейчас сохранение редактирования черновика отсутствует в API)
+      const upd = await updateDocument(doc.value.id, {
+        warehouse_id: form.warehouse_id,
+        target_warehouse_id: form.target_warehouse_id || undefined,
+        organization_id: form.organization_id || undefined,
+        contract_id: form.contract_id || undefined,
+        expense_item: form.expense_item || undefined,
+        comment: form.comment || undefined,
+        items: form.items.map((it) => ({ product_id: it.product_id, quantity: it.quantity, price: it.price })),
+      } as any)
+      doc.value = upd
+      form.comment = upd.comment ?? ''
+      form.expense_item = (upd as any).expense_item ?? ''
     }
   } catch (e) {
     error.value = apiErrorMessage(e)

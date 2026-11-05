@@ -256,6 +256,62 @@ ExpenseItem:       strPtr(req.ExpenseItem),
 	httpx.Created(c, d)
 }
 
+type docUpdateReq struct {
+Number            string       `json:"number"`
+WarehouseID       string       `json:"warehouse_id"`
+TargetWarehouseID string       `json:"target_warehouse_id"`
+SupplierID        string       `json:"supplier_id"`
+OrganizationID    string       `json:"organization_id"`
+ContractID        string       `json:"contract_id"`
+ExpenseItem       string       `json:"expense_item"`
+IncomingNumber    string       `json:"incoming_number"`
+IncomingDate      string       `json:"incoming_date"`
+Comment           string       `json:"comment"`
+Items             []docItemReq `json:"items"      binding:"required,min=1,dive"`
+}
+func (h *Handler) UpdateDocument(c *gin.Context) {
+id, err := uuid.Parse(c.Param("id"))
+if err != nil {
+c.Error(apperr.BadRequest("invalid id"))
+return
+}
+var req docUpdateReq
+if err := c.ShouldBindJSON(&req); err != nil {
+c.Error(apperr.BadRequest(err.Error()))
+return
+}
+items := make([]repository.DocItemInput, 0, len(req.Items))
+for _, it := range req.Items {
+pid, err := uuid.Parse(it.ProductID)
+if err != nil {
+c.Error(apperr.BadRequest("invalid product_id"))
+return
+}
+if it.Quantity <= 0 {
+c.Error(apperr.BadRequest("quantity must be > 0"))
+return
+}
+items = append(items, repository.DocItemInput{ProductID: pid, Quantity: it.Quantity, Price: it.Price})
+}
+d, err := h.svc.UpdateDocument(c.Request.Context(), id, repository.DocumentInput{
+WarehouseID:       parseUUIDOpt(req.WarehouseID),
+TargetWarehouseID: parseUUIDOpt(req.TargetWarehouseID),
+SupplierID:        parseUUIDOpt(req.SupplierID),
+OrganizationID:    parseUUIDOpt(req.OrganizationID),
+ContractID:        parseUUIDOpt(req.ContractID),
+ExpenseItem:       strPtr(req.ExpenseItem),
+IncomingNumber:    strPtr(req.IncomingNumber),
+IncomingDate:      parseDate(req.IncomingDate),
+Comment:           strPtr(req.Comment),
+Items:             items,
+})
+if err != nil {
+c.Error(err)
+return
+}
+httpx.OK(c, d)
+}
+
 func (h *Handler) ListDocuments(c *gin.Context) {
 	f := repository.DocumentFilters{}
 	if v := c.Query("type"); v != "" {

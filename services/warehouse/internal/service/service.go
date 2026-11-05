@@ -133,6 +133,38 @@ func (s *Service) CreateDocument(ctx context.Context, in repository.DocumentInpu
 	return d, nil
 }
 
+func (s *Service) UpdateDocument(ctx context.Context, id uuid.UUID, in repository.DocumentInput) (*models.Document, error) {
+d, err := s.GetDocument(ctx, id)
+if err != nil {
+return nil, err
+}
+if d.Status != "draft" {
+return nil, apperr.Conflict("only draft documents can be edited")
+}
+if d.ExternalID != nil {
+return nil, apperr.Conflict("imported documents cannot be edited")
+}
+if len(in.Items) == 0 {
+return nil, apperr.BadRequest("document must have at least one item")
+}
+if requiresWarehouse[d.Type] && in.WarehouseID == nil {
+return nil, apperr.BadRequest(d.Type + " requires warehouse_id")
+}
+if d.Type == "transfer" {
+if in.TargetWarehouseID == nil {
+return nil, apperr.BadRequest("transfer requires target_warehouse_id")
+}
+if in.WarehouseID == nil || *in.TargetWarehouseID == *in.WarehouseID {
+return nil, apperr.BadRequest("source and target warehouses must differ")
+}
+}
+upd, err := s.repo.UpdateDocument(ctx, id, in)
+if err != nil {
+return nil, apperr.Internal("update document", err)
+}
+return upd, nil
+}
+
 func (s *Service) GetDocument(ctx context.Context, id uuid.UUID) (*models.Document, error) {
 	d, err := s.repo.GetDocument(ctx, id)
 	if err != nil {

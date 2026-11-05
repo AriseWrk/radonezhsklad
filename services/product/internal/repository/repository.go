@@ -110,6 +110,36 @@ u.Code, u.Name, u.ShortName,
 ).Scan(&u.ID, &u.CreatedAt)
 return err
 }
+
+func (r *Repo) GetUnit(ctx context.Context, id uuid.UUID) (*models.Unit, error) {
+u := &models.Unit{}
+err := r.db.QueryRow(ctx,
+`SELECT id, code, name, short_name, created_at FROM units WHERE id = $1`, id,
+).Scan(&u.ID, &u.Code, &u.Name, &u.ShortName, &u.CreatedAt)
+if errors.Is(err, pgx.ErrNoRows) {
+return nil, nil
+}
+if err != nil {
+return nil, err
+}
+return u, nil
+}
+
+func (r *Repo) UpdateUnit(ctx context.Context, u *models.Unit) error {
+_, err := r.db.Exec(ctx,
+`UPDATE units SET code=$1, name=$2, short_name=$3 WHERE id=$4`,
+u.Code, u.Name, u.ShortName, u.ID,
+)
+return err
+}
+
+func (r *Repo) DeleteUnit(ctx context.Context, id uuid.UUID) (bool, error) {
+tag, err := r.db.Exec(ctx, `DELETE FROM units WHERE id=$1`, id)
+if err != nil {
+return false, err
+}
+return tag.RowsAffected() > 0, nil
+}
 // ---------- products ----------
 
 type ProductInput struct {

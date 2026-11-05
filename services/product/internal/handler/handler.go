@@ -132,6 +132,37 @@ return
 }
 httpx.Created(c, u)
 }
+func (h *Handler) UpdateUnit(c *gin.Context) {
+id, err := uuid.Parse(c.Param("id"))
+if err != nil {
+c.Error(apperr.BadRequest("invalid id"))
+return
+}
+var req unitReq
+if err := c.ShouldBindJSON(&req); err != nil {
+c.Error(apperr.BadRequest(err.Error()))
+return
+}
+u, err := h.svc.UpdateUnit(c.Request.Context(), id, req.Code, req.Name, req.ShortName)
+if err != nil {
+c.Error(err)
+return
+}
+httpx.OK(c, u)
+}
+
+func (h *Handler) DeleteUnit(c *gin.Context) {
+id, err := uuid.Parse(c.Param("id"))
+if err != nil {
+c.Error(apperr.BadRequest("invalid id"))
+return
+}
+if err := h.svc.DeleteUnit(c.Request.Context(), id); err != nil {
+c.Error(err)
+return
+}
+c.Status(http.StatusNoContent)
+}
 func (h *Handler) ListUnits(c *gin.Context) {
 	units, err := h.svc.ListUnits(c.Request.Context())
 	if err != nil {

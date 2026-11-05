@@ -84,6 +84,8 @@ func main() {
 		write.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "warehouse"))
 		{
 			write.POST("/units", h.CreateUnit)
+write.PUT("/units/:id", h.UpdateUnit)
+write.DELETE("/units/:id", h.DeleteUnit)
 write.POST("/categories", h.CreateCategory)
 			write.PUT("/categories/:id", h.UpdateCategory)
 			write.DELETE("/categories/:id", h.DeleteCategory)

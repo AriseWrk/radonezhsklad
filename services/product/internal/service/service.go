@@ -58,6 +58,39 @@ func (s *Service) DeleteCategory(ctx context.Context, id uuid.UUID) error {
 }
 
 func (s *Service) ListUnits(ctx context.Context) ([]models.Unit, error) { return s.repo.ListUnits(ctx) }
+func (s *Service) UpdateUnit(ctx context.Context, id uuid.UUID, code, name, shortName string) (*models.Unit, error) {
+if name == "" {
+return nil, apperr.BadRequest("name is required")
+}
+if shortName == "" {
+return nil, apperr.BadRequest("short_name is required")
+}
+u, err := s.repo.GetUnit(ctx, id)
+if err != nil {
+return nil, apperr.Internal("get unit", err)
+}
+if u == nil {
+return nil, apperr.NotFound("unit not found")
+}
+u.Code = code
+u.Name = name
+u.ShortName = shortName
+if err := s.repo.UpdateUnit(ctx, u); err != nil {
+return nil, apperr.Internal("update unit", err)
+}
+return u, nil
+}
+
+func (s *Service) DeleteUnit(ctx context.Context, id uuid.UUID) error {
+ok, err := s.repo.DeleteUnit(ctx, id)
+if err != nil {
+return apperr.Internal("delete unit", err)
+}
+if !ok {
+return apperr.NotFound("unit not found")
+}
+return nil
+}
 func (s *Service) CreateUnit(ctx context.Context, code, name, shortName string) (*models.Unit, error) {
 if name == "" {
 return nil, apperr.BadRequest("name is required")

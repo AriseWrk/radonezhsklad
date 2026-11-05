@@ -114,6 +114,7 @@ const subTabsMap: Record<string, SubTab[]> = {
   products: [
     { name: 'products',   label: 'Товары и услуги', path: '/products',   match: '/products' },
     { name: 'categories', label: 'Категории', path: '/categories', match: '/categories' },
+    { name: 'units',      label: 'Единицы измерения', path: '/units', match: '/units', roles: ['admin', 'warehouse'] },
   ],
   purchases: [
     { name: 'purchases-orders',   label: 'Заказы поставщикам',   path: '/purchases/orders',   match: '/purchases/orders',   roles: ['admin','warehouse'] },

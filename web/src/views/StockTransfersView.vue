@@ -191,6 +191,7 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   listDocuments, createDocument, getDocument, type Document,
 } from '../api/documents'
@@ -201,6 +202,7 @@ import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
 import MsIcon from '../components/MsIcon.vue'
 
+const router = useRouter()
 const items = ref<Document[]>([])
 const warehouses = ref<Warehouse[]>([])
 const products = ref<Product[]>([])
@@ -325,6 +327,9 @@ async function load() {
 }
 
 function openCreate() {
+  router.push('/documents/new?type=transfer')
+  return
+  // @ts-ignore
   form.warehouse_id = warehouses.value[0]?.id ?? ''
   form.target_warehouse_id = warehouses.value[1]?.id ?? ''
   form.organization_id = organizations.value.find((o) => o.is_default)?.id ?? ''
@@ -365,6 +370,9 @@ async function onCreate() {
 }
 
 async function openEdit(d: Document) {
+  router.push('/documents/' + d.id)
+  return
+  // @ts-ignore
   try { await getDocument(d.id) } catch (e) { error.value = apiErrorMessage(e) }
 }
 

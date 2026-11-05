@@ -133,6 +133,46 @@ return
 }
 httpx.Created(c, org)
 }
+func (h *SupplierHandler) UpdateOrganization(c *gin.Context) {
+id, err := uuid.Parse(c.Param("id"))
+if err != nil {
+c.Error(apperr.BadRequest("invalid id"))
+return
+}
+var req organizationReq
+if err := c.ShouldBindJSON(&req); err != nil {
+c.Error(apperr.BadRequest(err.Error()))
+return
+}
+org, err := h.svc.UpdateOrganization(c.Request.Context(), id, service.OrganizationInput{
+Name:         req.Name,
+FullName:     strPtr(req.FullName),
+INN:          strPtr(req.INN),
+KPP:          strPtr(req.KPP),
+OGRN:         strPtr(req.OGRN),
+OKPO:         strPtr(req.OKPO),
+LegalAddress: strPtr(req.LegalAddress),
+IsDefault:    req.IsDefault,
+})
+if err != nil {
+c.Error(err)
+return
+}
+httpx.OK(c, org)
+}
+
+func (h *SupplierHandler) DeleteOrganization(c *gin.Context) {
+id, err := uuid.Parse(c.Param("id"))
+if err != nil {
+c.Error(apperr.BadRequest("invalid id"))
+return
+}
+if err := h.svc.DeleteOrganization(c.Request.Context(), id); err != nil {
+c.Error(err)
+return
+}
+c.Status(http.StatusNoContent)
+}
 func (h *SupplierHandler) ListOrganizations(c *gin.Context) {
 	items, err := h.svc.ListOrganizations(c.Request.Context())
 	if err != nil {

@@ -15,9 +15,25 @@ export interface Organization {
   id: string
   external_id?: string | null
   name: string
+  full_name?: string
   inn?: string
+  kpp?: string
+  ogrn?: string
+  okpo?: string
+  legal_address?: string
   is_default: boolean
   created_at: string
+}
+
+export interface OrganizationInput {
+  name: string
+  full_name?: string
+  inn?: string
+  kpp?: string
+  ogrn?: string
+  okpo?: string
+  legal_address?: string
+  is_default?: boolean
 }
 
 export interface SupplierInput {
@@ -50,4 +66,18 @@ export async function deleteSupplier(id: string): Promise<void> {
 export async function listOrganizations(): Promise<Organization[]> {
   const { data } = await http.get<{ items: Organization[] }>('/organizations')
   return data.items
+}
+
+export async function createOrganization(input: OrganizationInput): Promise<Organization> {
+  const { data } = await http.post<Organization>('/organizations', input)
+  return data
+}
+
+export async function updateOrganization(id: string, input: OrganizationInput): Promise<Organization> {
+  const { data } = await http.put<Organization>(`/organizations/${id}`, input)
+  return data
+}
+
+export async function deleteOrganization(id: string): Promise<void> {
+  await http.delete(`/organizations/${id}`)
 }

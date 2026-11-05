@@ -202,6 +202,8 @@ func main() {
                 supWrite.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "warehouse"))
                 {
                         supWrite.POST("/organizations", supH.CreateOrganization)
+supWrite.PUT("/organizations/:id", supH.UpdateOrganization)
+supWrite.DELETE("/organizations/:id", supH.DeleteOrganization)
 supWrite.POST("/suppliers", supH.Create)
                         supWrite.PUT("/suppliers/:id", supH.Update)
                         supWrite.DELETE("/suppliers/:id", supH.Delete)

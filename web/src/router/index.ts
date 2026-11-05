@@ -54,6 +54,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'internal-orders/:id', name: 'internal-order-card', component: () => import('../views/InternalOrderCardView.vue'), meta: { roles: ['admin', 'warehouse', 'pts'] } },
       { path: 'company/settings', name: 'company-settings', component: () => import('../views/CompanySettingsView.vue') },
 			{ path: 'trash', name: 'trash', component: () => import('../views/TrashView.vue'), meta: { roles: ['admin', 'warehouse'] } },
+      { path: 'organizations', name: 'organizations', component: () => import('../views/OrganizationsView.vue'), meta: { roles: ['admin', 'warehouse'] } },
       { path: 'users',      name: 'users',      component: () => import('../views/UsersView.vue'),      meta: { roles: ['admin'] } },
       { path: 'audit',      name: 'audit',      component: () => import('../views/AuditView.vue'),      meta: { roles: ['admin'] } },
       { path: 'files',      name: 'files',      component: () => import('../views/FilesView.vue'),      meta: { roles: ['admin'] } },

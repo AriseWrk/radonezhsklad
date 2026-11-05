@@ -86,6 +86,22 @@ o.Name, o.FullName, o.INN, o.KPP, o.OGRN, o.OKPO, o.LegalAddress, o.IsDefault,
 return err
 }
 
+func (r *OrganizationRepo) Update(ctx context.Context, o *models.Organization) error {
+_, err := r.db.Exec(ctx,
+`UPDATE organizations SET name=$1, full_name=$2, inn=$3, kpp=$4, ogrn=$5, okpo=$6, legal_address=$7, is_default=$8 WHERE id=$9`,
+o.Name, o.FullName, o.INN, o.KPP, o.OGRN, o.OKPO, o.LegalAddress, o.IsDefault, o.ID,
+)
+return err
+}
+
+func (r *OrganizationRepo) Delete(ctx context.Context, id uuid.UUID) (bool, error) {
+tag, err := r.db.Exec(ctx, `DELETE FROM organizations WHERE id=$1`, id)
+if err != nil {
+return false, err
+}
+return tag.RowsAffected() > 0, nil
+}
+
 func (r *OrganizationRepo) List(ctx context.Context) ([]models.Organization, error) {
 	rows, err := r.db.Query(ctx,
 		`SELECT id, external_id, name, full_name, inn, kpp, ogrn, okpo, legal_address, is_default, created_at FROM organizations ORDER BY name`)

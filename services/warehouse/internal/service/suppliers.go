@@ -124,6 +124,41 @@ return nil, apperr.Internal("create organization", err)
 }
 return org, nil
 }
+func (s *SupplierService) UpdateOrganization(ctx context.Context, id uuid.UUID, in OrganizationInput) (*models.Organization, error) {
+if in.Name == "" {
+return nil, apperr.BadRequest("name is required")
+}
+org, err := s.orgs.Get(ctx, id)
+if err != nil {
+return nil, apperr.Internal("get organization", err)
+}
+if org == nil {
+return nil, apperr.NotFound("organization not found")
+}
+org.Name = in.Name
+org.FullName = in.FullName
+org.INN = in.INN
+org.KPP = in.KPP
+org.OGRN = in.OGRN
+org.OKPO = in.OKPO
+org.LegalAddress = in.LegalAddress
+org.IsDefault = in.IsDefault
+if err := s.orgs.Update(ctx, org); err != nil {
+return nil, apperr.Internal("update organization", err)
+}
+return org, nil
+}
+
+func (s *SupplierService) DeleteOrganization(ctx context.Context, id uuid.UUID) error {
+ok, err := s.orgs.Delete(ctx, id)
+if err != nil {
+return apperr.Internal("delete organization", err)
+}
+if !ok {
+return apperr.NotFound("organization not found")
+}
+return nil
+}
 func (s *SupplierService) ListOrganizations(ctx context.Context) ([]models.Organization, error) {
 	return s.orgs.List(ctx)
 }

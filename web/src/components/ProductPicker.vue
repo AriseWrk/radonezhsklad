@@ -66,12 +66,17 @@ function onBlur() {
 }
 
 // При изменении внешнего modelValue (например, при загрузке документа) — обновить query
+// и при загрузке products (асинхронно) — тоже обновить
 import { watch } from 'vue'
-watch(() => props.modelValue, (id) => {
+
+function syncQuery(id: string) {
   if (!id) { query.value = ''; return }
   const p = props.products.find((x) => x.id === id)
   if (p) query.value = p.name
-})
+}
+
+watch(() => props.modelValue, syncQuery, { immediate: true })
+watch(() => props.products, () => syncQuery(props.modelValue))
 </script>
 
 <style scoped>

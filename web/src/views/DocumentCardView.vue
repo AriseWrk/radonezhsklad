@@ -492,11 +492,25 @@ watch(() => route.params.id, load)
 .tab.active { color: #2c5d9c; border-bottom-color: #2c5d9c; font-weight: 600; }
 
 /* Таблица позиций */
-.items-table { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; margin-bottom: 8px; }
-.items-table thead th { background: #fff; color: #2c5d9c; font-weight: 500; padding: 6px 8px; text-align: left; border-bottom: 1px solid #d8dee4; font-size: 12px; white-space: nowrap; }
-.items-table tbody td { padding: 4px 8px; border-bottom: 1px solid #eaeef2; vertical-align: middle; }
+.items-table { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; margin-bottom: 8px; table-layout: fixed; border: 1px solid #eaeef2; border-radius: 4px; }
+.items-table thead th { background: #fff !important; color: #2c5d9c !important; font-weight: 500 !important; padding: 6px 8px !important; text-align: left; border-bottom: 1px solid #d8dee4 !important; font-size: 12px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.items-table thead th.col-chk { width: 32px; }
+.items-table thead th:nth-child(2) { width: auto; }
+.items-table thead th:nth-child(3) { width: 80px; }
+.items-table thead th:nth-child(4) { width: 80px; }
+.items-table thead th:nth-child(5) { width: 100px; }
+.items-table thead th:nth-child(6) { width: 120px; }
+.items-table thead th:nth-child(7) { width: auto; }
+.items-table thead th:nth-child(8),
+.items-table thead th:nth-child(9),
+.items-table thead th:nth-child(10) { width: 60px; }
+.items-table tbody td { padding: 4px 8px !important; border-bottom: 1px solid #eaeef2 !important; vertical-align: middle; font-size: 13px !important; }
 .col-chk { width: 30px; }
 .col-num-right { text-align: right; font-variant-numeric: tabular-nums; }
+.items-table tbody td:nth-child(3),
+.items-table tbody td:nth-child(4),
+.items-table tbody td:nth-child(5),
+.items-table tbody td:nth-child(6) { text-align: right; }
 .row-del { width: 22px; height: 22px; border: none; background: transparent; color: #cf222e; cursor: pointer; font-size: 16px; }
 .product-select { width: 100%; height: 26px; padding: 0 6px; font-size: 13px; border: 1px solid #d0d7de; border-radius: 3px; background: #fff; }
 .qty-input, .price-input { width: 80px; height: 26px; padding: 0 6px; font-size: 13px; border: 1px solid #d0d7de; border-radius: 3px; text-align: right; background: #fff; }

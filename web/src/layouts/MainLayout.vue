@@ -24,6 +24,11 @@
         <button class="top-icon" title="Чат"><MsIcon name="chat" :size="18" /></button>
         <button class="top-icon" title="Уведомления"><MsIcon name="bell" :size="18" /></button>
         <button class="top-icon" title="Помощь"><MsIcon name="help" :size="18" /></button>
+        <div class="sync-toggle" :class="{ 'sync-on': syncEnabled, 'sync-off': !syncEnabled }" @click="toggleSync" :title="syncTooltip">
+          <span class="sync-label">Синхр. МС</span>
+          <span class="sync-switch" :class="{ 'on': syncEnabled }"></span>
+          <span v-if="syncStatus" class="sync-dot" :class="'dot-' + syncStatus"></span>
+        </div>
         <div class="user-block">
           <div class="avatar">{{ avatarLetter }}</div>
           <div class="user-info">
@@ -58,11 +63,62 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore, type Role } from '../stores/auth'
 import MsIcon from '../components/MsIcon.vue'
 import { useThemeStore } from '../stores/theme'
+import { getSyncSettings, setSyncSettings, type SyncSettings } from '../api/sync'
+
+const syncSettings = ref<SyncSettings | null>(null)
+const syncEnabled = computed(() => syncSettings.value?.enabled ?? false)
+const syncStatus = computed(() => {
+  const s = syncSettings.value
+  if (!s || !s.enabled) return ''
+  if (s.last_status === 'ok') return 'ok'
+  if (s.last_status === 'error') return 'error'
+  if (s.last_status === 'running') return 'running'
+  return 'idle'
+})
+const syncTooltip = computed(() => {
+  const s = syncSettings.value
+  if (!s) return 'Синхронизация не инициализирована'
+  if (!s.enabled) return 'Синхронизация выключена'
+  if (s.last_status === 'error') return 'Ошибка: ' + (s.last_error || 'неизвестно')
+  if (s.last_cycle_at) return 'Последний цикл: ' + new Date(s.last_cycle_at).toLocaleString('ru-RU')
+  return 'Ожидание первого цикла (в течение минуты)'
+})
+
+async function loadSyncSettings() {
+  try {
+    syncSettings.value = await getSyncSettings()
+  } catch {
+    // auth не готов / нет прав — молча пропускаем
+  }
+}
+
+let pollTimer: number | null = null
+function startPolling() {
+  if (pollTimer) return
+  pollTimer = window.setInterval(loadSyncSettings, 30000)
+}
+
+async function toggleSync() {
+  if (!syncSettings.value) return
+  try {
+    syncSettings.value = await setSyncSettings(!syncSettings.value.enabled)
+  } catch (e) {
+    console.warn('sync toggle failed', e)
+  }
+}
+
+onMounted(() => {
+  loadSyncSettings()
+  startPolling()
+})
+onUnmounted(() => {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+})
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -324,4 +380,37 @@ function onLogout() {
   font-size: 18px; line-height: 1; margin-right: 4px;
 }
 .theme-btn:hover { background: rgba(255,255,255,0.12); }
+.sync-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; margin-right: 6px;
+  border-radius: 4px;
+  cursor: pointer; user-select: none;
+  font-size: 12px; color: #fff;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  transition: background 0.15s;
+}
+.sync-toggle:hover { background: rgba(255,255,255,0.22); }
+.sync-toggle.sync-on { background: rgba(76,175,80,0.35); border-color: rgba(76,175,80,0.6); }
+.sync-toggle.sync-off { background: rgba(255,255,255,0.12); }
+.sync-label { white-space: nowrap; }
+.sync-switch {
+  display: inline-block; width: 28px; height: 14px;
+  border-radius: 7px; background: rgba(0,0,0,0.3);
+  position: relative; transition: background 0.15s;
+}
+.sync-switch::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #fff; transition: left 0.15s;
+}
+.sync-switch.on { background: #4caf50; }
+.sync-switch.on::after { left: 16px; }
+.sync-dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+}
+.dot-ok { background: #4caf50; }
+.dot-error { background: #f44336; }
+.dot-running { background: #ffc107; }
+.dot-idle { background: #9e9e9e; }
 </style>

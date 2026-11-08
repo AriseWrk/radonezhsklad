@@ -30,11 +30,12 @@ type SyncHandler struct {
 	mu            sync.Mutex // защита от двух одновременных Start в одном процессе
 	repo          *repository.SyncJobRepo
 	pull          *mspull.Runner
+	settings      *repository.SyncSettingsRepo
 	scriptsDir    string
 	lastLineAt    map[uuid.UUID]time.Time
 }
 
-func NewSyncHandler(repo *repository.SyncJobRepo, errs *repository.MsSyncErrorRepo, pull *mspull.Runner, push *mspush.Pusher, autoSync *worker.AutoSync, internalToken, scriptsDir string) *SyncHandler {
+func NewSyncHandler(repo *repository.SyncJobRepo, errs *repository.MsSyncErrorRepo, pull *mspull.Runner, push *mspush.Pusher, autoSync *worker.AutoSync, settings *repository.SyncSettingsRepo, internalToken, scriptsDir string) *SyncHandler {
 	return &SyncHandler{
 		repo:          repo,
 		errs:          errs,
@@ -42,6 +43,7 @@ func NewSyncHandler(repo *repository.SyncJobRepo, errs *repository.MsSyncErrorRe
 		autoSync:      autoSync,
 		internalToken: internalToken,
 		pull:          pull,
+		settings:      settings,
 		scriptsDir:    scriptsDir,
 		lastLineAt:    map[uuid.UUID]time.Time{},
 	}
@@ -389,6 +391,48 @@ func (h *SyncHandler) setLastLine(j *repository.SyncJob, line string) {
 	_ = h.repo.SetLastLine(context.Background(), j.ID, line)
 }
 
+// GetSettings — GET /api/v1/sync/settings
+func (h *SyncHandler) GetSettings(c *gin.Context) {
+if h.settings == nil {
+c.JSON(500, gin.H{"error": gin.H{"code": "internal", "message": "sync settings not initialized"}})
+return
+}
+s, err := h.settings.Get(c.Request.Context())
+if err != nil {
+c.JSON(500, gin.H{"error": gin.H{"code": "internal", "message": err.Error()}})
+return
+}
+httpx.OK(c, s)
+}
+
+// SetSettings — PUT /api/v1/sync/settings
+func (h *SyncHandler) SetSettings(c *gin.Context) {
+if h.settings == nil {
+c.JSON(500, gin.H{"error": gin.H{"code": "internal", "message": "sync settings not initialized"}})
+return
+}
+var body struct {
+Enabled *bool `json:"enabled"`
+}
+if err := c.ShouldBindJSON(&body); err != nil {
+c.JSON(400, gin.H{"error": gin.H{"code": "bad_request", "message": "invalid body"}})
+return
+}
+if body.Enabled == nil {
+c.JSON(400, gin.H{"error": gin.H{"code": "bad_request", "message": "enabled is required"}})
+return
+}
+if err := h.settings.SetEnabled(c.Request.Context(), *body.Enabled); err != nil {
+c.JSON(500, gin.H{"error": gin.H{"code": "internal", "message": err.Error()}})
+return
+}
+s, err := h.settings.Get(c.Request.Context())
+if err != nil {
+c.JSON(500, gin.H{"error": gin.H{"code": "internal", "message": err.Error()}})
+return
+}
+httpx.OK(c, s)
+}
 func (h *SyncHandler) finish(j *repository.SyncJob, status, errMsg string) {
 	_ = h.repo.Finish(context.Background(), j.ID, status, errMsg)
 }

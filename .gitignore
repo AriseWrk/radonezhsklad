@@ -42,3 +42,6 @@ deploy-package/
 logs/
 .run/
 services/*/bin/
+exports/
+backups/
+*.dump

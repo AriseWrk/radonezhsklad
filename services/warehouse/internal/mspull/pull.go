@@ -119,7 +119,7 @@ func (r *Runner) cursorFor(ctx context.Context, kind string) string {
 	if c != "" {
 		return c
 	}
-		// Для docs-* (enter/demand/loss/move) фиксированная стартовая дата.
+	// Для docs-* (enter/demand/loss/move) фиксированная стартовая дата.
 	if strings.HasPrefix(kind, "docs-") || strings.HasPrefix(kind, "pull-docs-") {
 		return "2020-01-01 00:00:00"
 	}
@@ -403,9 +403,9 @@ func (r *Runner) PullByKind(ctx context.Context, kind string, jobID uuid.UUID) e
 		return r.PullInvoiceIn(ctx, jobID)
 	case "docs-purchasereturn", "purchasereturn", "returns":
 		return r.PullPurchaseReturn(ctx, jobID)
-		case "docs-internalorder", "internalorder":
+	case "docs-internalorder", "internalorder":
 		return r.PullInternalOrder(ctx, jobID)
-case "docs-facturein", "facturein", "factures":
+	case "docs-facturein", "facturein", "factures":
 		return r.PullFactureIn(ctx, jobID)
 	default:
 		return fmt.Errorf("неизвестный kind для pull: %q", kind)

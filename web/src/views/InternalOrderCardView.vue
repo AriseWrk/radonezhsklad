@@ -671,8 +671,21 @@ async function load() {
     } else {
       // новосоздаваемый — получаем следующий номер и дефолтные значения
       try { form.number = await nextInternalOrderNumber() } catch { /* ignore */ }
-      form.organization_id = organizations.value.find((x) => x.is_default)?.id ?? ''
-      form.warehouse_id = (warehouses.value.find((w) => w.name.trim().toLowerCase() === 'основной склад') ?? warehouses.value[0])?.id ?? ''
+      // Дефолт организации: "ООО ЧОО АБ РАДОНЕЖ" (из МойСклад, external_id != null).
+      form.organization_id =
+        (organizations.value.find((x: any) => (x.name || '').includes('РАДОНЕЖ'))?.id)
+        ?? (organizations.value.find((x: any) => x.external_id)?.id)
+        ?? (organizations.value.find((x: any) => x.is_default)?.id)
+        ?? ''
+      // Дефолт склада: реальный "основной склад" из МойСклад (external_id != null),
+      // а не тестовый "Основной склад" (source=manual).
+      form.warehouse_id =
+        (warehouses.value.find(
+          (w: any) => w.name.trim().toLowerCase() === 'основной склад' && w.external_id
+        )?.id)
+        ?? (warehouses.value.find((w: any) => w.external_id)?.id)
+        ?? warehouses.value[0]?.id
+        ?? ''
       syncWarehouseSearch()
       syncOrganizationSearch()
       syncProjectSearch()

@@ -482,8 +482,8 @@ func (r *Repo) ApplyMovement(ctx context.Context, tx pgx.Tx, warehouseID, produc
 		dt = &docType
 	}
 	_, err = tx.Exec(ctx,
-		`INSERT INTO stock_movements (warehouse_id, product_id, document_id, internal_order_id, quantity_delta, doc_type, user_id, warehouse_from, warehouse_to)
- VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		`INSERT INTO stock_movements (warehouse_id, product_id, document_id, internal_order_id, quantity_delta, doc_type, user_id, warehouse_from, warehouse_to, created_at)
+ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE((SELECT doc_date::timestamptz FROM documents WHERE id = $3::uuid), (SELECT doc_date::timestamptz FROM internal_orders WHERE id = $4::uuid), now()))`,
 		warehouseID, productID, docID, internalOrderID, delta, dt, userID, warehouseFrom, warehouseTo,
 	)
 	return err
@@ -627,7 +627,7 @@ WITH base AS (
   WHERE sm.created_at <= $1
   GROUP BY sm.product_id, sm.warehouse_id
 )
-SELECT b.product_id, b.warehouse_id, b.quantity,       COALESCE((SELECT SUM(sr.quantity) FROM stock_reserves sr WHERE sr.product_id = b.product_id AND sr.warehouse_id = b.warehouse_id), 0) AS reserved,       b.quantity - COALESCE((SELECT SUM(sr.quantity) FROM stock_reserves sr WHERE sr.product_id = b.product_id AND sr.warehouse_id = b.warehouse_id), 0) AS available,       b.last_movement
+SELECT b.product_id, b.warehouse_id, b.quantity, 0::numeric AS reserved, b.quantity AS available, b.last_movement
 FROM base b
 WHERE b.quantity <> 0
 `

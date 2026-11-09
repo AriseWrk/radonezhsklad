@@ -18,8 +18,8 @@ return &Config{
 Port:          getEnv("PORT", "8081"),
 DatabaseURL:   getEnv("DATABASE_URL", "postgres://radonezh:radonezh_dev_pass@localhost:5433/radonezh_auth?sslmode=disable"),
 JWTSecret:     getEnv("JWT_SECRET", "dev-secret-change-me"),
-AccessTTLMin:  getEnvInt("ACCESS_TTL_MIN", 15),
-RefreshTTLDay: getEnvInt("REFRESH_TTL_DAY", 30),
+AccessTTLMin:  getEnvInt("ACCESS_TTL_MIN", 43200),
+RefreshTTLDay: getEnvInt("REFRESH_TTL_DAY", 365),
 }
 }
 

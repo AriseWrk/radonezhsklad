@@ -575,7 +575,7 @@ function onQtyKeydown(it: FormItem, e: KeyboardEvent) {
   }
 }
 function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => HTML_ESC[c] || c)
+  return s.replace(/[&<>"']/g, (c) => (({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[c] || c))
 }
 function highlight(text: string | null | undefined, hits: Hit[], field: FieldName): string {
   const t = text ?? ''

@@ -1,4 +1,4 @@
-# dev-up.ps1 — поднять весь стек RadonezhSklad в фоне (Windows / PS 7 или 5.1)
+﻿# dev-up.ps1 — поднять весь стек RadonezhSklad в фоне (Windows / PS 7 или 5.1)
 #
 #   .\dev-up.ps1              — инфра + все бэкенды + фронт
 #   .\dev-up.ps1 -NoFront     — только инфра + бэкенды

@@ -160,6 +160,7 @@
         <thead>
           <tr>
             <th class="col-num">#</th>
+            <th class="col-sku">Артикул</th>
             <th>Наименование</th>
             <th class="col-sys">Система</th>
             <th class="col-num-right">Кол-во</th>
@@ -175,10 +176,11 @@
         </thead>
         <tbody>
           <tr v-if="form.items.length === 0">
-            <td colspan="10" class="empty">Добавьте позиции</td>
+            <td colspan="13" class="empty">Добавьте позиции</td>
           </tr>
           <tr v-else v-for="(it, idx) in form.items" :key="it.product_id">
             <td class="col-num">{{ idx + 1 }}</td>
+            <td class="col-sku muted">{{ productSku(it.product_id) }}</td>
             <td>{{ productName(it.product_id) }}</td>
             <td class="col-sys">
               <select v-model="it.system_code" :disabled="!canEdit" class="cell-select">
@@ -507,6 +509,7 @@ function addItem(p: Product) {
 function removeItem(idx: number) { form.items.splice(idx, 1) }
 
 function productName(id: string) { return products.value.find((p) => p.id === id)?.name ?? '—' }
+function productSku(id: string) { return products.value.find((p) => p.id === id)?.sku || '—' }
 function availableFor(id: string) { return stockMap.value.get(id) ?? 0 }
 function formatQty(n: number) { return n === 0 ? '0' : n.toLocaleString('ru-RU', { maximumFractionDigits: 3 }) }
 // Ввод количества: обычный ввод + режим "+" (прибавление).
@@ -1354,6 +1357,8 @@ async function submitCreateProject() {
 .suggest-stock.out { color: #b91c1c; }
 
 /* Таблица позиций */
+.col-sku { white-space: nowrap; width: 1%; }
+
 .ms-items {
   width: 100%; border-collapse: collapse;
   background: #fff; font-size: 13px;

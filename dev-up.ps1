@@ -1,4 +1,4 @@
-﻿# dev-up.ps1 — поднять весь стек RadonezhSklad в фоне (Windows / PS 7 или 5.1)
+# dev-up.ps1 — поднять весь стек RadonezhSklad в фоне (Windows / PS 7 или 5.1)
 #
 #   .\dev-up.ps1              — инфра + все бэкенды + фронт
 #   .\dev-up.ps1 -NoFront     — только инфра + бэкенды
@@ -98,6 +98,21 @@ foreach ($svc in $services) {
 
     $logOut = Join-Path $logDir "$svc.log"
     $logErr = Join-Path $logDir "$svc.err.log"
+    # Убить старый процесс, если он держит порт сервиса (port из .env PORT=).
+    try {
+        $portLine = (Get-Content $envFile | Where-Object { $_ -match '^\s*PORT\s*=' } | Select-Object -First 1)
+        if ($portLine -match 'PORT\s*=\s*(\d+)') {
+            $port = [int]$Matches[1]
+            $conn = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+            if ($conn) {
+                $oldPid = $conn.OwningProcess
+                Write-Warn "kill old $svc on port $port (PID $oldPid)"
+                Stop-Process -Id $oldPid -Force -ErrorAction SilentlyContinue
+                Start-Sleep -Milliseconds 400
+            }
+        }
+    } catch { }
+
     $proc = Start-Process -FilePath $bin -WorkingDirectory $svcDir `
         -RedirectStandardOutput $logOut -RedirectStandardError $logErr `
         -PassThru -WindowStyle Hidden

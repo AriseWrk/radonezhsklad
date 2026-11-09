@@ -187,7 +187,17 @@
               </select>
             </td>
             <td class="col-num-right">
-              <QtyStepper v-model="it.quantity" :disabled="!canEditQty" :min="0" :step="0.001" />
+              <input
+                class="qty-input"
+                type="text"
+                inputmode="decimal"
+                :value="it.quantity"
+                :disabled="!canEditQty"
+                @focus="onQtyFocus(it, $event)"
+                @input="onQtyInput(it, $event)"
+                @blur="onQtyBlur(it, $event)"
+                @keydown="onQtyKeydown(it, $event)"
+              />
             </td>
             <td class="col-num-right muted">
               <span v-if="form.status === 'posted' || form.status === 'shipped' || form.status === 'closed'">{{ formatQty(it.issued_qty ?? 0) }}</span>
@@ -313,7 +323,7 @@
 
 <script setup lang="ts">
 import QtyStepper from '../components/QtyStepper.vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   cancelInternalOrder,
@@ -490,7 +500,7 @@ function focusCatalog() { showSuggest.value = true }
 function addItem(p: Product) {
   const existing = form.items.find((i) => i.product_id === p.id)
   if (existing) { existing.quantity += 1 }
-  else { form.items.push({ product_id: p.id, quantity: 1, price: p.price, vat_rate: 20 }) }
+  else { form.items.push({ product_id: p.id, quantity: 0, price: p.price, vat_rate: 20 }) }
   newItemSearch.value = ''
   showSuggest.value = false
 }
@@ -499,7 +509,71 @@ function removeItem(idx: number) { form.items.splice(idx, 1) }
 function productName(id: string) { return products.value.find((p) => p.id === id)?.name ?? '—' }
 function availableFor(id: string) { return stockMap.value.get(id) ?? 0 }
 function formatQty(n: number) { return n === 0 ? '0' : n.toLocaleString('ru-RU', { maximumFractionDigits: 3 }) }
-const HTML_ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
+// Ввод количества: обычный ввод + режим "+" (прибавление).
+// Клик → выделено. Ввод числа → замена. Нажали "+" → режим прибавления:
+//   ввод цифр прибавляется к текущему. "+"/Enter/Tab → фиксация. Esc → отмена.
+// Ввод количества: клик → выделено, ввод → base + delta (прибавление).
+// Если стёрли всё → режим замены (base = 0). Enter/Tab → фиксация, Esc → откат.
+const qtyBase = reactive(new Map<string, number>())
+
+function onQtyFocus(it: FormItem, e: Event) {
+  const inp = e.target as HTMLInputElement
+  qtyBase.set(it.product_id, it.quantity ?? 0)
+  nextTick(() => { try { inp.select() } catch { } })
+}
+
+function onQtyInput(it: FormItem, e: Event) {
+  const inp = e.target as HTMLInputElement
+  if (inp.value === '') {
+    qtyBase.set(it.product_id, 0)
+  }
+}
+
+function onQtyBlur(it: FormItem, e: Event) {
+  const inp = e.target as HTMLInputElement
+  const raw = inp.value.trim().replace(',', '.')
+  const base = qtyBase.get(it.product_id) ?? 0
+  qtyBase.delete(it.product_id)
+
+  let next: number
+  if (raw === '' || raw === '-' || raw === '.') {
+    next = 0
+  } else {
+    const delta = Number(raw)
+    if (!isFinite(delta)) {
+      next = base
+    } else if (base === 0) {
+      next = delta
+    } else if (delta === base) {
+      next = base
+    } else {
+      next = base + delta
+    }
+  }
+  it.quantity = next
+  inp.value = String(next)
+}
+
+function onQtyKeydown(it: FormItem, e: KeyboardEvent) {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    ;(e.target as HTMLInputElement).blur()
+    return
+  }
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    const inp = e.target as HTMLInputElement
+    const base = qtyBase.get(it.product_id) ?? 0
+    qtyBase.delete(it.product_id)
+    inp.value = String(base)
+    inp.blur()
+    return
+  }
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    e.preventDefault()
+    return
+  }
+}
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => HTML_ESC[c] || c)
 }
@@ -1370,4 +1444,20 @@ async function submitCreateProject() {
 .issue-btn:hover { background: #eaf1fb; }
 .sys-summary { margin: 10px 0 16px; }
 .sys-summary h3 { font-size: 14px; margin: 0 0 6px; color: #1f2328; }
+.qty-input {
+  width: 90px;
+  height: 26px;
+  padding: 0 6px;
+  font-size: 13px;
+  text-align: right;
+  border: 1px solid #d0d7de;
+  border-radius: 3px;
+  background: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.qty-input:focus {
+  outline: 2px solid rgba(44,93,156,0.3);
+  border-color: #2c5d9c;
+}
+.qty-input:disabled { background: #f6f8fa; color: #57606a; }
 </style>

@@ -17,7 +17,7 @@
             <span class="pts-title">Открыть<br/>остатки</span>
           </button>
         </div>
-        <button class="pts-card-wide" @click="alert('Функционал в разработке')">
+        <button class="pts-card-wide" @click="router.push('/projects')">
           <div class="pts-wide-head">
             <MsIcon name="cart" :size="28" class="pts-icon-small" />
             <span class="pts-title-small">Проекты в работе</span>

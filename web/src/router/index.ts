@@ -51,6 +51,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'contracts/:id', name: 'contract-card', component: () => import('../views/ContractCardView.vue'), meta: { roles: ['admin', 'warehouse'] } },
       { path: 'orders',     name: 'orders',     component: () => import('../views/OrdersView.vue'),     meta: { roles: ['admin', 'warehouse'] } },
       { path: 'sales/analytics', name: 'sales-analytics', component: () => import('../views/SalesAnalyticsView.vue'), meta: { roles: ['admin', 'warehouse'] } },
+      { path: 'projects', name: 'projects', component: () => import('../views/ProjectsView.vue'), meta: { roles: ['admin', 'warehouse', 'pts'] } },
       { path: 'internal-orders', name: 'internal-orders', component: () => import('../views/InternalOrdersView.vue'), meta: { roles: ['admin', 'warehouse', 'pts'] } },
       { path: 'internal-orders/:id', name: 'internal-order-card', component: () => import('../views/InternalOrderCardView.vue'), meta: { roles: ['admin', 'warehouse', 'pts'] } },
       { path: 'company/settings', name: 'company-settings', component: () => import('../views/CompanySettingsView.vue') },

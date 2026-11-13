@@ -122,6 +122,8 @@ func main() {
 	supH := handler.NewSupplierHandler(supSvc)
 	intOrderH := handler.NewInternalOrderHandler(intOrderSvc, svc, supSvc, pc, pusher)
 	projectH := handler.NewProjectHandler(projectSvc)
+	projectStatsRepo := repository.NewProjectStatsRepo(pool)
+	projectStatsH := handler.NewProjectStatsHandler(projectStatsRepo, pc)
 	invH := handler.NewInventoryHandler(invSvc, svc, supSvc, pc)
 	companySettingsH := handler.NewCompanySettingsHandler(companySettingsRepo)
 
@@ -165,6 +167,8 @@ func main() {
 			readPts.GET("/organizations", supH.ListOrganizations)
 			readPts.GET("/projects", projectH.List)
 			readPts.GET("/projects/:id", projectH.Get)
+			readPts.GET("/projects/:id/internal-orders", projectStatsH.ListOrders)
+			readPts.GET("/projects/:id/systems-summary", projectStatsH.SystemsSummary)
 			readPts.GET("/company/settings", companySettingsH.Get)
 		}
 

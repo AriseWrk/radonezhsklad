@@ -28,3 +28,37 @@ export async function updateProject(id: string, name: string, archived = false):
 export async function deleteProject(id: string): Promise<void> {
   await http.delete(`/projects/${id}`)
 }
+
+// ---- Project stats ----
+
+export interface ProjectOrderBrief {
+  id: string
+  number: string
+  doc_date: string
+  status: 'draft' | 'posted' | 'shipped' | 'closed' | 'cancelled'
+  total: number
+  shipped_amount: number
+  item_count: number
+  comment?: string | null
+}
+
+export interface ProjectSystemItem {
+  system_code: string
+  product_id: string
+  quantity: number
+  order_count: number
+  last_doc_date?: string | null
+  name: string
+  sku?: string | null
+  unit_id?: string | null
+}
+
+export async function listProjectOrders(projectId: string): Promise<ProjectOrderBrief[]> {
+  const { data } = await http.get<{ items: ProjectOrderBrief[] }>(`/projects/${projectId}/internal-orders`)
+  return data.items
+}
+
+export async function listProjectSystems(projectId: string): Promise<ProjectSystemItem[]> {
+  const { data } = await http.get<{ items: ProjectSystemItem[] }>(`/projects/${projectId}/systems-summary`)
+  return data.items
+}

@@ -19,8 +19,8 @@
 
     <!-- Тулбар -->
     <div class="ms-toolbar">
-      <MsButton variant="primary" icon="plus" @click="close">Создать</MsButton>
-      <MsButton icon="save" @click="save" :disabled="saving || !canEditQty">{{ saving ? 'Сохранение...' : 'Сохранить' }}</MsButton>
+      <MsButton v-if="!isNew" icon="plus" @click="close">Новый заказ</MsButton>
+      <MsButton variant="primary" icon="save" @click="save" :disabled="saving || !canEditQty">{{ saving ? 'Сохранение...' : 'Сохранить' }}</MsButton>
       <MsButton v-if="canPost" icon="post" @click="onTogglePosted" :disabled="!canEdit || form.status === 'cancelled'">Провести</MsButton>
       <MsButton icon="print" @click="print">Печать</MsButton>
       <MsButton v-if="canPost" icon="send" @click="onSend" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отправить</MsButton>
@@ -725,11 +725,21 @@ async function save() {
     const typedProject = projectSearch.value.trim()
     if (typedProject && !form.project) {
       const existing = projects.value.find((p) => p.name.toLowerCase() === typedProject.toLowerCase())
-      const proj = existing ?? await createProject(typedProject)
-      if (!existing) {
-        projects.value = [...projects.value, proj].sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+      let proj: Project | null = existing ?? null
+      if (!proj) {
+        try {
+          proj = await createProject(typedProject)
+        } catch (projErr) {
+          // ПТС не может создать проект через API — оставляем заказ без привязки, предупреждаем
+          console.warn('createProject failed, saving order without project', projErr)
+        }
       }
-      selectProject(proj)
+      if (proj) {
+        if (!existing) {
+          projects.value = [...projects.value, proj].sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+        }
+        selectProject(proj)
+      }
     }
     if (form.items.length === 0) throw new Error('Добавьте хотя бы одну позицию')
     if (!form.warehouse_id) throw new Error('Выберите склад из списка')
@@ -764,7 +774,7 @@ async function save() {
 }
 
 async function onTogglePosted(e: Event) {
-  if (!currentId.value) return
+  if (!currentId.value) { await save(); if (!currentId.value) return }
   const checked = (e.target as HTMLInputElement).checked
   try {
     if (checked && form.status === 'draft') {

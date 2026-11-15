@@ -318,6 +318,14 @@ const filtered = computed(() => {
     const t = new Date(filterDateTo.value).getTime() + 86400000 - 1
     rows = rows.filter((o) => new Date(o.doc_date).getTime() <= t)
   }
+  if (filterChangedFrom.value) {
+    const t = new Date(filterChangedFrom.value).getTime()
+    rows = rows.filter((o) => new Date(o.updated_at).getTime() >= t)
+  }
+  if (filterChangedTo.value) {
+    const t = new Date(filterChangedTo.value).getTime() + 86400000 - 1
+    rows = rows.filter((o) => new Date(o.updated_at).getTime() <= t)
+  }
   return [...rows].sort((a, b) => {
     const av = a[sortKey.value]; const bv = b[sortKey.value]
     if (typeof av === 'number' && typeof bv === 'number') {

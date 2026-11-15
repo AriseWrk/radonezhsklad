@@ -73,6 +73,7 @@ export interface DocFilters {
   printed?: boolean
   sent?: boolean
   include_deleted?: boolean
+  source_inventory_id?: string
 }
 
 export async function listDocuments(filters?: DocFilters): Promise<Document[]> {

@@ -337,6 +337,7 @@ func (h *Handler) ListDocuments(c *gin.Context) {
 	f.Printed = parseBoolOpt(c.Query("printed"))
 	f.Sent = parseBoolOpt(c.Query("sent"))
 	f.IncludeDeleted = c.Query("include_deleted") == "1" || c.Query("include_deleted") == "true"
+	f.SourceInventoryID = parseUUIDOpt(c.Query("source_inventory_id"))
 	items, err := h.svc.ListDocuments(c.Request.Context(), f)
 	if err != nil {
 		c.Error(err)

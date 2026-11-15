@@ -120,7 +120,20 @@
     </template>
 
     <template v-else>
-      <div class="empty-block">Связанных документов пока нет</div>
+      <div v-if="relatedLoading" class="empty-block">Загрузка…</div>
+      <div v-else-if="relatedDocs.length === 0" class="empty-block">Связанных документов пока нет</div>
+      <table v-else class="related-table">
+        <thead><tr><th>Тип</th><th>Номер</th><th>Дата</th><th class="num">Сумма</th><th>Статус</th></tr></thead>
+        <tbody>
+          <tr v-for="d in relatedDocs" :key="d.id" class="clickable" @click="goDoc(d.id)">
+            <td>{{ typeLabel(d.type) }}</td>
+            <td><span class="link">{{ d.number }}</span></td>
+            <td>{{ formatDateTime(d.created_at) }}</td>
+            <td class="num">{{ formatMoney(d.total ?? 0) }}</td>
+            <td>{{ statusLabel(d.status) }}</td>
+          </tr>
+        </tbody>
+      </table>
     </template>
 
     <div v-if="showCreateDialog" class="modal-backdrop" @click.self="showCreateDialog = false">
@@ -150,6 +163,7 @@ import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getInventory, getInventoryNeighbors, createInventoryCorrection, exportInventory, exportInventoryInv3, exportInventoryInv19, type Inventory, type InventoryItem } from '../api/inventories'
 import { listOrganizations, type Organization } from '../api/suppliers'
+import { listDocuments, type Document } from '../api/documents'
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
 import MsIcon from '../components/MsIcon.vue'
@@ -170,6 +184,9 @@ const creating = ref(false)
 const autoPostCorrection = ref(true)
 const createError = ref<string | null>(null)
 
+const relatedDocs = ref<Document[]>([])
+const relatedLoading = ref(false)
+
 
 function formatDateTime(s: string) {
   if (!s) return ''
@@ -189,6 +206,21 @@ function organizationName(id?: string) {
   return organizations.value.find((o) => o.id === id)?.name ?? ''
 }
 
+
+function goDoc(id: string) { router.push('/documents/' + id) }
+function typeLabel(t?: string): string {
+  return ({ receipt: 'Оприходование', writeoff: 'Списание', transfer: 'Перемещение', shipment: 'Отгрузка', inventory: 'Инвентаризация' } as Record<string, string>)[t ?? ''] || (t ?? '')
+}
+function statusLabel(s?: string): string {
+  return ({ draft: 'Черновик', posted: 'Проведён', cancelled: 'Отменён' } as Record<string, string>)[s ?? ''] || (s ?? '')
+}
+async function loadRelated() {
+  if (!doc.value.id) return
+  relatedLoading.value = true
+  try { relatedDocs.value = await listDocuments({ source_inventory_id: doc.value.id }) }
+  catch { relatedDocs.value = [] }
+  finally { relatedLoading.value = false }
+}
 async function load() {
   loading.value = true; error.value = null
   try {
@@ -207,6 +239,7 @@ async function load() {
       total.value = nb.total
     } catch { /* ignore */ }
     organizations.value = orgs
+    if (tab.value === 'related') await loadRelated()
   } catch (e) {
     error.value = apiErrorMessage(e)
   } finally {
@@ -303,6 +336,7 @@ function next() { if (nextId.value) router.push('/inventories/' + nextId.value) 
 
 onMounted(load)
 watch(() => route.params.id, load)
+watch(tab, (v) => { if (v === 'related') loadRelated() })
 </script>
 
 <style scoped>
@@ -399,4 +433,12 @@ watch(() => route.params.id, load)
 .pm-item:hover:not(:disabled) { background: #eaeef2; }
 .pm-item:disabled { color: #8c959f; cursor: default; }
 
+
+.related-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.related-table th { text-align: left; padding: 8px 10px; border-bottom: 1px solid #d8dee4; color: #57606a; font-weight: 500; font-size: 12px; }
+.related-table td { padding: 8px 10px; border-bottom: 1px solid #eaeef2; }
+.related-table tr.clickable { cursor: pointer; }
+.related-table tr.clickable:hover { background: #f6f8fa; }
+.related-table .num { text-align: right; }
+.related-table .link { color: #2c5d9c; font-weight: 500; }
 </style>

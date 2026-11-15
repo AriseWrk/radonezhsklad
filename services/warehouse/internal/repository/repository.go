@@ -327,6 +327,7 @@ func (r *Repo) itemsByDoc(ctx context.Context, docID uuid.UUID) ([]models.DocIte
 }
 
 type DocumentFilters struct {
+	SourceInventoryID *uuid.UUID
 	IncludeDeleted   bool
 	Type             *string
 	Status           *string
@@ -351,6 +352,11 @@ func (r *Repo) ListDocuments(ctx context.Context, f DocumentFilters) ([]models.D
 		}
 	args := []any{}
 	i := 1
+	if f.SourceInventoryID != nil {
+	        q += ` AND d.source_inventory_id = $` + itoa(i)
+	        args = append(args, *f.SourceInventoryID)
+	        i++
+	}
 	if f.Type != nil {
 		q += ` AND d.type = $` + itoa(i)
 		args = append(args, *f.Type)

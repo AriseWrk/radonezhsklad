@@ -20,7 +20,7 @@
         <option value="posted">Проведён</option>
         <option value="cancelled">Отменён</option>
       </select>
-      <MsButton icon="print">Печать</MsButton>
+      <MsButton icon="print" @click="print">Печать</MsButton>
       <select class="ms-select ms-select-edo">
         <option>ЭДО</option>
       </select>
@@ -321,7 +321,7 @@
           <div class="dc-head-right">
             <MsButton v-if="detail.status === 'draft'" variant="green" @click="onPost(detail)">Провести</MsButton>
             <MsButton v-if="detail.status === 'posted'" variant="danger" @click="onCancel(detail)">Отменить</MsButton>
-            <MsButton icon="print">Печать</MsButton>
+            <MsButton icon="print" @click="print">Печать</MsButton>
             <button class="dc-close" @click="detail = null" title="Закрыть">×</button>
           </div>
         </div>
@@ -731,6 +731,8 @@ onMounted(async () => {
   } catch { /* ignore */ }
   await load()
 })
+
+function print() { window.print() }
 </script>
 
 <style scoped>

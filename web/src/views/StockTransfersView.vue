@@ -17,7 +17,7 @@
         <option value="posted">Проведён</option>
         <option value="cancelled">Отменён</option>
       </select>
-      <MsButton icon="print">Печать</MsButton>
+      <MsButton icon="print" @click="print">Печать</MsButton>
       <MsButton variant="icon" icon="gear" title="Настройки" />
     </div>
 
@@ -390,6 +390,8 @@ onMounted(async () => {
   } catch { /* ignore */ }
   await load()
 })
+
+function print() { window.print() }
 </script>
 
 <style scoped>

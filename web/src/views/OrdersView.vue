@@ -18,7 +18,7 @@
         <option value="shipped">Отгружен</option>
         <option value="cancelled">Отменён</option>
       </select>
-      <MsButton icon="print">Печать</MsButton>
+      <MsButton icon="print" @click="print">Печать</MsButton>
       <ColumnSettings :defs="colDefs" :is-visible="cols.isVisible" :toggle="cols.toggle" :reset="cols.reset" />
     </div>
 
@@ -275,6 +275,8 @@ onMounted(async () => {
   } catch { /* ignore */ }
   await load()
 })
+
+function print() { window.print() }
 </script>
 
 <style scoped>

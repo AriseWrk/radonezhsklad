@@ -11,7 +11,7 @@
       <MsButton icon="filter">Фильтр</MsButton>
       <input v-model="search" class="ms-input" placeholder="Наименование, телефон, email" />
       <div class="ms-counter">{{ filtered.length }}</div>
-      <MsButton icon="print">Печать</MsButton>
+      <MsButton icon="print" @click="print">Печать</MsButton>
       <MsButton variant="icon" icon="gear" title="Настройки" />
     </div>
 
@@ -128,6 +128,8 @@ async function onDelete(c: Customer) {
 }
 
 onMounted(load)
+
+function print() { window.print() }
 </script>
 
 <style scoped>

@@ -20,7 +20,7 @@
       <MsButton icon="trash" @click="onArchive">
         {{ form.archived ? 'Вернуть' : 'В архив' }}
       </MsButton>
-      <MsButton icon="print">Печать</MsButton>
+      <MsButton icon="print" @click="print">Печать</MsButton>
       <MsButton icon="send">Отправить</MsButton>
       <div class="pager-nav" v-if="neighbors">
         <button class="pg" :disabled="!neighbors.prev_id" @click="goTo(neighbors.prev_id)">‹</button>
@@ -239,6 +239,8 @@ function close() { router.push('/contracts') }
 function goTo(id: string) { router.push(`/contracts/${id}`) }
 
 onMounted(load)
+
+function print() { window.print() }
 </script>
 
 <style scoped>

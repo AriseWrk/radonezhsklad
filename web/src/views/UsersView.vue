@@ -18,7 +18,7 @@
         <option value="pts">ПТС</option>
       </select>
       <div class="ms-counter">{{ filtered.length }}</div>
-      <MsButton icon="print">Печать</MsButton>
+      <MsButton icon="print" @click="print">Печать</MsButton>
       <MsButton variant="icon" icon="gear" title="Настройки" />
     </div>
 
@@ -346,6 +346,8 @@ async function onArchive() {
 }
 
 onMounted(load)
+
+function print() { window.print() }
 </script>
 
 <style scoped>

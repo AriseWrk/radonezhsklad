@@ -363,3 +363,24 @@ tr:last-child td { border-bottom: none; }
 .doc-info .lbl { color: #57606a; }
 
 .actions-col { white-space: nowrap; text-align: right; }
+
+/* ===== Печать ===== */
+@media print {
+  @page { margin: 10mm; }
+  .topbar, .top-nav, .top-right, .user-block, .sync-toggle,
+  .ms-toolbar, .ms-filter, .ms-title, .ms-footer2,
+  .col-actions, .chk-col, .col-check, .col-chk, .actions-col,
+  .ms-counter, .ms-help, .ms-refresh, .filter-ico, .gear-btn,
+  .show-totals, .bulk-bar, .dropdown-menu-ms, .modal-backdrop { display: none !important; }
+  body, .app, .page, .page-content, .card-page { background: #fff !important; padding: 0 !important; margin: 0 !important; }
+  table { width: 100% !important; font-size: 11px !important; }
+  table thead { display: table-header-group; }
+  table tr { break-inside: avoid; }
+  table th, table td { padding: 3px 5px !important; border-color: #ccc !important; }
+  a, .link { color: #000 !important; text-decoration: none !important; }
+  .ms-doc-fields input, .ms-doc-fields select, .ms-doc-fields textarea,
+  .ms-items input, .ms-items select, .ms-items textarea {
+    border: none !important; background: transparent !important; padding: 0 !important;
+  }
+  .watermark, .page-watermark { display: none !important; }
+}

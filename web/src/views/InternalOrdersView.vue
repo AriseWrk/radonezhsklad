@@ -32,8 +32,6 @@
       <div class="filter-actions">
         <MsButton variant="green" @click="page = 1">Найти</MsButton>
         <MsButton @click="clearFilters">Очистить</MsButton>
-        <MsButton variant="icon" icon="chevron-up" title="Свернуть" />
-        <MsButton variant="icon" icon="chevron-down" title="Развернуть" />
       </div>
 
       <div class="filter-grid">

@@ -8,6 +8,7 @@
 
     <!-- Верхняя панель (Создать, Фильтр, Поиск, Печать) -->
     <div class="ms-toolbar">
+      <ColumnSettings :defs="colDefs" :is-visible="cols.isVisible" :toggle="cols.toggle" :reset="cols.reset" />
       <div class="create-dropdown">
         <button class="btn-primary" @click="showCreateMenu = !showCreateMenu">
           <MsIcon name="plus" :size="14" /> Документ
@@ -17,6 +18,7 @@
         <div v-if="showCreateMenu" class="dropdown-menu-ms" @mouseleave="showCreateMenu = false">
           <div class="dd-col">
             <div class="dd-group">Продажи</div>
+
             <button @click="openCreate('shipment')">Заказы покупателей</button>
             <button @click="openCreate('invoice_out')">Счета покупателям</button>
             <button @click="openCreate('shipment')">Отгрузка</button>
@@ -133,42 +135,42 @@
       <table class="ms-table">
         <thead>
           <tr>
-            <th class="col-check"><input type="checkbox" /></th>
-            <th>Тип документа</th>
-            <th>№</th>
-            <th>Время</th>
-            <th class="col-num">Сумма</th>
-            <th>Со склада</th>
-            <th>На склад</th>
-            <th>Организация</th>
-            <th>Контрагент</th>
-            <th>Статус</th>
-            <th>Отправлено</th>
-            <th>Напечатано</th>
-            <th>Комментарий</th>
-            <th></th>
+            <th v-if="cols.isVisible('chk')" class="col-check"><input type="checkbox" /></th>
+            <th v-if="cols.isVisible('type')">Тип документа</th>
+            <th v-if="cols.isVisible('number')">№</th>
+            <th v-if="cols.isVisible('time')">Время</th>
+            <th v-if="cols.isVisible('total')" class="col-num">Сумма</th>
+            <th v-if="cols.isVisible('warehouse')">Со склада</th>
+            <th v-if="cols.isVisible('target_wh')">На склад</th>
+            <th v-if="cols.isVisible('org')">Организация</th>
+            <th v-if="cols.isVisible('supplier')">Контрагент</th>
+            <th v-if="cols.isVisible('status')">Статус</th>
+            <th v-if="cols.isVisible('sent')">Отправлено</th>
+            <th v-if="cols.isVisible('printed')">Напечатано</th>
+            <th v-if="cols.isVisible('comment')">Комментарий</th>
+            <th v-if="cols.isVisible('actions')"></th>
           </tr>
         </thead>
         <tbody>
-          <tr v-if="loading"><td colspan="14" class="empty">Загрузка...</td></tr>
-          <tr v-else-if="filtered.length === 0"><td colspan="14" class="empty">Нет документов</td></tr>
+          <tr v-if="loading"><td :colspan="visibleColsCount" class="empty">Загрузка...</td></tr>
+          <tr v-else-if="filtered.length === 0"><td :colspan="visibleColsCount" class="empty">Нет документов</td></tr>
           <tr v-else v-for="d in paginated" :key="d.id" class="row" @click="openCard(d)">
-            <td class="col-check" @click.stop><input type="checkbox" /></td>
-            <td>{{ typeLabel(d.type) }}</td>
-            <td><span class="link">{{ d.number }}</span></td>
-            <td>{{ formatDate(d.created_at) }}</td>
-            <td class="col-num"><b>{{ formatMoney(d.total ?? 0) }}</b></td>
-            <td>{{ warehouseName(d.warehouse_id) }}</td>
-            <td>{{ warehouseName(d.target_warehouse_id) }}</td>
-            <td>{{ orgName(d.organization_id) }}</td>
-            <td>{{ supplierName(d.supplier_id) }}</td>
-            <td>
+            <td v-if="cols.isVisible('chk')" class="col-check" @click.stop><input type="checkbox" /></td>
+            <td v-if="cols.isVisible('type')">{{ typeLabel(d.type) }}</td>
+            <td v-if="cols.isVisible('number')"><span class="link">{{ d.number }}</span></td>
+            <td v-if="cols.isVisible('time')">{{ formatDate(d.created_at) }}</td>
+            <td v-if="cols.isVisible('total')" class="col-num"><b>{{ formatMoney(d.total ?? 0) }}</b></td>
+            <td v-if="cols.isVisible('warehouse')">{{ warehouseName(d.warehouse_id) }}</td>
+            <td v-if="cols.isVisible('target_wh')">{{ warehouseName(d.target_warehouse_id) }}</td>
+            <td v-if="cols.isVisible('org')">{{ orgName(d.organization_id) }}</td>
+            <td v-if="cols.isVisible('supplier')">{{ supplierName(d.supplier_id) }}</td>
+            <td v-if="cols.isVisible('status')">
               <span class="badge" :class="'bg-' + d.status">{{ statusLabel(d.status) }}</span>
             </td>
-            <td><span v-if="d.sent_at" class="pill pill-blue">Отправлен</span></td>
-            <td><span v-if="d.printed_at" class="pill pill-blue">Напечатан</span></td>
-            <td class="comment">{{ d.comment || '' }}</td>
-            <td class="col-actions">
+            <td v-if="cols.isVisible('sent')"><span v-if="d.sent_at" class="pill pill-blue">Отправлен</span></td>
+            <td v-if="cols.isVisible('printed')"><span v-if="d.printed_at" class="pill pill-blue">Напечатан</span></td>
+            <td v-if="cols.isVisible('comment')" class="comment">{{ d.comment || '' }}</td>
+            <td v-if="cols.isVisible('actions')" class="col-actions">
               <button class="row-menu" @click.stop="onSoftDelete(d)" title="В корзину"><MsIcon name="trash" :size="14" /></button>
               <button class="row-menu" @click.stop="openCard(d)"><MsIcon name="dots" :size="14" /></button>
             </td>
@@ -204,12 +206,32 @@ import { listDocuments, softDeleteDocument, type Document } from '../api/documen
 import { listInternalOrders, softDeleteInternalOrder, type InternalOrder } from '../api/internalOrders'
 import { listWarehouses, type Warehouse } from '../api/warehouses'
 import { apiErrorMessage } from '../api/client'
+import { useColumnSettings, type ColumnDef } from '../composables/useColumnSettings'
+import ColumnSettings from '../components/ColumnSettings.vue'
 import MsIcon from '../components/MsIcon.vue'
 import DocumentCreateModal from '../components/DocumentCreateModal.vue'
 
 const router = useRouter()
 
-const items = ref<Document[]>([])
+
+const colDefs: ColumnDef[] = [
+  { key: 'chk',         label: 'Выбор',              always: true },
+  { key: 'type',        label: 'Тип документа' },
+  { key: 'number',      label: '№' },
+  { key: 'time',        label: 'Время' },
+  { key: 'total',       label: 'Сумма' },
+  { key: 'warehouse',   label: 'Со склада' },
+  { key: 'target_wh',   label: 'На склад' },
+  { key: 'org',         label: 'Организация' },
+  { key: 'supplier',    label: 'Контрагент' },
+  { key: 'status',      label: 'Статус' },
+  { key: 'sent',        label: 'Отправлено' },
+  { key: 'printed',     label: 'Напечатано' },
+  { key: 'comment',     label: 'Комментарий' },
+  { key: 'actions',     label: 'Действия',           always: true },
+]
+const cols = useColumnSettings('documents', colDefs)
+const visibleColsCount = computed(() => colDefs.filter((d) => cols.isVisible(d.key)).length)const items = ref<Document[]>([])
 const internalOrders = ref<InternalOrder[]>([])
 const warehouses = ref<Warehouse[]>([])
 const loading = ref(false)

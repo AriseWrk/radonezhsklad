@@ -13,9 +13,31 @@ import { listProducts, type Product } from '../api/products'
 import { listSuppliers, type Supplier } from '../api/suppliers'
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
+import { useColumnSettings, type ColumnDef } from '../composables/useColumnSettings'
+import ColumnSettings from '../components/ColumnSettings.vue'
 import MsIcon from '../components/MsIcon.vue'
 import MsSmartSelect, { type SmartItem } from '../components/MsSmartSelect.vue'
 
+
+const colDefs: ColumnDef[] = [
+  { key: 'name',       label: 'Наименование' },
+  { key: 'code',       label: 'Код' },
+  { key: 'sku',        label: 'Артикул' },
+  { key: 'quantity',   label: 'Остаток' },
+  { key: 'min_stock',  label: 'Несниж.' },
+  { key: 'reserve',    label: 'Резерв' },
+  { key: 'incoming',   label: 'Ожидание' },
+  { key: 'available',  label: 'Доступно' },
+  { key: 'unit',       label: 'Ед.' },
+  { key: 'days',       label: 'Дней на скл.' },
+  { key: 'cost',       label: 'Себест.' },
+  { key: 'cost_total', label: 'Сумма себест.' },
+  { key: 'sale',       label: 'Цена продажи' },
+  { key: 'sale_total', label: 'Сумма продажи' },
+  { key: 'warehouses', label: 'Складов' },
+]
+const cols = useColumnSettings('stock', colDefs)
+const visibleColsCount = computed(() => colDefs.filter((d) => cols.isVisible(d.key)).length)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const data = ref<StockExtendedResponse | null>(null)
@@ -303,7 +325,7 @@ onMounted(async () => {
         </div>
         <MsButton icon="filter" @click="toggleFilter">Фильтр</MsButton>
         <MsButton icon="print" @click="print">Печать</MsButton>
-        <MsButton variant="icon" icon="gear" title="Настройки" />
+<ColumnSettings :defs="colDefs" :is-visible="cols.isVisible" :toggle="cols.toggle" :reset="cols.reset" />
       </div>
 
       <!-- Фильтры в стиле МС -->
@@ -409,26 +431,26 @@ onMounted(async () => {
       <table v-if="view === 'products'" class="ms-table">
         <thead>
           <tr>
-            <th @click="sortBy('product_name')">Наименование <span v-if="sortKey === 'product_name'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span></th>
-            <th style="width:70px">Код</th>
-            <th style="width:100px">Артикул</th>
-            <th class="num" style="width:90px" @click="sortBy('quantity')">Остаток</th>
-            <th class="num" style="width:100px">Несниж.</th>
-            <th class="num" style="width:80px">Резерв</th>
-            <th class="num" style="width:90px">Ожидание</th>
-            <th class="num" style="width:90px">Доступно</th>
-            <th style="width:60px">Ед.</th>
-            <th class="num" style="width:100px">Дней на скл.</th>
-            <th class="num" style="width:100px">Себест.</th>
-            <th class="num" style="width:110px">Сумма себест.</th>
-            <th class="num" style="width:100px">Цена продажи</th>
-            <th class="num" style="width:120px">Сумма продажи</th>
-            <th class="num" style="width:90px">Складов</th>
+            <th v-if="cols.isVisible('name')" @click="sortBy('product_name')">Наименование <span v-if="sortKey === 'product_name'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span></th>
+            <th v-if="cols.isVisible('code')" style="width:70px">Код</th>
+            <th v-if="cols.isVisible('sku')" style="width:100px">Артикул</th>
+            <th v-if="cols.isVisible('quantity')" class="num" style="width:90px" @click="sortBy('quantity')">Остаток</th>
+            <th v-if="cols.isVisible('min_stock')" class="num" style="width:100px">Несниж.</th>
+            <th v-if="cols.isVisible('reserve')" class="num" style="width:80px">Резерв</th>
+            <th v-if="cols.isVisible('incoming')" class="num" style="width:90px">Ожидание</th>
+            <th v-if="cols.isVisible('available')" class="num" style="width:90px">Доступно</th>
+            <th v-if="cols.isVisible('unit')" style="width:60px">Ед.</th>
+            <th v-if="cols.isVisible('days')" class="num" style="width:100px">Дней на скл.</th>
+            <th v-if="cols.isVisible('cost')" class="num" style="width:100px">Себест.</th>
+            <th v-if="cols.isVisible('cost_total')" class="num" style="width:110px">Сумма себест.</th>
+            <th v-if="cols.isVisible('sale')" class="num" style="width:100px">Цена продажи</th>
+            <th v-if="cols.isVisible('sale_total')" class="num" style="width:120px">Сумма продажи</th>
+            <th v-if="cols.isVisible('warehouses')" class="num" style="width:90px">Складов</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-if="loading"><td colspan="15" class="muted" style="text-align:center;padding:24px">Загрузка...</td></tr>
-          <tr v-else-if="filteredProductRows.length === 0"><td colspan="15" class="muted" style="text-align:center;padding:24px">Нет данных</td></tr>
+          <tr v-if="loading"><td :colspan="visibleColsCount" class="muted" style="text-align:center;padding:24px">Загрузка...</td></tr>
+          <tr v-else-if="filteredProductRows.length === 0"><td :colspan="visibleColsCount" class="muted" style="text-align:center;padding:24px">Нет данных</td></tr>
           <tr
             v-else
             v-for="r in paginatedProductRows"
@@ -437,21 +459,21 @@ onMounted(async () => {
             :class="{ active: selectedProductId === r.product_id }"
             @click="openDetail(r.product_id)"
           >
-            <td class="link">{{ r.product_name }}</td>
-            <td class="muted mono">{{ r.product_id.slice(0, 6) }}</td>
-            <td class="muted mono">{{ r.sku || '—' }}</td>
-            <td class="num">{{ formatQty(r.quantity) }}</td>
-            <td class="num muted">{{ r.min_stock > 0 ? formatQty(r.min_stock) : '—' }}</td>
-            <td class="num muted">{{ formatQty(r.reserve) }}</td>
-            <td class="num">{{ formatQty(r.incoming) }}</td>
-            <td class="num"><strong>{{ formatQty(r.available) }}</strong></td>
-            <td>{{ r.unit_short || '—' }}</td>
-            <td class="num muted">{{ r.days_on_stock ?? '—' }}</td>
-            <td class="num">{{ formatMoney(r.cost_price) }}</td>
-            <td class="num">{{ formatMoney(r.cost_total) }}</td>
-            <td class="num red">{{ formatMoney(r.sale_price) }}</td>
-            <td class="num red">{{ formatMoney(r.sale_total) }}</td>
-            <td class="num muted">{{ r.warehouses_count }}</td>
+            <td v-if="cols.isVisible('name')" class="link">{{ r.product_name }}</td>
+            <td v-if="cols.isVisible('code')" class="muted mono">{{ r.product_id.slice(0, 6) }}</td>
+            <td v-if="cols.isVisible('sku')" class="muted mono">{{ r.sku || '—' }}</td>
+            <td v-if="cols.isVisible('quantity')" class="num">{{ formatQty(r.quantity) }}</td>
+            <td v-if="cols.isVisible('min_stock')" class="num muted">{{ r.min_stock > 0 ? formatQty(r.min_stock) : '—' }}</td>
+            <td v-if="cols.isVisible('reserve')" class="num muted">{{ formatQty(r.reserve) }}</td>
+            <td v-if="cols.isVisible('incoming')" class="num">{{ formatQty(r.incoming) }}</td>
+            <td v-if="cols.isVisible('available')" class="num"><strong>{{ formatQty(r.available) }}</strong></td>
+            <td v-if="cols.isVisible('unit')">{{ r.unit_short || '—' }}</td>
+            <td v-if="cols.isVisible('days')" class="num muted">{{ r.days_on_stock ?? '—' }}</td>
+            <td v-if="cols.isVisible('cost')" class="num">{{ formatMoney(r.cost_price) }}</td>
+            <td v-if="cols.isVisible('cost_total')" class="num">{{ formatMoney(r.cost_total) }}</td>
+            <td v-if="cols.isVisible('sale')" class="num red">{{ formatMoney(r.sale_price) }}</td>
+            <td v-if="cols.isVisible('sale_total')" class="num red">{{ formatMoney(r.sale_total) }}</td>
+            <td v-if="cols.isVisible('warehouses')" class="num muted">{{ r.warehouses_count }}</td>
           </tr>
         </tbody>
       </table>

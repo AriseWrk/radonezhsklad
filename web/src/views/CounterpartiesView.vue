@@ -23,7 +23,7 @@
       </select>
       <MsButton icon="print" disabled>Печать</MsButton>
       <MsButton icon="excel" @click="exportCsv">Экспорт</MsButton>
-      <MsButton variant="icon" icon="gear" title="Настройки" />
+      <ColumnSettings :defs="colDefs" :is-visible="cols.isVisible" :toggle="cols.toggle" :reset="cols.reset" />
     </div>
 
     <div v-if="showFilter" class="ms-filter">
@@ -181,28 +181,28 @@
     <table class="ms-table">
       <thead>
         <tr>
-          <th class="chk-col"><input type="checkbox" :checked="allChecked" @change="toggleAll" /></th>
-          <th @click="sortBy('name')">
+          <th v-if="cols.isVisible('chk')" class="chk-col"><input type="checkbox" :checked="allChecked" @change="toggleAll" /></th>
+          <th v-if="cols.isVisible('name')" @click="sortBy('name')">
             Наименование
             <span v-if="sortKey === 'name'" class="sort-arrow">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
           </th>
-          <th style="width:100px">Код</th>
-          <th style="width:140px" @click="sortBy('created_at')">
+          <th v-if="cols.isVisible('code')" style="width:100px">Код</th>
+          <th v-if="cols.isVisible('created')" style="width:140px" @click="sortBy('created_at')">
             Создан
             <span v-if="sortKey === 'created_at'" class="sort-arrow">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
           </th>
-          <th style="width:140px">Телефон</th>
-          <th style="width:80px">Факс</th>
-          <th style="width:160px">E-mail</th>
-          <th style="width:100px">Статус</th>
-          <th>Фактический адрес</th>
-          <th style="width:180px">Комментарий</th>
-          <th style="width:120px">Группы</th>
+          <th v-if="cols.isVisible('phone')" style="width:140px">Телефон</th>
+          <th v-if="cols.isVisible('fax')" style="width:80px">Факс</th>
+          <th v-if="cols.isVisible('email')" style="width:160px">E-mail</th>
+          <th v-if="cols.isVisible('status')" style="width:100px">Статус</th>
+          <th v-if="cols.isVisible('address')">Фактический адрес</th>
+          <th v-if="cols.isVisible('comment')" style="width:180px">Комментарий</th>
+          <th v-if="cols.isVisible('group')" style="width:120px">Группы</th>
         </tr>
       </thead>
       <tbody>
-        <tr v-if="loading"><td colspan="11" class="muted" style="text-align:center;padding:24px">Загрузка...</td></tr>
-        <tr v-else-if="filtered.length === 0"><td colspan="11" class="muted" style="text-align:center;padding:24px">Нет контрагентов</td></tr>
+        <tr v-if="loading"><td :colspan="visibleColsCount" class="muted" style="text-align:center;padding:24px">Загрузка...</td></tr>
+        <tr v-else-if="filtered.length === 0"><td :colspan="visibleColsCount" class="muted" style="text-align:center;padding:24px">Нет контрагентов</td></tr>
         <tr
           v-else
           v-for="c in paginated"
@@ -211,19 +211,19 @@
           :class="{ selected: selected.has(c.id) }"
           @click="openEdit(c)"
         >
-          <td class="chk-col" @click.stop>
+          <td v-if="cols.isVisible('chk')" class="chk-col" @click.stop>
             <input type="checkbox" :checked="selected.has(c.id)" @change="toggleSelect(c.id)" />
           </td>
-          <td>{{ c.name }}</td>
-          <td class="muted mono">{{ c.external_code || shortId(c.id) }}</td>
-          <td class="muted">{{ formatShort(c.created_at) }}</td>
-          <td>{{ c.phone || '' }}</td>
-          <td class="muted">{{ c.fax || '' }}</td>
-          <td class="muted">{{ c.email || '' }}</td>
-          <td><span class="status-badge">{{ c.status || 'Новый' }}</span></td>
-          <td class="muted">{{ c.actual_address || c.address || '' }}</td>
-          <td class="muted">{{ c.comment || '' }}</td>
-          <td class="muted">{{ c.group_name || '' }}</td>
+          <td v-if="cols.isVisible('name')">{{ c.name }}</td>
+          <td v-if="cols.isVisible('code')" class="muted mono">{{ c.external_code || shortId(c.id) }}</td>
+          <td v-if="cols.isVisible('created')" class="muted">{{ formatShort(c.created_at) }}</td>
+          <td v-if="cols.isVisible('phone')">{{ c.phone || '' }}</td>
+          <td v-if="cols.isVisible('fax')" class="muted">{{ c.fax || '' }}</td>
+          <td v-if="cols.isVisible('email')" class="muted">{{ c.email || '' }}</td>
+          <td v-if="cols.isVisible('status')"><span class="status-badge">{{ c.status || 'Новый' }}</span></td>
+          <td v-if="cols.isVisible('address')" class="muted">{{ c.actual_address || c.address || '' }}</td>
+          <td v-if="cols.isVisible('comment')" class="muted">{{ c.comment || '' }}</td>
+          <td v-if="cols.isVisible('group')" class="muted">{{ c.group_name || '' }}</td>
         </tr>
       </tbody>
     </table>
@@ -360,9 +360,26 @@ import {
 } from '../api/customers'
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
+import { useColumnSettings, type ColumnDef } from '../composables/useColumnSettings'
+import ColumnSettings from '../components/ColumnSettings.vue'
 import MsIcon from '../components/MsIcon.vue'
 
-const items = ref<Customer[]>([])
+
+const colDefs: ColumnDef[] = [
+  { key: 'chk',         label: 'Выбор',              always: true },
+  { key: 'name',        label: 'Наименование' },
+  { key: 'code',        label: 'Код' },
+  { key: 'created',     label: 'Когда создан' },
+  { key: 'phone',       label: 'Телефон' },
+  { key: 'fax',         label: 'Факс' },
+  { key: 'email',       label: 'E-mail' },
+  { key: 'status',      label: 'Статус' },
+  { key: 'address',     label: 'Фактический адрес' },
+  { key: 'comment',     label: 'Комментарий' },
+  { key: 'group',       label: 'Группы' },
+]
+const cols = useColumnSettings('counterparties', colDefs)
+const visibleColsCount = computed(() => colDefs.filter((d) => cols.isVisible(d.key)).length)const items = ref<Customer[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const showFilter = ref(false)

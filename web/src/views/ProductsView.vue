@@ -47,7 +47,7 @@
         <MsButton icon="print" @click="printList">Печать</MsButton>
         <MsButton icon="excel" @click="importCsv" disabled>Импорт</MsButton>
         <MsButton icon="excel" @click="exportCsv">Экспорт</MsButton>
-        <MsButton variant="icon" icon="gear" title="Настройки" />
+        <ColumnSettings :defs="colDefs" :is-visible="cols.isVisible" :toggle="cols.toggle" :reset="cols.reset" />
       </div>
 
       <!-- Фильтр-панель -->
@@ -85,18 +85,18 @@
       <table class="ms-table">
         <thead>
           <tr>
-            <th class="chk-col"><input type="checkbox" :checked="allChecked" @change="toggleAll" /></th>
-            <th @click="sortBy('name')">
+            <th v-if="cols.isVisible('chk')" class="chk-col"><input type="checkbox" :checked="allChecked" @change="toggleAll" /></th>
+            <th v-if="cols.isVisible('name')" @click="sortBy('name')">
               Наименование
               <span v-if="sortKey === 'name'" class="sort-arrow">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
             </th>
-            <th style="width:100px" @click="sortBy('sku')">
+            <th v-if="cols.isVisible('id')" style="width:100px" @click="sortBy('sku')">
               Код
               <span v-if="sortKey === 'sku'" class="sort-arrow">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
             </th>
-            <th style="width:120px">Артикул</th>
-            <th style="width:80px">Ед. изм.</th>
-            <th class="num" style="width:130px" @click="sortBy('price')">
+            <th v-if="cols.isVisible('sku')" style="width:120px">Артикул</th>
+            <th v-if="cols.isVisible('unit')" style="width:80px">Ед. изм.</th>
+            <th v-if="cols.isVisible('price')" class="num" style="width:130px" @click="sortBy('price')">
               Цена продажи
               <span v-if="sortKey === 'price'" class="sort-arrow">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
             </th>
@@ -104,10 +104,10 @@
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="6" class="muted" style="text-align:center;padding:24px">Загрузка...</td>
+            <td :colspan="visibleColsCount" class="muted" style="text-align:center;padding:24px">Загрузка...</td>
           </tr>
           <tr v-else-if="filtered.length === 0">
-            <td colspan="6" class="muted" style="text-align:center;padding:24px">Нет товаров</td>
+            <td :colspan="visibleColsCount" class="muted" style="text-align:center;padding:24px">Нет товаров</td>
           </tr>
           <tr
             v-else
@@ -117,17 +117,17 @@
             :class="{ selected: selected.has(p.id) }"
             @click="openEdit(p)"
           >
-            <td class="chk-col" @click.stop>
+            <td v-if="cols.isVisible('chk')" class="chk-col" @click.stop>
               <input type="checkbox" :checked="selected.has(p.id)" @change="toggleSelect(p.id)" />
             </td>
-            <td>
+            <td v-if="cols.isVisible('name')">
               {{ p.name }}
               <span v-if="p.is_archived" class="pill archived" style="margin-left:8px">архив</span>
             </td>
-            <td class="muted mono">{{ shortId(p.id) }}</td>
-            <td class="muted mono">{{ p.sku || '—' }}</td>
-            <td>{{ unitShort(p.unit_id) }}</td>
-            <td class="num">{{ formatMoney(p.price) }}</td>
+            <td v-if="cols.isVisible('id')" class="muted mono">{{ shortId(p.id) }}</td>
+            <td v-if="cols.isVisible('sku')" class="muted mono">{{ p.sku || '—' }}</td>
+            <td v-if="cols.isVisible('unit')">{{ unitShort(p.unit_id) }}</td>
+            <td v-if="cols.isVisible('price')" class="num">{{ formatMoney(p.price) }}</td>
           </tr>
         </tbody>
       </table>
@@ -161,8 +161,21 @@ import { listUnits, type Unit } from '../api/units'
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
 import MsIcon from '../components/MsIcon.vue'
+import { useColumnSettings, type ColumnDef } from '../composables/useColumnSettings'
+import ColumnSettings from '../components/ColumnSettings.vue'
 
 const router = useRouter()
+
+const colDefs: ColumnDef[] = [
+  { key: 'chk',   label: 'Выбор',        always: true },
+  { key: 'name',  label: 'Наименование' },
+  { key: 'id',    label: 'Код' },
+  { key: 'sku',   label: 'Артикул' },
+  { key: 'unit',  label: 'Ед. изм.' },
+  { key: 'price', label: 'Цена' },
+]
+const cols = useColumnSettings('products', colDefs)
+const visibleColsCount = computed(() => colDefs.filter((d) => cols.isVisible(d.key)).length)
 
 const products = ref<Product[]>([])
 const categories = ref<Category[]>([])

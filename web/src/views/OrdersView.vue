@@ -19,7 +19,7 @@
         <option value="cancelled">Отменён</option>
       </select>
       <MsButton icon="print">Печать</MsButton>
-      <MsButton variant="icon" icon="gear" title="Настройки" />
+      <ColumnSettings :defs="colDefs" :is-visible="cols.isVisible" :toggle="cols.toggle" :reset="cols.reset" />
     </div>
 
     <div v-if="error" class="error-box">{{ error }}</div>
@@ -27,26 +27,26 @@
     <table class="ms-table2">
       <thead>
         <tr>
-          <th class="col-num">Номер</th>
-          <th>Покупатель</th>
-          <th>Склад</th>
-          <th class="col-num-right">Сумма</th>
-          <th class="col-status">Статус</th>
-          <th class="col-date">Дата</th>
-          <th class="col-actions"></th>
+          <th v-if="cols.isVisible('number')" class="col-num">Номер</th>
+          <th v-if="cols.isVisible('customer')">Покупатель</th>
+          <th v-if="cols.isVisible('warehouse')">Склад</th>
+          <th v-if="cols.isVisible('total')" class="col-num-right">Сумма</th>
+          <th v-if="cols.isVisible('status')" class="col-status">Статус</th>
+          <th v-if="cols.isVisible('date')" class="col-date">Дата</th>
+          <th v-if="cols.isVisible('actions')" class="col-actions"></th>
         </tr>
       </thead>
       <tbody>
-        <tr v-if="loading"><td colspan="7" class="empty">Загрузка...</td></tr>
-        <tr v-else-if="filtered.length === 0"><td colspan="7" class="empty">Нет заказов</td></tr>
+        <tr v-if="loading"><td :colspan="visibleColsCount" class="empty">Загрузка...</td></tr>
+        <tr v-else-if="filtered.length === 0"><td :colspan="visibleColsCount" class="empty">Нет заказов</td></tr>
         <tr v-else v-for="o in filtered" :key="o.id" class="row">
-          <td class="col-num"><span class="link">{{ o.number }}</span></td>
-          <td>{{ customerName(o.customer_id) }}</td>
-          <td>{{ warehouseName(o.warehouse_id) }}</td>
-          <td class="col-num-right"><b>{{ o.total.toFixed(2) }}</b> {{ o.currency }}</td>
-          <td class="col-status"><span class="badge" :class="'bg-' + o.status">{{ statusLabel(o.status) }}</span></td>
-          <td class="col-date">{{ formatDate(o.created_at) }}</td>
-          <td class="col-actions" @click.stop>
+          <td v-if="cols.isVisible('number')" class="col-num"><span class="link">{{ o.number }}</span></td>
+          <td v-if="cols.isVisible('customer')">{{ customerName(o.customer_id) }}</td>
+          <td v-if="cols.isVisible('warehouse')">{{ warehouseName(o.warehouse_id) }}</td>
+          <td v-if="cols.isVisible('total')" class="col-num-right"><b>{{ o.total.toFixed(2) }}</b> {{ o.currency }}</td>
+          <td v-if="cols.isVisible('status')" class="col-status"><span class="badge" :class="'bg-' + o.status">{{ statusLabel(o.status) }}</span></td>
+          <td v-if="cols.isVisible('date')" class="col-date">{{ formatDate(o.created_at) }}</td>
+          <td v-if="cols.isVisible('actions')" class="col-actions" @click.stop>
             <button v-if="o.status === 'draft'" class="btn-link-ms" @click="onConfirm(o)">Подтвердить</button>
             <button v-if="o.status === 'confirmed'" class="btn-link-ms" @click="onShip(o)">Отгрузить</button>
             <button v-if="o.status === 'draft' || o.status === 'confirmed'" class="btn-link-ms danger" @click="onCancel(o)">Отменить</button>
@@ -151,7 +151,21 @@ import { listProducts, type Product } from '../api/products'
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
 import MsIcon from '../components/MsIcon.vue'
+import { useColumnSettings, type ColumnDef } from '../composables/useColumnSettings'
+import ColumnSettings from '../components/ColumnSettings.vue'
 
+
+const colDefs: ColumnDef[] = [
+  { key: 'number',    label: 'Номер' },
+  { key: 'customer',  label: 'Покупатель' },
+  { key: 'warehouse', label: 'Склад' },
+  { key: 'total',     label: 'Сумма' },
+  { key: 'status',    label: 'Статус' },
+  { key: 'date',      label: 'Дата' },
+  { key: 'actions',   label: 'Действия', always: true },
+]
+const cols = useColumnSettings('orders', colDefs)
+const visibleColsCount = computed(() => colDefs.filter((d) => cols.isVisible(d.key)).length)
 const items = ref<Order[]>([])
 const customers = ref<Customer[]>([])
 const warehouses = ref<Warehouse[]>([])

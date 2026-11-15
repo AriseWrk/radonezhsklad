@@ -18,7 +18,7 @@
         <option value="paid">Оплачен</option>
       </select>
       <MsButton icon="print" @click="printList">Печать</MsButton>
-      <MsButton variant="icon" icon="gear" title="Настройки" />
+      <ColumnSettings :defs="colDefs" :is-visible="cols.isVisible" :toggle="cols.toggle" :reset="cols.reset" />
     </div>
 
     <div v-if="showFilter" class="ms-filter">
@@ -105,32 +105,32 @@
     <table class="ms-table">
       <thead>
         <tr>
-          <th class="chk-col"><input type="checkbox" :checked="allChecked" @change="toggleAll" /></th>
-          <th style="width:180px" @click="sortBy('number')">
+          <th v-if="cols.isVisible('chk')" class="chk-col"><input type="checkbox" :checked="allChecked" @change="toggleAll" /></th>
+          <th v-if="cols.isVisible('number')" style="width:180px" @click="sortBy('number')">
             Номер
             <span v-if="sortKey === 'number'" class="sort-arrow">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
           </th>
-          <th style="width:80px">Код</th>
-          <th style="width:140px" @click="sortBy('doc_date')">
+          <th v-if="cols.isVisible('code')" style="width:80px">Код</th>
+          <th v-if="cols.isVisible('date')" style="width:140px" @click="sortBy('doc_date')">
             Время
             <span v-if="sortKey === 'doc_date'" class="sort-arrow">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
           </th>
-          <th>Контрагент</th>
-          <th style="width:180px">Организация</th>
-          <th class="num" style="width:120px" @click="sortBy('amount')">
+          <th v-if="cols.isVisible('customer')">Контрагент</th>
+          <th v-if="cols.isVisible('org')" style="width:180px">Организация</th>
+          <th v-if="cols.isVisible('amount')" class="num" style="width:120px" @click="sortBy('amount')">
             Сумма
             <span v-if="sortKey === 'amount'" class="sort-arrow">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
           </th>
-          <th class="num" style="width:110px">Оплачено</th>
-          <th class="num" style="width:120px">Выполнено</th>
-          <th style="width:100px">Отправлено</th>
-          <th style="width:100px">Напечатано</th>
-          <th>Комментарий</th>
+          <th v-if="cols.isVisible('paid')" class="num" style="width:110px">Оплачено</th>
+          <th v-if="cols.isVisible('fulfilled')" class="num" style="width:120px">Выполнено</th>
+          <th v-if="cols.isVisible('sent')" style="width:100px">Отправлено</th>
+          <th v-if="cols.isVisible('printed')" style="width:100px">Напечатано</th>
+          <th v-if="cols.isVisible('comment')">Комментарий</th>
         </tr>
       </thead>
       <tbody>
-        <tr v-if="loading"><td colspan="12" class="muted" style="text-align:center;padding:24px">Загрузка...</td></tr>
-        <tr v-else-if="filtered.length === 0"><td colspan="12" class="muted" style="text-align:center;padding:24px">Нет договоров</td></tr>
+        <tr v-if="loading"><td :colspan="visibleColsCount" class="muted" style="text-align:center;padding:24px">Загрузка...</td></tr>
+        <tr v-else-if="filtered.length === 0"><td :colspan="visibleColsCount" class="muted" style="text-align:center;padding:24px">Нет договоров</td></tr>
         <tr
           v-else
           v-for="c in paginated"
@@ -139,20 +139,20 @@
           :class="{ selected: selected.has(c.id), 'row-warning': isWarning(c) }"
           @click="openCard(c)"
         >
-          <td class="chk-col" @click.stop>
+          <td v-if="cols.isVisible('chk')" class="chk-col" @click.stop>
             <input type="checkbox" :checked="selected.has(c.id)" @change="toggleSelect(c.id)" />
           </td>
-          <td class="link">{{ c.number }}</td>
-          <td class="muted mono">{{ c.code || shortId(c.id) }}</td>
-          <td class="muted">{{ formatDate(c.doc_date) }}</td>
-          <td>{{ customerName(c.customer_id) }}</td>
-          <td class="muted">{{ organizationName(c.organization_id) }}</td>
-          <td class="num">{{ formatMoney(c.amount) }}</td>
-          <td class="num muted">{{ formatMoney(c.paid) }}</td>
-          <td class="num">{{ formatMoney(c.fulfilled) }}</td>
-          <td class="muted">{{ c.sent_at ? 'да' : '' }}</td>
-          <td class="muted">{{ c.printed_at ? 'да' : '' }}</td>
-          <td class="muted">{{ c.comment || '' }}</td>
+          <td v-if="cols.isVisible('number')" class="link">{{ c.number }}</td>
+          <td v-if="cols.isVisible('code')" class="muted mono">{{ c.code || shortId(c.id) }}</td>
+          <td v-if="cols.isVisible('date')" class="muted">{{ formatDate(c.doc_date) }}</td>
+          <td v-if="cols.isVisible('customer')">{{ customerName(c.customer_id) }}</td>
+          <td v-if="cols.isVisible('org')" class="muted">{{ organizationName(c.organization_id) }}</td>
+          <td v-if="cols.isVisible('amount')" class="num">{{ formatMoney(c.amount) }}</td>
+          <td v-if="cols.isVisible('paid')" class="num muted">{{ formatMoney(c.paid) }}</td>
+          <td v-if="cols.isVisible('fulfilled')" class="num">{{ formatMoney(c.fulfilled) }}</td>
+          <td v-if="cols.isVisible('sent')" class="muted">{{ c.sent_at ? 'да' : '' }}</td>
+          <td v-if="cols.isVisible('printed')" class="muted">{{ c.printed_at ? 'да' : '' }}</td>
+          <td v-if="cols.isVisible('comment')" class="muted">{{ c.comment || '' }}</td>
         </tr>
       </tbody>
     </table>
@@ -182,9 +182,27 @@ import { listCustomers, type Customer } from '../api/customers'
 import { listOrganizations, type Organization } from '../api/suppliers'
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
+import { useColumnSettings, type ColumnDef } from '../composables/useColumnSettings'
+import ColumnSettings from '../components/ColumnSettings.vue'
 import MsIcon from '../components/MsIcon.vue'
 
-const items = ref<Contract[]>([])
+
+const colDefs: ColumnDef[] = [
+  { key: 'chk',         label: 'Выбор',        always: true },
+  { key: 'number',      label: 'Номер' },
+  { key: 'code',        label: 'Код' },
+  { key: 'date',        label: 'Дата' },
+  { key: 'customer',    label: 'Контрагент' },
+  { key: 'org',         label: 'Организация' },
+  { key: 'amount',      label: 'Сумма' },
+  { key: 'paid',        label: 'Оплачено' },
+  { key: 'fulfilled',   label: 'Выполнено' },
+  { key: 'sent',        label: 'Отправлено' },
+  { key: 'printed',     label: 'Напечатано' },
+  { key: 'comment',     label: 'Комментарий' },
+]
+const cols = useColumnSettings('contracts', colDefs)
+const visibleColsCount = computed(() => colDefs.filter((d) => cols.isVisible(d.key)).length)const items = ref<Contract[]>([])
 const customers = ref<Customer[]>([])
 const organizations = ref<Organization[]>([])
 const loading = ref(false)

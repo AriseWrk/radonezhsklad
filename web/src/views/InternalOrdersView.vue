@@ -24,7 +24,7 @@
         <option value="cancelled">Отменён</option>
       </select>
       <MsButton icon="print" @click="printSelected">Печать</MsButton>
-      <MsButton variant="icon" icon="gear" title="Настройки" />
+      <ColumnSettings :defs="colDefs" :is-visible="cols.isVisible" :toggle="cols.toggle" :reset="cols.reset" />
     </div>
 
     <!-- Фильтр-панель -->
@@ -34,7 +34,6 @@
         <MsButton @click="clearFilters">Очистить</MsButton>
         <MsButton variant="icon" icon="chevron-up" title="Свернуть" />
         <MsButton variant="icon" icon="chevron-down" title="Развернуть" />
-        <MsButton variant="icon" icon="gear" title="Настройки" />
       </div>
 
       <div class="filter-grid">
@@ -125,21 +124,21 @@
     <table class="ms-table2">
       <thead>
         <tr>
-          <th class="col-chk"><input type="checkbox" :checked="allChecked" @change="toggleAll" /></th>
-          <th class="col-num" @click="sortBy('number')">№<span v-if="sortKey === 'number'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
-          <th class="col-date" @click="sortBy('doc_date')">Время<span v-if="sortKey === 'doc_date'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
-          <th>Организация</th>
-          <th class="col-num-right" @click="sortBy('total')">Сумма<span v-if="sortKey === 'total'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
-          <th class="col-num-right">Отгружено</th>
-          <th class="col-num-right">Отправлено</th>
-          <th class="col-status">Напечатано</th>
-          <th>Комментарий</th>
-          <th class="col-actions"><MsIcon name="gear" :size="14" /></th>
+          <th v-if="cols.isVisible('chk')" class="col-chk"><input type="checkbox" :checked="allChecked" @change="toggleAll" /></th>
+          <th v-if="cols.isVisible('number')" class="col-num" @click="sortBy('number')">№<span v-if="sortKey === 'number'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+          <th v-if="cols.isVisible('date')" class="col-date" @click="sortBy('doc_date')">Время<span v-if="sortKey === 'doc_date'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+          <th v-if="cols.isVisible('org')">Организация</th>
+          <th v-if="cols.isVisible('total')" class="col-num-right" @click="sortBy('total')">Сумма<span v-if="sortKey === 'total'" class="sort">{{ sortDir === 'asc' ? '▲' : '▼' }}</span></th>
+          <th v-if="cols.isVisible('shipped')" class="col-num-right">Отгружено</th>
+          <th v-if="cols.isVisible('sent')" class="col-num-right">Отправлено</th>
+          <th v-if="cols.isVisible('printed')" class="col-status">Напечатано</th>
+          <th v-if="cols.isVisible('comment')">Комментарий</th>
+          <th v-if="cols.isVisible('actions')" class="col-actions"><MsIcon name="gear" :size="14" /></th>
         </tr>
       </thead>
       <tbody>
-        <tr v-if="loading"><td colspan="10" class="empty">Загрузка...</td></tr>
-        <tr v-else-if="filtered.length === 0"><td colspan="10" class="empty">Нет заказов</td></tr>
+        <tr v-if="loading"><td :colspan="visibleColsCount" class="empty">Загрузка...</td></tr>
+        <tr v-else-if="filtered.length === 0"><td :colspan="visibleColsCount" class="empty">Нет заказов</td></tr>
         <tr
           v-else
           v-for="o in paginated"
@@ -148,24 +147,24 @@
           :class="{ selected: selected.has(o.id) }"
           @click="open(o)"
         >
-          <td class="col-chk" @click.stop>
+          <td v-if="cols.isVisible('chk')" class="col-chk" @click.stop>
             <input type="checkbox" :checked="selected.has(o.id)" @change="toggleSelect(o.id)" />
           </td>
-          <td class="col-num"><span class="link">{{ o.number }}</span></td>
-          <td class="col-date">{{ formatDate(o.doc_date) }}</td>
-          <td>{{ organizationName(o.organization_id) }}</td>
-          <td class="col-num-right"><b>{{ formatMoney(o.total) }}</b></td>
-          <td class="col-num-right">{{ formatMoney(o.shipped_amount ?? 0) }}</td>
-          <td class="col-num-right">
+          <td v-if="cols.isVisible('number')" class="col-num"><span class="link">{{ o.number }}</span></td>
+          <td v-if="cols.isVisible('date')" class="col-date">{{ formatDate(o.doc_date) }}</td>
+          <td v-if="cols.isVisible('org')">{{ organizationName(o.organization_id) }}</td>
+          <td v-if="cols.isVisible('total')" class="col-num-right"><b>{{ formatMoney(o.total) }}</b></td>
+          <td v-if="cols.isVisible('shipped')" class="col-num-right">{{ formatMoney(o.shipped_amount ?? 0) }}</td>
+          <td v-if="cols.isVisible('sent')" class="col-num-right">
             <span v-if="o.sent_at">{{ formatMoney(o.total) }}</span>
             <span v-else>0,00</span>
           </td>
-          <td class="col-status">
+          <td v-if="cols.isVisible('printed')" class="col-status">
             <span v-if="o.sent_at" class="badge">Отправлен</span>
             <span v-else-if="o.is_printed || o.printed_at" class="badge">Напечатан</span>
           </td>
-          <td class="comment">{{ o.comment || '' }}</td>
-          <td class="col-actions" @click.stop>
+          <td v-if="cols.isVisible('comment')" class="comment">{{ o.comment || '' }}</td>
+          <td v-if="cols.isVisible('actions')" class="col-actions" @click.stop>
             <button class="row-menu" @click="open(o)"><MsIcon name="dots" :size="14" /></button>
           </td>
         </tr>
@@ -211,6 +210,8 @@ import { listProjects, type Project } from '../api/projects'
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
 import MsIcon from '../components/MsIcon.vue'
+import { useColumnSettings, type ColumnDef } from '../composables/useColumnSettings'
+import ColumnSettings from '../components/ColumnSettings.vue'
 
 const items = ref<InternalOrder[]>([])
 const warehouses = ref<Warehouse[]>([])
@@ -240,6 +241,37 @@ const sortDir = ref<'asc' | 'desc'>('desc')
 const selected = ref<Set<string>>(new Set())
 const router = useRouter()
 const auth = useAuthStore()
+
+
+const colDefs: ColumnDef[] = [
+
+  { key: 'chk',      label: 'Выбор',        always: true },
+
+  { key: 'number',   label: '№' },
+
+  { key: 'date',     label: 'Время' },
+
+  { key: 'org',      label: 'Организация' },
+
+  { key: 'total',    label: 'Сумма' },
+
+  { key: 'shipped',  label: 'Отгружено' },
+
+  { key: 'sent',     label: 'Отправлено' },
+
+  { key: 'printed',  label: 'Напечатано' },
+
+  { key: 'comment',  label: 'Комментарий' },
+
+  { key: 'actions',  label: 'Действия',     always: true },
+
+]
+
+const cols = useColumnSettings('internal-orders', colDefs)
+
+const visibleColsCount = computed(() => colDefs.filter((d) => cols.isVisible(d.key)).length)
+
+
 
 function organizationName(id?: string) {
   if (!id) return organizations.value.find((o) => o.is_default)?.name ?? '—'

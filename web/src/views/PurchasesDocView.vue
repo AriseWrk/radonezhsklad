@@ -529,6 +529,44 @@ const filtered = computed(() => {
       (d.comment ?? '').toLowerCase().includes(q)
     )
   }
+  if (filterStatus.value) rows = rows.filter((d) => d.status === filterStatus.value)
+  if (filterWarehouse.value) rows = rows.filter((d) => d.warehouse_id === filterWarehouse.value)
+  if (filterSupplier.value) rows = rows.filter((d) => d.supplier_id === filterSupplier.value)
+  if (filterOrganization.value) rows = rows.filter((d) => d.organization_id === filterOrganization.value)
+  if (filterDateFrom.value) {
+    const t = new Date(filterDateFrom.value).getTime()
+    rows = rows.filter((d) => new Date(d.created_at).getTime() >= t)
+  }
+  if (filterDateTo.value) {
+    const t = new Date(filterDateTo.value).getTime() + 86400000 - 1
+    rows = rows.filter((d) => new Date(d.created_at).getTime() <= t)
+  }
+  if (filterIncomingNumber.value) {
+    const q = filterIncomingNumber.value.toLowerCase()
+    rows = rows.filter((d) => (d.incoming_number ?? '').toLowerCase().includes(q))
+  }
+  if (filterIncomingDateFrom.value) {
+    const t = new Date(filterIncomingDateFrom.value).getTime()
+    rows = rows.filter((d) => d.incoming_date && new Date(d.incoming_date).getTime() >= t)
+  }
+  if (filterIncomingDateTo.value) {
+    const t = new Date(filterIncomingDateTo.value).getTime() + 86400000 - 1
+    rows = rows.filter((d) => d.incoming_date && new Date(d.incoming_date).getTime() <= t)
+  }
+  if (filterPaidMin.value !== '') {
+    const pmin = Number(filterPaidMin.value)
+    if (!isNaN(pmin)) rows = rows.filter((d) => (d.paid_amount ?? 0) >= pmin)
+  }
+  if (filterPaidMax.value !== '') {
+    const pmax = Number(filterPaidMax.value)
+    if (!isNaN(pmax)) rows = rows.filter((d) => (d.paid_amount ?? 0) <= pmax)
+  }
+  if (filterPosted.value === 'posted') rows = rows.filter((d) => !!d.posted_at)
+  else if (filterPosted.value === 'draft') rows = rows.filter((d) => !d.posted_at)
+  if (filterPrinted.value === 'yes') rows = rows.filter((d) => !!d.printed_at)
+  else if (filterPrinted.value === 'no') rows = rows.filter((d) => !d.printed_at)
+  if (filterSent.value === 'yes') rows = rows.filter((d) => !!d.sent_at)
+  else if (filterSent.value === 'no') rows = rows.filter((d) => !d.sent_at)
   return rows
 })
 const paginated = computed(() => {

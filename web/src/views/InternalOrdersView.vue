@@ -59,7 +59,7 @@
           <label class="filter-label"><span class="dot"></span>Проект</label>
           <select v-model="filterProject" @change="load">
             <option value="">—</option>
-            <option v-for="pr in projects" :key="pr.id" :value="pr.external_id || ''">{{ pr.name }}</option>
+            <option v-for="pr in projects" :key="pr.id" :value="pr.id">{{ pr.name }}</option>
           </select>
         </div>
         <div class="filter-field">

@@ -277,6 +277,14 @@ const filtered = computed(() => {
     const t = new Date(filterDateTo.value).getTime() + 86400000 - 1
     rows = rows.filter((d) => new Date(d.created_at).getTime() <= t)
   }
+  if (filterChangedFrom.value) {
+    const t = new Date(filterChangedFrom.value).getTime()
+    rows = rows.filter((d) => new Date(d.updated_at).getTime() >= t)
+  }
+  if (filterChangedTo.value) {
+    const t = new Date(filterChangedTo.value).getTime() + 86400000 - 1
+    rows = rows.filter((d) => new Date(d.updated_at).getTime() <= t)
+  }
   return rows
 })
 

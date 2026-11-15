@@ -124,8 +124,6 @@
           @keydown="onSuggestKeydown"
         />
         <MsButton @click="focusCatalog">Из справочника</MsButton>
-        <MsButton @click="checkStock">Проверить</MsButton>
-        <MsButton @click="importCsv">Импорт</MsButton>
         <div v-if="showSuggest && suggestions.length" class="suggest">
           <div
             v-for="(p, idx) in suggestions"
@@ -847,8 +845,6 @@ async function print() {
     error.value = apiErrorMessage(e)
   }
 }
-function checkStock() { alert('Проверка комплектации: функция в разработке') }
-function importCsv() { alert('Импорт: функция в разработке') }
 
 // === Autocomplete sklad/organizatsiya ===
 const warehouseSearch = ref('')

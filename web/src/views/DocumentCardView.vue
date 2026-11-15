@@ -193,7 +193,7 @@
               <span>Накладные расходы</span>
               <input class="overhead-input" disabled placeholder="0" />
               <span class="overhead-label">Распределить</span>
-              <a href="#" class="overhead-link">по цене</a>
+              <span class="overhead-link">по цене</span>
             </div>
           </div>
         </div>

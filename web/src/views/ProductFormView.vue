@@ -187,7 +187,7 @@
           <div class="pf-field"><label>Тип учета</label><select><option>Без специализированного учета</option></select></div>
           <div class="pf-field pf-field-inline"><label>Прослеживаемый <span class="pf-help">?</span></label><input type="checkbox" disabled /></div>
           <div class="pf-subtitle">Маркировка</div>
-          <a href="#" class="pf-link" @click.prevent>Подключить маркировку</a>
+          <span class="pf-link">Подключить маркировку</span>
           <div class="pf-field"><label>Владелец карточки <span class="pf-help">?</span></label><input disabled /></div>
           <div class="pf-field"><label>Тип продукции</label><select disabled><option>Не маркируется</option></select></div>
         </div>

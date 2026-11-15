@@ -61,7 +61,7 @@
           </td>
           <td>
             <span v-if="describeParts(l).prefix" class="event-prefix">{{ describeParts(l).prefix }}</span>
-            <a v-if="describeParts(l).link" class="event-link" href="#" @click.prevent>{{ describeParts(l).link }}</a>
+            <span v-if="describeParts(l).link" class="event-link">{{ describeParts(l).link }}</span>
             <span v-if="describeParts(l).suffix" class="event-suffix"> {{ describeParts(l).suffix }}</span>
           </td>
         </tr>

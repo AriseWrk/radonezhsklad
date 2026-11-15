@@ -8,7 +8,6 @@
 
     <div class="ms-toolbar">
       <MsButton variant="primary" icon="plus" @click="openCreate">Заказ</MsButton>
-      <MsButton icon="filter">Фильтр</MsButton>
       <input v-model="search" class="ms-input" placeholder="Номер или комментарий" />
       <div class="ms-counter">{{ filtered.length }}</div>
       <select class="ms-select" v-model="filterStatus" @change="load">

@@ -341,7 +341,6 @@ function csvEscape(s: string) {
   return s
 }
 
-function importCsv() { alert('Импорт: в разработке') }
 
 onMounted(load)
 </script>

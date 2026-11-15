@@ -92,7 +92,7 @@
       <tbody>
         <tr v-if="loading"><td colspan="6" class="muted" style="text-align:center;padding:24px">Загрузка...</td></tr>
         <tr v-else-if="rows.length === 0"><td colspan="6" class="muted" style="text-align:center;padding:24px">Нет данных за период</td></tr>
-        <tr v-for="r in rows" :key="r.product_id" class="row">
+        <tr v-for="r in paginated" :key="r.product_id" class="row">
           <td class="link">{{ r.product_name || r.product_id.slice(0, 8) }}</td>
           <td class="muted mono">{{ r.product_id.slice(0, 8) }}</td>
           <td class="muted mono">{{ r.sku || '—' }}</td>
@@ -112,7 +112,7 @@
 
     <div class="ms-footer">
       <div class="ms-pager">
-        <span>1–{{ rows.length }} из {{ rows.length }}</span>
+        <MsPager :page="page" :per-page="perPage" :total="rows.length" @update:page="p => page = p" />
       </div>
       <div class="ms-totals">
         <span>Всего: {{ rows.length }}</span>
@@ -127,8 +127,15 @@ import { listWarehouses, type Warehouse } from '../api/warehouses'
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
 import MsIcon from '../components/MsIcon.vue'
+import MsPager from '../components/MsPager.vue'
 
+const page = ref(1)
+const perPage = 100
 const rows = ref<TurnoverRow[]>([])
+const paginated = computed(() => {
+  const from = (page.value - 1) * perPage
+  return rows.value.slice(from, from + perPage)
+})
 const warehouses = ref<Warehouse[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)

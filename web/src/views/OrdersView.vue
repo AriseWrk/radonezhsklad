@@ -38,7 +38,7 @@
       <tbody>
         <tr v-if="loading"><td :colspan="visibleColsCount" class="empty">Загрузка...</td></tr>
         <tr v-else-if="filtered.length === 0"><td :colspan="visibleColsCount" class="empty">Нет заказов</td></tr>
-        <tr v-else v-for="o in filtered" :key="o.id" class="row">
+        <tr v-else v-for="o in paginated" :key="o.id" class="row">
           <td v-if="cols.isVisible('number')" class="col-num"><span class="link">{{ o.number }}</span></td>
           <td v-if="cols.isVisible('customer')">{{ customerName(o.customer_id) }}</td>
           <td v-if="cols.isVisible('warehouse')">{{ warehouseName(o.warehouse_id) }}</td>
@@ -56,7 +56,7 @@
     </table>
 
     <div class="ms-footer2">
-      <div class="pager"><span class="range">Всего: {{ filtered.length }}</span></div>
+      <MsPager :page="page" :per-page="perPage" :total="filtered.length" @update:page="p => page = p" />
       <div class="totals-inline"><span>Сумма: <b>{{ totalSum.toFixed(2) }}</b></span></div>
     </div>
 
@@ -152,6 +152,7 @@ import MsButton from '../components/MsButton.vue'
 import MsIcon from '../components/MsIcon.vue'
 import { useColumnSettings, type ColumnDef } from '../composables/useColumnSettings'
 import ColumnSettings from '../components/ColumnSettings.vue'
+import MsPager from '../components/MsPager.vue'
 
 
 const colDefs: ColumnDef[] = [
@@ -186,6 +187,8 @@ const form = reactive({
 
 const detailOrder = ref<Order | null>(null)
 
+const page = ref(1)
+const perPage = 100
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
   if (!q) return items.value
@@ -193,6 +196,10 @@ const filtered = computed(() => {
     (o.number ?? '').toLowerCase().includes(q) ||
     (o.comment ?? '').toLowerCase().includes(q)
   )
+})
+const paginated = computed(() => {
+  const from = (page.value - 1) * perPage
+  return filtered.value.slice(from, from + perPage)
 })
 const totalSum = computed(() => filtered.value.reduce((s, o) => s + (o.total ?? 0), 0))
 

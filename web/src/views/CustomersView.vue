@@ -29,7 +29,7 @@
       <tbody>
         <tr v-if="loading"><td colspan="5" class="empty">Загрузка...</td></tr>
         <tr v-else-if="filtered.length === 0"><td colspan="5" class="empty">Нет покупателей</td></tr>
-        <tr v-else v-for="c in filtered" :key="c.id" class="row">
+        <tr v-else v-for="c in paginated" :key="c.id" class="row">
           <td class="link">{{ c.name }}</td>
           <td>{{ c.phone || '—' }}</td>
           <td>{{ c.email || '—' }}</td>
@@ -42,7 +42,7 @@
     </table>
 
     <div class="ms-footer2">
-      <div class="pager"><span class="range">Всего: {{ filtered.length }}</span></div>
+      <MsPager :page="page" :per-page="perPage" :total="filtered.length" @update:page="p => page = p" />
     </div>
 
     <div v-if="showCreate" class="modal-backdrop" @click.self="showCreate = false">
@@ -80,6 +80,7 @@ import { listCustomers, createCustomer, deleteCustomer, type Customer } from '..
 import { apiErrorMessage } from '../api/client'
 import MsButton from '../components/MsButton.vue'
 import MsIcon from '../components/MsIcon.vue'
+import MsPager from '../components/MsPager.vue'
 
 const items = ref<Customer[]>([])
 const loading = ref(false)
@@ -90,6 +91,8 @@ const createError = ref<string | null>(null)
 const search = ref('')
 const form = reactive({ name: '', phone: '', email: '', address: '' })
 
+const page = ref(1)
+const perPage = 100
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
   if (!q) return items.value
@@ -98,6 +101,10 @@ const filtered = computed(() => {
     (c.phone ?? '').toLowerCase().includes(q) ||
     (c.email ?? '').toLowerCase().includes(q)
   )
+})
+const paginated = computed(() => {
+  const from = (page.value - 1) * perPage
+  return filtered.value.slice(from, from + perPage)
 })
 
 async function load() {

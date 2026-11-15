@@ -20,6 +20,9 @@ import (
 
 var (
 ErrInvalidCredentials = errors.New("invalid credentials")
+    ErrUserNotFound       = errors.New("user not found")
+    ErrInvalidEmail       = errors.New("invalid email")
+    ErrInvalidPassword    = errors.New("invalid password")
 ErrUserExists         = errors.New("user already exists")
 ErrInvalidToken       = errors.New("invalid token")
 ErrInvalidRole        = errors.New("invalid role")
@@ -113,21 +116,35 @@ return s.users.UpdateActive(ctx, id, active)
 }
 
 func (s *AuthService) UpdateUser(ctx context.Context, id uuid.UUID, in CreateUserInput) (*models.User, error) {
-if !validRoles[in.Role] { return nil, ErrInvalidRole }
-u, err := s.users.FindByID(ctx, id)
-if err != nil { return nil, err }
-if u == nil { return nil, ErrUserExists }
+    if !validRoles[in.Role] { return nil, ErrInvalidRole }
+    email := strings.TrimSpace(strings.ToLower(in.Email))
+    if email == "" { return nil, ErrInvalidEmail }
+    u, err := s.users.FindByID(ctx, id)
+    if err != nil { return nil, err }
+    if u == nil { return nil, ErrUserNotFound }
 
-u.LastName = in.LastName
-u.FirstName = in.FirstName
-u.MiddleName = in.MiddleName
-u.Role = in.Role
-if in.Phone != "" { u.Phone = &in.Phone } else { u.Phone = nil }
-if in.Login != "" { u.Login = &in.Login }
-if in.Description != "" { u.Description = &in.Description } else { u.Description = nil }
+    other, err := s.users.FindByEmail(ctx, email)
+    if err != nil { return nil, err }
+    if other != nil && other.ID != u.ID { return nil, ErrUserExists }
 
-if err := s.users.Update(ctx, u); err != nil { return nil, err }
-return u, nil
+    u.Email = email
+    u.LastName = in.LastName
+    u.FirstName = in.FirstName
+    u.MiddleName = in.MiddleName
+    u.Role = in.Role
+    if in.Phone != "" { u.Phone = &in.Phone } else { u.Phone = nil }
+    if in.Login != "" { u.Login = &in.Login } else { u.Login = nil }
+    if in.Description != "" { u.Description = &in.Description } else { u.Description = nil }
+
+    if in.Password != "" {
+        if len(in.Password) < 8 { return nil, ErrInvalidPassword }
+        hash, err := bcrypt.GenerateFromPassword([]byte(in.Password), bcrypt.DefaultCost)
+        if err != nil { return nil, err }
+        u.PasswordHash = string(hash)
+    }
+
+    if err := s.users.Update(ctx, u); err != nil { return nil, err }
+    return u, nil
 }
 
 func (s *AuthService) Login(ctx context.Context, email, password string) (*TokenPair, error) {

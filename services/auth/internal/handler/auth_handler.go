@@ -73,6 +73,18 @@ Description string `json:"description"`
 Role        string `json:"role"         binding:"required"`
 }
 
+type updateUserReq struct {
+    Email       string `json:"email"        binding:"required,email"`
+    Password    string `json:"password"     binding:"omitempty,min=8"`
+    LastName    string `json:"last_name"    binding:"required"`
+    FirstName   string `json:"first_name"   binding:"required"`
+    MiddleName  string `json:"middle_name"`
+    Phone       string `json:"phone"`
+    Login       string `json:"login"`
+    Description string `json:"description"`
+    Role        string `json:"role"         binding:"required"`
+}
+
 func (h *AuthHandler) CreateUser(c *gin.Context) {
 var req createUserReq
 if err := c.ShouldBindJSON(&req); err != nil { c.Error(apperr.BadRequest(err.Error())); return }
@@ -96,14 +108,18 @@ c.JSON(http.StatusOK, gin.H{"items": items})
 func (h *AuthHandler) UpdateUser(c *gin.Context) {
 id, err := uuid.Parse(c.Param("id"))
 if err != nil { c.Error(apperr.BadRequest("invalid id")); return }
-var req createUserReq
+    var req updateUserReq
 if err := c.ShouldBindJSON(&req); err != nil { c.Error(apperr.BadRequest(err.Error())); return }
 u, err := h.svc.UpdateUser(c.Request.Context(), id, service.CreateUserInput{
 Email: req.Email, Password: req.Password,
 LastName: req.LastName, FirstName: req.FirstName, MiddleName: req.MiddleName,
 Phone: req.Phone, Login: req.Login, Description: req.Description, Role: req.Role,
 })
+    if errors.Is(err, service.ErrUserExists) { c.Error(apperr.Conflict("email already in use")); return }
+    if errors.Is(err, service.ErrUserNotFound) { c.Error(apperr.NotFound("user not found")); return }
+    if errors.Is(err, service.ErrInvalidEmail) { c.Error(apperr.BadRequest("invalid email")); return }
 if errors.Is(err, service.ErrInvalidRole) { c.Error(apperr.BadRequest("invalid role")); return }
+    if errors.Is(err, service.ErrInvalidPassword) { c.Error(apperr.BadRequest("invalid password")); return }
 if err != nil { c.Error(apperr.Internal("update user", err)); return }
 c.JSON(http.StatusOK, u)
 }

@@ -18,6 +18,7 @@ import (
 "github.com/radonezhsklad/auth/internal/middleware"
 "github.com/radonezhsklad/auth/internal/repository"
 "github.com/radonezhsklad/auth/internal/service"
+apperr "github.com/radonezhsklad/shared/errors"
 )
 
 func main() {
@@ -37,7 +38,7 @@ authHandler := handler.NewAuthHandler(authSvc)
 
 if os.Getenv("ENV") == "prod" { gin.SetMode(gin.ReleaseMode) }
 r := gin.New()
-r.Use(gin.Logger(), gin.Recovery())
+r.Use(gin.Logger(), gin.Recovery(), apperr.Middleware())
 
 api := r.Group("/api/v1")
 {

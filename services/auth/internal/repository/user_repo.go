@@ -3,6 +3,7 @@ package repository
 import (
 "context"
 "errors"
+"strings"
 
 "github.com/google/uuid"
 "github.com/jackc/pgx/v5"
@@ -71,13 +72,17 @@ return err
 }
 
 func (r *UserRepo) Update(ctx context.Context, u *models.User) error {
-_, err := r.db.Exec(ctx,
-`UPDATE users SET last_name=$2, first_name=$3, middle_name=$4,
-                  phone=$5, login=$6, description=$7, role=$8, is_active=$9,
-                  full_name = TRIM($2 || ' ' || $3 || ' ' || $4)
- WHERE id = $1`,
-u.ID, u.LastName, u.FirstName, u.MiddleName,
-u.Phone, u.Login, u.Description, u.Role, u.IsActive,
-)
-return err
+    fullName := strings.TrimSpace(u.LastName + " " + u.FirstName + " " + u.MiddleName)
+    _, err := r.db.Exec(ctx,
+        `UPDATE users SET email=$2, password_hash=$3,
+                  last_name=$4, first_name=$5, middle_name=$6,
+                  phone=$7, login=$8, description=$9, role=$10, is_active=$11,
+                  full_name=$12, updated_at=NOW()
+         WHERE id=$1`,
+        u.ID, u.Email, u.PasswordHash,
+        u.LastName, u.FirstName, u.MiddleName,
+        u.Phone, u.Login, u.Description, u.Role, u.IsActive,
+        fullName,
+    )
+    return err
 }

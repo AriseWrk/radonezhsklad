@@ -315,6 +315,7 @@ async function onSubmit() {
       description: form.description || undefined,
       role: form.role as any,
     }
+    if (form.password) payload.password = form.password
     if (modal.isEdit) {
       await updateUser(modal.editingId, payload)
       const u = items.value.find((x) => x.id === modal.editingId)

@@ -101,6 +101,7 @@
     </div>
 
     <!-- Модалка создания/редактирования -->
+    <Teleport to="body">
     <div v-if="modal.open" class="modal-backdrop" @click.self="closeModal">
       <form class="card modal big" @submit.prevent="onSubmit">
         <h2>{{ modal.isEdit ? 'Карточка сотрудника' : 'Новый сотрудник' }}</h2>
@@ -122,7 +123,7 @@
         </div>
 
         <label>E-mail*
-          <input v-model="form.email" type="email" required :disabled="modal.isEdit" />
+          <input v-model="form.email" type="email" required />
         </label>
 
         <div class="grid2">
@@ -161,6 +162,7 @@
         </div>
       </form>
     </div>
+    </Teleport>
   </div>
 </template>
 

@@ -231,7 +231,8 @@ const colDefs: ColumnDef[] = [
   { key: 'actions',     label: 'Действия',           always: true },
 ]
 const cols = useColumnSettings('documents', colDefs)
-const visibleColsCount = computed(() => colDefs.filter((d) => cols.isVisible(d.key)).length)const items = ref<Document[]>([])
+const visibleColsCount = computed(() => colDefs.filter((d) => cols.isVisible(d.key)).length)
+const items = ref<Document[]>([])
 const internalOrders = ref<InternalOrder[]>([])
 const warehouses = ref<Warehouse[]>([])
 const loading = ref(false)

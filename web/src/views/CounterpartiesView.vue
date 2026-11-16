@@ -379,7 +379,8 @@ const colDefs: ColumnDef[] = [
   { key: 'group',       label: 'Группы' },
 ]
 const cols = useColumnSettings('counterparties', colDefs)
-const visibleColsCount = computed(() => colDefs.filter((d) => cols.isVisible(d.key)).length)const items = ref<Customer[]>([])
+const visibleColsCount = computed(() => colDefs.filter((d) => cols.isVisible(d.key)).length)
+const items = ref<Customer[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const showFilter = ref(false)

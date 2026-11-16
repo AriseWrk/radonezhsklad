@@ -202,7 +202,8 @@ const colDefs: ColumnDef[] = [
   { key: 'comment',     label: 'Комментарий' },
 ]
 const cols = useColumnSettings('contracts', colDefs)
-const visibleColsCount = computed(() => colDefs.filter((d) => cols.isVisible(d.key)).length)const items = ref<Contract[]>([])
+const visibleColsCount = computed(() => colDefs.filter((d) => cols.isVisible(d.key)).length)
+const items = ref<Contract[]>([])
 const customers = ref<Customer[]>([])
 const organizations = ref<Organization[]>([])
 const loading = ref(false)

@@ -25,6 +25,18 @@
           <span class="pts-subtitle">Здесь будут появляться ВЗ проектов, которые в данный момент в работе</span>
         </button>
       </div>
+      <div v-else-if="isWarehouse" class="wh-dashboard">
+        <div class="ms-title">
+          <button class="ms-help" title="Справка"><MsIcon name="help" :size="14" /></button>
+          <span>Панель Склад/Бух</span>
+        </div>
+        <div class="wh-grid">
+          <button v-for="t in warehouseTiles" :key="t.key" class="wh-card" @click="router.push(t.path)">
+            <MsIcon :name="t.icon" :size="52" class="wh-icon" />
+            <span class="wh-title">{{ t.title }}</span>
+          </button>
+        </div>
+      </div>
       <template v-else>
     <div class="ms-title">
       <button class="ms-help" title="Справка"><MsIcon name="help" :size="14" /></button>
@@ -97,6 +109,19 @@ import RealtimeLogs from '../components/RealtimeLogs.vue'
 const auth = useAuthStore()
 const router = useRouter()
 const isPts = computed(() => auth.role === 'pts')
+
+const isWarehouse = computed(() => auth.role === 'warehouse')
+
+const warehouseTiles = [
+  { key: 'receipts',   title: 'Оприходования',     icon: 'arrow-down', path: '/stock/receipts' },
+  { key: 'writeoffs',  title: 'Списания',          icon: 'minus',      path: '/stock/writeoffs' },
+  { key: 'transfers',  title: 'Перемещения',       icon: 'send',       path: '/stock/transfers' },
+  { key: 'inventory',  title: 'Инвентаризации',    icon: 'check',      path: '/inventories' },
+  { key: 'internal',   title: 'Внутренние заказы', icon: 'cart',       path: '/internal-orders' },
+  { key: 'stock',      title: 'Остатки',           icon: 'package',    path: '/stock' },
+  { key: 'turnover',   title: 'Обороты',           icon: 'refresh',    path: '/stock/turnover' },
+  { key: 'warehouses', title: 'Склады',            icon: 'building',   path: '/warehouses' },
+]
 
 const productsCount = ref<number | string>('—')
 const categoriesCount = ref<number | string>('—')
@@ -240,4 +265,27 @@ onMounted(reload)
 .pts-icon-small { color: #2c5d9c; }
 .pts-title-small { font-size: 18px; font-weight: 600; color: #1f2328; }
 .pts-subtitle { font-size: 13px; color: #57606a; line-height: 1.4; }
+
+/* === Дашборд Склад/Бух === */
+.wh-dashboard { display: flex; flex-direction: column; gap: 16px; max-width: 1100px; margin: 40px auto 0; }
+.wh-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.wh-card {
+  aspect-ratio: 1 / 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: #fff; border: 1px solid #eaeef2; border-radius: 8px;
+  cursor: pointer; transition: all 0.18s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  padding: 20px; text-align: center; font: inherit;
+}
+.wh-card:hover {
+  border-color: #2c5d9c;
+  box-shadow: 0 6px 20px rgba(44,93,156,0.14);
+  transform: translateY(-2px);
+}
+.wh-icon { color: #2c5d9c; margin-bottom: 14px; }
+.wh-title { font-size: 16px; font-weight: 600; color: #1f2328; line-height: 1.3; }
+
+@media (max-width: 1100px) { .wh-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 780px)  { .wh-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px)  { .wh-grid { grid-template-columns: 1fr; } }
 </style>

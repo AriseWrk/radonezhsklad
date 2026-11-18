@@ -14,11 +14,13 @@ const props = withDefaults(defineProps<{
   clearable?: boolean
   disabled?: boolean
   maxItems?: number
+  allowFreeText?: boolean
 }>(), {
   placeholder: '',
   clearable: true,
   disabled: false,
   maxItems: 50,
+  allowFreeText: false,
 })
 
 const emit = defineEmits<{
@@ -32,7 +34,19 @@ const activeIdx = ref(0)
 const rootEl = ref<HTMLElement | null>(null)
 const inputEl = ref<HTMLInputElement | null>(null)
 
+watch(query, (q) => {
+  if (props.allowFreeText && open.value) {
+    emit('update:modelValue', q || null)
+  }
+})
+
 const selected = computed(() => props.items.find((i) => i.id === props.modelValue) ?? null)
+
+const displayText = computed(() => {
+  if (selected.value) return selected.value.name
+  if (props.allowFreeText && props.modelValue) return props.modelValue
+  return ''
+})
 
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
@@ -47,7 +61,7 @@ const filtered = computed(() => {
 function openDropdown() {
   if (props.disabled) return
   open.value = true
-  query.value = ''
+  query.value = selected.value?.name ?? (props.allowFreeText ? (props.modelValue || '') : '')
   activeIdx.value = 0
   nextTick(() => inputEl.value?.focus())
 }
@@ -58,7 +72,7 @@ function closeDropdown() {
 }
 
 function selectItem(it: SmartItem) {
-  emit('update:modelValue', it.id)
+  emit('update:modelValue', props.allowFreeText ? it.name : it.id)
   emit('change', it)
   closeDropdown()
 }
@@ -114,13 +128,13 @@ watch(open, (v) => {
       @click="openDropdown"
       @keydown="onKey"
     >
-      <span v-if="selected" class="ss-val" :title="selected.name">
-        {{ selected.name }}
-        <span v-if="selected.sublabel" class="ss-sub">{{ selected.sublabel }}</span>
+      <span v-if="displayText" class="ss-val" :title="displayText">
+        {{ displayText }}
+        <span v-if="selected?.sublabel" class="ss-sub">{{ selected.sublabel }}</span>
       </span>
       <span v-else class="ss-ph">{{ placeholder || '—' }}</span>
       <button
-        v-if="clearable && selected"
+        v-if="clearable && displayText"
         class="ss-clear"
         type="button"
         title="Очистить"

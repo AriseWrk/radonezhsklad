@@ -62,7 +62,7 @@ const filters = reactive({
   daysMin: '' as '' | number,
   daysMax: '' as '' | number,
   supplierId: '' as string,
-  productId: '' as string,
+  productSearch: '',
   warehouseId: '' as string,
   sku: '',
   asOf: '' as string,
@@ -169,8 +169,8 @@ function applyCommon(rows: StockExtendedRow[]): StockExtendedRow[] {
   if (filters.onlyIncoming) r = r.filter((x) => x.incoming !== 0)
   if (filters.daysMin !== '') r = r.filter((x) => (x.days_on_stock ?? 0) >= Number(filters.daysMin))
   if (filters.daysMax !== '') r = r.filter((x) => (x.days_on_stock ?? 0) <= Number(filters.daysMax))
-  if (filters.productId) {
-    r = r.filter((x) => x.product_id === filters.productId)
+  if (filters.productSearch) {
+    const q = filters.productSearch.toLowerCase().trim(); r = r.filter((x) => (x.product_name || '').toLowerCase().includes(q) || (x.sku || '').toLowerCase().includes(q))
   }
   return r
 }
@@ -251,7 +251,7 @@ async function load() {
   try {
     data.value = await listStockExtended({
       warehouse_id: filters.warehouseId || undefined,
-      product_id: filters.productId || undefined,
+    product_id: undefined,
       qty_mode: filters.qtyMode === 'any' ? '' : filters.qtyMode,
       avail_mode: filters.availMode === 'any' ? '' : filters.availMode,
       days_min: filters.daysMin === '' ? '' : Number(filters.daysMin),
@@ -293,7 +293,7 @@ function clearFilters() {
   filters.daysMin = ''
   filters.daysMax = ''
   filters.supplierId = ''
-  filters.productId = ''
+  filters.productSearch = ''
   filters.warehouseId = ''
   filters.sku = ''
   filters.asOf = ''
@@ -388,9 +388,10 @@ onMounted(async () => {
           <div class="filter-field">
             <label class="filter-label"><span class="dot"></span>Товар или группа</label>
             <MsSmartSelect
-              v-model="filters.productId"
+              v-model="filters.productSearch"
               :items="productItems"
               placeholder="Название или артикул"
+              :allow-free-text="true"
             />
           </div>
           <div class="filter-field">

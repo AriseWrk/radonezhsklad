@@ -500,7 +500,7 @@ function focusCatalog() { showSuggest.value = true }
 function addItem(p: Product) {
   const existing = form.items.find((i) => i.product_id === p.id)
   if (existing) { existing.quantity += 1 }
-  else { form.items.push({ product_id: p.id, quantity: 0, price: p.price, vat_rate: 20 }) }
+  else { form.items.push({ product_id: p.id, quantity: 0, price: p.price, vat_rate: 22 }) }
   newItemSearch.value = ''
   showSuggest.value = false
 }
@@ -600,8 +600,8 @@ function unitShort(id?: string | null) { return units.value.find((u) => u.id ===
 const subtotal = computed(() => form.items.reduce((s, i) => s + i.quantity * i.price, 0))
 const vatAmount = computed(() => {
   if (!form.vat_enabled) return 0
-  if (form.vat_included) return subtotal.value * 20 / 120
-  return subtotal.value * 0.20
+  if (form.vat_included) return subtotal.value * 22 / 122
+  return subtotal.value * 0.22
 })
 
 const userLabel = computed(() => auth.userId ? auth.userId.slice(0, 8) : '')

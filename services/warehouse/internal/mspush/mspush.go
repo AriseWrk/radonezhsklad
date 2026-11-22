@@ -97,6 +97,8 @@ type msDocumentPayload struct {
 	Applicable   bool         `json:"applicable"`
 	Description  string       `json:"description,omitempty"`
 	Organization msapi.Meta   `json:"organization"`
+        VatEnabled   bool         `json:"vatEnabled"`
+        VatIncluded  bool         `json:"vatIncluded"`
 	Store        *msapi.Meta  `json:"store,omitempty"`
 	TargetStore  *msapi.Meta  `json:"targetStore,omitempty"`
 	Agent        *msapi.Meta  `json:"agent,omitempty"`
@@ -110,6 +112,8 @@ type msOrderPayload struct {
 	Applicable   bool         `json:"applicable"`
 	Description  string       `json:"description,omitempty"`
 	Organization msapi.Meta   `json:"organization"`
+        VatEnabled   bool         `json:"vatEnabled"`
+        VatIncluded  bool         `json:"vatIncluded"`
 	Store        msapi.Meta   `json:"store,omitempty"`
 	Project      *msapi.Meta  `json:"project,omitempty"`
 	Positions    []msPosition `json:"positions"`
@@ -147,7 +151,7 @@ func positionsFromDocItems(items []models.DocItem, extMap map[uuid.UUID]*uuid.UU
 		out = append(out, msPosition{
 			Quantity:   it.Quantity,
 			Price:      toKopecks(it.Price),
-			VAT:        0, // TODO: vat_rate из document_items, когда пробросим в модель
+                        VAT:        it.VatRate,
 			Assortment: meta("product", *ext),
 		})
 	}
@@ -194,6 +198,8 @@ func (p *Pusher) buildDocumentPayload(ctx context.Context, doc *models.Document,
 		Organization: p.ms.EntityMeta("organization", *refs.Organization.ExternalID),
 		Positions:    positions,
 	}
+        payload.VatEnabled = doc.VatEnabled
+        payload.VatIncluded = doc.VatIncluded
 	if refs.Warehouse.ExternalID != nil {
 		m := p.ms.EntityMeta("store", *refs.Warehouse.ExternalID)
 		payload.Store = &m
@@ -357,6 +363,8 @@ func (p *Pusher) buildOrderPayload(ctx context.Context, order *models.InternalOr
 		Organization: p.ms.EntityMeta("organization", *refs.Organization.ExternalID),
 		Positions:    positions,
 	}
+        payload.VatEnabled = order.VatEnabled
+        payload.VatIncluded = order.VatIncluded
 	if order.Comment != nil {
 		payload.Description = *order.Comment
 	}

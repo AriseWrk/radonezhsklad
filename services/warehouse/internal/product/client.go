@@ -216,3 +216,37 @@ func (c *Client) ListByIDsInternal(ctx context.Context, token string, ids []uuid
 	}
 	return out, nil
 }
+
+// ListCatalog returns the complete product catalog through the internal read-only endpoint.
+func (c *Client) ListCatalog(ctx context.Context, token string, includeArchived bool) ([]Product, error) {
+	if strings.TrimSpace(token) == "" {
+		return nil, fmt.Errorf("product internal token is empty")
+	}
+
+	u := c.baseURL + "/api/v1/internal/products/catalog?include_archived=" + fmt.Sprintf("%t", includeArchived)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("X-Internal-Token", token)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("product catalog unreachable: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		raw, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("product catalog error %d: %s", resp.StatusCode, string(raw))
+	}
+
+	var out struct {
+		Items []Product `json:"items"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, fmt.Errorf("decode product catalog: %w", err)
+	}
+
+	return out.Items, nil
+}

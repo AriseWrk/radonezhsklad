@@ -29,6 +29,28 @@ export function skeleton(input: string | null | undefined): string {
   return alnum.replace(/(?<=\d)x|x(?=\d)/g, '')
 }
 
+// Транслитерация для поиска: "патч-панель" = "patchpanel".
+const SEARCH_TRANSLITERATION: Record<string, string> = {
+  'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd',
+  'е': 'e', 'ё': 'e', 'ж': 'zh', 'з': 'z', 'и': 'i',
+  'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n',
+  'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't',
+  'у': 'u', 'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch',
+  'ш': 'sh', 'щ': 'shch', 'ъ': '', 'ы': 'y', 'ь': '',
+  'э': 'e', 'ю': 'yu', 'я': 'ya',
+}
+
+function canonicalSearch(input: string | null | undefined): string {
+  let out = ''
+  for (const ch of String(input ?? '').toLowerCase()) {
+    if (Object.prototype.hasOwnProperty.call(SEARCH_TRANSLITERATION, ch)) {
+      out += SEARCH_TRANSLITERATION[ch]
+    } else if (/[a-z0-9]/.test(ch)) {
+      out += ch
+    }
+  }
+  return out
+}
 export function tokenize(input: string | null | undefined): string[] {
   const n = normalize(input)
   return n ? n.split(' ').filter(Boolean) : []
@@ -78,6 +100,8 @@ const W = {
   includesName: 550,
   skeletonStart: 400,
   skeletonInclude: 300,
+  canonicalStart: 430,
+  canonicalInclude: 330,
   allTokens: 200,
   fuzzy: 100,
 }
@@ -95,6 +119,7 @@ export function smartSearch<T>(items: T[], query: string, opts: SmartSearchOptio
 
   const qNorm = normalize(q)
   const qSkel = skeleton(q)
+  const qCanonical = canonicalSearch(q)
   const qTokens = tokenize(q)
   const qLower = q.toLowerCase()
   const limit = opts.limit ?? 20
@@ -158,6 +183,20 @@ export function smartSearch<T>(items: T[], query: string, opts: SmartSearchOptio
       }
     }
 
+    // 5) транслитерация и поиск без разделителей
+    if (best < W.canonicalInclude && qCanonical.length >= 2) {
+      const canonicalFields = [name, sku, barcode, ext].map(canonicalSearch)
+      for (const value of canonicalFields) {
+        if (!value) continue
+        if (value.startsWith(qCanonical)) {
+          if (W.canonicalStart > best) best = W.canonicalStart
+          break
+        }
+        if (value.includes(qCanonical)) {
+          if (W.canonicalInclude > best) best = W.canonicalInclude
+        }
+      }
+    }
     // 5) AND по токенам
     if (best < W.skeletonInclude && qTokens.length > 1) {
       const hay = nName + ' ' + nSku + ' ' + nBar + ' ' + nExt
@@ -166,7 +205,7 @@ export function smartSearch<T>(items: T[], query: string, opts: SmartSearchOptio
       }
     }
 
-    // 6) fuzzy
+    // 7) fuzzy
     if (best < W.allTokens && qNorm.length >= 5) {
       const maxDist = qNorm.length >= 8 ? 2 : 1
       for (const cand of [nName, nSku, nBar, nExt]) {

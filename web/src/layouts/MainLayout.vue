@@ -194,6 +194,7 @@ const subTabsMap: Record<string, SubTab[]> = {
     { name: 'stock',           label: 'Остатки',           path: '/stock',           match: '/stock',           exact: true },
     { name: 'stock-turnover',  label: 'Обороты',           path: '/stock/turnover',  match: '/stock/turnover',  roles: ['admin','warehouse'] },
     { name: 'warehouses',      label: 'Склады',            path: '/warehouses',      match: '/warehouses',      roles: ['admin','warehouse'] },
+    { name: 'reconciliation', label: 'Сверка с МойСклад', path: '/reconciliation', match: '/reconciliation', roles: ['admin','warehouse'] },
   ],
 }
 
@@ -206,7 +207,7 @@ const currentSection = computed(() => {
   if (p.startsWith('/products') || p.startsWith('/categories')) return 'products'
   if (p.startsWith('/counterparties') || p.startsWith('/contracts') || p.startsWith('/customers')) return 'crm'
   if (p.startsWith('/orders') || p.startsWith('/customers') || p.startsWith('/sales')) return 'sales'
-  if (p.startsWith('/stock') || p.startsWith('/internal-orders') || p.startsWith('/inventories') || p.startsWith('/warehouses')) return 'stock'
+  if (p.startsWith('/stock') || p.startsWith('/internal-orders') || p.startsWith('/inventories') || p.startsWith('/warehouses') || p.startsWith('/reconciliation')) return 'stock'
   if (p.startsWith('/purchases')) return 'purchases'
   if (p.startsWith('/documents') || p.startsWith('/users') || p.startsWith('/audit')) return 'company'
   return 'company'

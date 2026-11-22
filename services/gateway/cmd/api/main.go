@@ -134,6 +134,8 @@ func main() {
 
 		api.Any("/sync", warehouseProxy)
 		api.Any("/sync/*path", warehouseProxy)
+		api.Any("/reconciliation", warehouseProxy)
+		api.Any("/reconciliation/*path", warehouseProxy)
 		api.Any("/customers", orderProxy)
 		api.Any("/customers/*path", orderProxy)
 		api.Any("/contracts", orderProxy)

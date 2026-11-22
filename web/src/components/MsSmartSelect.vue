@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
+import { smartFilter } from '../utils/smartSearch'
 
 export interface SmartItem {
   id: string
@@ -15,12 +16,14 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   maxItems?: number
   allowFreeText?: boolean
+  smartSearch?: boolean
 }>(), {
   placeholder: '',
   clearable: true,
   disabled: false,
   maxItems: 50,
   allowFreeText: false,
+  smartSearch: false,
 })
 
 const emit = defineEmits<{
@@ -49,11 +52,20 @@ const displayText = computed(() => {
 })
 
 const filtered = computed(() => {
-  const q = query.value.trim().toLowerCase()
+  const q = query.value.trim()
   if (!q) return props.items.slice(0, props.maxItems)
+
+  if (props.smartSearch) {
+    return smartFilter(props.items, q, {
+      getFields: (i) => [i.name, i.sublabel ?? null, null, null],
+      limit: props.maxItems,
+    })
+  }
+
+  const lowerQ = q.toLowerCase()
   return props.items
     .filter((i) =>
-      i.name.toLowerCase().includes(q) || (i.sublabel ?? '').toLowerCase().includes(q)
+      i.name.toLowerCase().includes(lowerQ) || (i.sublabel ?? '').toLowerCase().includes(lowerQ)
     )
     .slice(0, props.maxItems)
 })

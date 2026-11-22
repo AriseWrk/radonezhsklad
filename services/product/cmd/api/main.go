@@ -67,6 +67,7 @@ func main() {
 		})
 		api.GET("/internal/products/by-external-ids", internalAuth, h.ListByExternalIDs)
 		api.GET("/internal/products/list", internalAuth, h.ListByIDs)
+		api.GET("/internal/products/catalog", internalAuth, h.ListProducts)
 
 		read := api.Group("")
 		read.Use(mw.RequireJWT(cfg.JWTSecret))
@@ -84,9 +85,9 @@ func main() {
 		write.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "warehouse"))
 		{
 			write.POST("/units", h.CreateUnit)
-write.PUT("/units/:id", h.UpdateUnit)
-write.DELETE("/units/:id", h.DeleteUnit)
-write.POST("/categories", h.CreateCategory)
+			write.PUT("/units/:id", h.UpdateUnit)
+			write.DELETE("/units/:id", h.DeleteUnit)
+			write.POST("/categories", h.CreateCategory)
 			write.PUT("/categories/:id", h.UpdateCategory)
 			write.DELETE("/categories/:id", h.DeleteCategory)
 			write.POST("/products", h.CreateProduct)

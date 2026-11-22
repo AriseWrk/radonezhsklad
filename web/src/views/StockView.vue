@@ -170,7 +170,10 @@ function applyCommon(rows: StockExtendedRow[]): StockExtendedRow[] {
   if (filters.daysMin !== '') r = r.filter((x) => (x.days_on_stock ?? 0) >= Number(filters.daysMin))
   if (filters.daysMax !== '') r = r.filter((x) => (x.days_on_stock ?? 0) <= Number(filters.daysMax))
   if (filters.productSearch) {
-    const q = filters.productSearch.toLowerCase().trim(); r = r.filter((x) => (x.product_name || '').toLowerCase().includes(q) || (x.sku || '').toLowerCase().includes(q))
+    r = smartFilter(r, filters.productSearch, {
+      getFields: (x) => [x.product_name ?? '', x.sku ?? null, null, null],
+      limit: r.length,
+    })
   }
   return r
 }
@@ -392,6 +395,7 @@ onMounted(async () => {
               :items="productItems"
               placeholder="Название или артикул"
               :allow-free-text="true"
+              :smart-search="true"
             />
           </div>
           <div class="filter-field">

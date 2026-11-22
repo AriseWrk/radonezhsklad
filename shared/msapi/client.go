@@ -28,6 +28,10 @@ type Client struct {
 }
 
 func New(token, tokenFile, baseURL string) (*Client, error) {
+        return NewWithTimeout(token, tokenFile, baseURL, 30*time.Second)
+}
+
+func NewWithTimeout(token, tokenFile, baseURL string, timeout time.Duration) (*Client, error) {
         if token == "" && tokenFile != "" {
                 b, err := os.ReadFile(tokenFile)
                 if err != nil {
@@ -44,7 +48,7 @@ func New(token, tokenFile, baseURL string) (*Client, error) {
         return &Client{
                 baseURL: strings.TrimRight(baseURL, "/"),
                 token:   token,
-                http:    &http.Client{Timeout: 30 * time.Second},
+                http:    &http.Client{Timeout: timeout},
         }, nil
 }
 

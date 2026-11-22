@@ -25,6 +25,7 @@ import (
 	"github.com/radonezhsklad/warehouse/internal/mspush"
 	"github.com/radonezhsklad/warehouse/internal/printing"
 	"github.com/radonezhsklad/warehouse/internal/product"
+	"github.com/radonezhsklad/warehouse/internal/reconciliation"
 	"github.com/radonezhsklad/warehouse/internal/repository"
 	"github.com/radonezhsklad/warehouse/internal/service"
 	"github.com/radonezhsklad/warehouse/internal/worker"
@@ -97,6 +98,28 @@ func main() {
 
 	// --- pull runner + sync settings ---
 	internalToken := os.Getenv("INTERNAL_TOKEN")
+
+	// --- независимый MS-клиент только для сверки (GET-only) ---
+	reconciliationRuns := repository.NewReconciliationRepo(pool)
+	var reconciliationService *reconciliation.Service
+
+	reconciliationMSCli, reconciliationErr := msapi.NewWithTimeout(cfg.MSToken, cfg.MSTokenFile, cfg.MSAPIBase, 120*time.Second)
+	if reconciliationErr != nil {
+		slog.Warn("reconciliation: MS client init failed", "error", reconciliationErr)
+	} else {
+		reconciliationMS, clientErr := reconciliation.NewMSClient(reconciliationMSCli)
+		if clientErr != nil {
+			slog.Warn("reconciliation: client setup failed", "error", clientErr)
+		} else {
+			reconciliationService = reconciliation.NewService(
+				reconciliationMS,
+				pc,
+				repo,
+				reconciliationRuns,
+				internalToken,
+			)
+		}
+	}
 	syncSettingsRepo := repository.NewSyncSettingsRepo(pool)
 	msPullRepo := repository.NewMsPullRepo(pool)
 	var pullRunner *mspull.Runner
@@ -128,6 +151,7 @@ func main() {
 	companySettingsH := handler.NewCompanySettingsHandler(companySettingsRepo)
 
 	syncH := handler.NewSyncHandler(syncJobRepo, msSyncErrRepo, pullRunner, pusher, autoSync, syncSettingsRepo, internalToken, "./scripts")
+	reconciliationH := handler.NewReconciliationHandler(reconciliationService, reconciliationRuns)
 
 	fileRepo, err := repository.NewFileRepo(cfg.UploadsDir)
 	if err != nil {
@@ -189,6 +213,17 @@ func main() {
 			readCore.GET("/documents/:id/print/:template", h.PrintDocument)
 			readCore.GET("/suppliers", supH.List)
 			readCore.GET("/suppliers/:id", supH.Get)
+
+			readCore.GET("/reconciliation/runs", reconciliationH.ListRuns)
+			readCore.GET("/reconciliation/runs/active", reconciliationH.GetActiveRun)
+			readCore.GET("/reconciliation/runs/:id", reconciliationH.GetRun)
+			readCore.GET("/reconciliation/runs/:id/items", reconciliationH.ListItems)
+			readCore.GET("/reconciliation/runs/:id/export", reconciliationH.Export)
+		}
+		reconciliationWrite := api.Group("")
+		reconciliationWrite.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "warehouse"))
+		{
+			reconciliationWrite.POST("/reconciliation/runs", reconciliationH.Start)
 		}
 
 		whWrite := api.Group("")

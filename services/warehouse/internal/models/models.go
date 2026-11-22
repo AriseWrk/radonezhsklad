@@ -78,6 +78,8 @@ ExternalID        *uuid.UUID `json:"external_id,omitempty"`
 MSSyncedAt        *time.Time `json:"ms_synced_at,omitempty"`
 MSSyncError       *string    `json:"ms_sync_error,omitempty"`
 SourceInventoryID *uuid.UUID `json:"source_inventory_id,omitempty"`
+    VatEnabled        bool       `json:"vat_enabled"`
+    VatIncluded       bool       `json:"vat_included"`
 Source            string     `json:"source"`
 Items             []DocItem  `json:"items,omitempty"`
 ItemsCount        int        `json:"items_count"`
@@ -92,6 +94,7 @@ ProductName string    `json:"product_name,omitempty"`
 ProductSKU  string    `json:"product_sku,omitempty"`
 Quantity    float64   `json:"quantity"`
 Price       float64   `json:"price"`
+    VatRate     float64   `json:"vat_rate"`
 CreatedAt   time.Time `json:"created_at"`
 }
 

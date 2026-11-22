@@ -53,6 +53,24 @@ describe('levenshtein', () => {
   })
 })
 
+describe('smartSearch — транслитерация', () => {
+  const items: P[] = [
+    mk({ name: 'Патч-панель' }),
+  ]
+
+  it('находит товар при разных вариантах написания', () => {
+    for (const q of [
+      'патч панель',
+      'патч-панель',
+      'patchpanel',
+      'patch',
+      'патчьпанель',
+      'патч   панель',
+    ]) {
+      expect(smartSearch(items, q, opts)[0]?.item.name).toBe('Патч-панель')
+    }
+  })
+})
 describe('smartSearch — кейсы ТЗ', () => {
   const items: P[] = [
     mk({ name: 'Кабель 1×2×0.75', sku: 'KAB-1X2X075' }),

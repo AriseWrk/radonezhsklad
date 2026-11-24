@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Чек-лист проверки RadonezhSklad</title>
+<style>
+  @page { size: A4; margin: 15mm; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; font-size: 10.5pt; color: #1f2328; margin: 0; padding: 20px; background: #f4f5f6; }
+  .sheet { background: #fff; max-width: 210mm; margin: 0 auto 24px; padding: 15mm; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  h1 { font-size: 15pt; margin: 0 0 4px; }
+  h2 { font-size: 13pt; margin: 20px 0 8px; padding-bottom: 4px; border-bottom: 2px solid #2c5d9c; }
+  .subtitle { color: #57606a; font-size: 10pt; margin-bottom: 14px; }
+  .meta { display: flex; gap: 24px; margin: 14px 0 16px; font-size: 10pt; flex-wrap: wrap; }
+  .meta div { flex: 1 1 200px; }
+  .line { display: inline-block; border-bottom: 1px solid #8c959f; min-width: 160px; padding: 0 4px; height: 1.2em; vertical-align: bottom; }
+  .who { font-size: 9.5pt; color: #57606a; margin-bottom: 6px; }
+  .who b { color: #1f2328; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #d0d7de; padding: 6px 8px; vertical-align: top; text-align: left; font-size: 10pt; }
+  th { background: #eef1f5; text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600; font-size: 9pt; }
+  td.num { width: 28px; text-align: center; color: #8c959f; }
+  td.box { width: 32px; text-align: center; vertical-align: middle; }
+  .cb { display: inline-block; width: 15px; height: 15px; border: 1.4px solid #1f2328; border-radius: 3px; vertical-align: middle; }
+  td.action { width: 60%; }
+  td.comment { width: 30%; height: 28px; }
+  .footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid #d0d7de; display: flex; justify-content: space-between; gap: 24px; font-size: 10pt; flex-wrap: wrap; }
+  .sign { border-bottom: 1px solid #8c959f; display: inline-block; min-width: 200px; height: 1.2em; vertical-align: bottom; }
+  .print-btn { position: fixed; top: 16px; right: 16px; padding: 10px 18px; border: none; border-radius: 6px; background: #2c5d9c; color: #fff; font: inherit; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); z-index: 100; }
+  .print-btn:hover { background: #1f4a7d; }
+  .page-break { page-break-before: always; }
+  .hint { font-size: 9pt; color: #57606a; margin: 8px 0; }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .sheet { box-shadow: none; margin: 0; padding: 0; max-width: none; page-break-after: always; }
+    .sheet:last-child { page-break-after: auto; }
+    .print-btn { display: none; }
+    tr { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<button class="print-btn" onclick="window.print()">Печать</button>
+
+<!-- ОБЛОЖКА -->
+<div class="sheet">
+  <h1>Чек-лист проверки RadonezhSklad</h1>
+  <div class="subtitle">Функциональное тестирование по ролям. Версия: 2026-11-24</div>
+  <div class="meta">
+    <div>Дата раздачи: <span class="line"></span></div>
+    <div>Раздал (ФИО): <span class="line"></span></div>
+  </div>
+  <h2>Кому раздать</h2>
+  <table>
+    <thead><tr><th>Роль</th><th>Сотрудники</th><th>Что проверяет</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>Администратор</b></td>
+        <td>Козляков А.С., Admin</td>
+        <td>Чек-лист 1 (стр. 2) — 10 пунктов</td>
+      </tr>
+      <tr>
+        <td><b>Склад / Бух</b></td>
+        <td>Андреева Г.В., Лушкина Н.Г.</td>
+        <td>Чек-лист 2 (стр. 3) — 15 пунктов</td>
+      </tr>
+      <tr>
+        <td><b>ПТС</b></td>
+        <td>Дувалина Т.А., Изюмская Е.А., Кавалерова И.Н., Крепоченко Е.К., Крючкова М.А., Машковцева Е.Ю., Никитина О.А.</td>
+        <td>Чек-лист 3 (стр. 4) — 10 пунктов</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="hint"><b>Инструкция:</b> получить учётку у администратора, отметить ☑ в каждом пункте, если проверили лично. В колонке «Комментарий» — что сломалось, что непонятно, что улучшить. В конце — подпись и дата.</p>
+  <p class="hint"><b>Адрес системы:</b> http://&lt;сервер&gt;:5173 (дома: http://localhost:5173).</p>
+</div>
+
+<!-- ЧЕК-ЛИСТ 1: ADMIN -->
+<div class="sheet page-break">
+  <h2>Чек-лист 1 — Администратор</h2>
+  <div class="who"><b>Кто проверяет:</b> Козляков А.С., Admin &middot; <b>Учётка:</b> kozlyakov@r1a.su или admin@radonezh.local &middot; <b>Роль:</b> admin</div>
+  <div class="meta">
+    <div>Дата проверки: <span class="line"></span></div>
+    <div>Подпись: <span class="line"></span></div>
+  </div>
+  <table>
+    <thead><tr><th class="num">№</th><th class="box">☑</th><th class="action">Действие</th><th class="comment">Комментарий</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td class="box"><span class="cb"></span></td><td class="action">Вход под admin-учёткой. После логина открывается главная страница</td><td class="comment"></td></tr>
+      <tr><td class="num">2</td><td class="box"><span class="cb"></span></td><td class="action">Дашборд «Показатели»: KPI товаров/категорий/единиц, блок «Состояние сервисов» (6 сервисов), «Задачи», RealtimeLogs</td><td class="comment"></td></tr>
+      <tr><td class="num">3</td><td class="box"><span class="cb"></span></td><td class="action">Раздел «Сотрудники»: список, поиск по ФИО/email/телефону/логину, фильтр по роли, фильтр «Активен»</td><td class="comment"></td></tr>
+      <tr><td class="num">4</td><td class="box"><span class="cb"></span></td><td class="action">Создать сотрудника (роль pts). Изменить ФИО, email, роль, описание. Сохранить — изменения видны в списке</td><td class="comment"></td></tr>
+      <tr><td class="num">5</td><td class="box"><span class="cb"></span></td><td class="action">Сменить пароль сотруднику (мин. 8 символов). Войти под ним под новым паролем — работает. Под старым — 401</td><td class="comment"></td></tr>
+      <tr><td class="num">6</td><td class="box"><span class="cb"></span></td><td class="action">Отключить сотрудника (is_active=false). Вход под ним — 401. Включить обратно — вход работает</td><td class="comment"></td></tr>
+      <tr><td class="num">7</td><td class="box"><span class="cb"></span></td><td class="action">Раздел «Аудит»: список событий, фильтры (пользователь, дата, метод, статус), клик по записи раскрывает детали</td><td class="comment"></td></tr>
+      <tr><td class="num">8</td><td class="box"><span class="cb"></span></td><td class="action">Раздел «Документы»: фильтры, настройка колонок (шестерёнка), кнопка «Печать» открывает предпросмотр</td><td class="comment"></td></tr>
+      <tr><td class="num">9</td><td class="box"><span class="cb"></span></td><td class="action">Раздел «Корзина»: восстановление удалённого документа (перемещение, списание или ВЗ)</td><td class="comment"></td></tr>
+      <tr><td class="num">10</td><td class="box"><span class="cb"></span></td><td class="action">Синхронизация МойСклад: тумблер «Синхр. МС» в шапке, статус-точка меняется (ok/running/error) в течение минуты</td><td class="comment"></td></tr>
+    </tbody>
+  </table>
+  <div class="footer">
+    <div>Подпись проверяющего: <span class="sign"></span></div>
+    <div>Дата: <span class="sign" style="min-width: 120px;"></span></div>
+  </div>
+</div>
+
+<!-- ЧЕК-ЛИСТ 2: WAREHOUSE -->
+<div class="sheet page-break">
+  <h2>Чек-лист 2 — Склад / Бух</h2>
+  <div class="who"><b>Кто проверяет:</b> Андреева Г.В., Лушкина Н.Г. &middot; <b>Учётка:</b> andreeva@r1a.su или lushkina@r1a.su &middot; <b>Роль:</b> warehouse</div>
+  <div class="meta">
+    <div>Дата проверки: <span class="line"></span></div>
+    <div>Подпись: <span class="line"></span></div>
+  </div>
+  <table>
+    <thead><tr><th class="num">№</th><th class="box">☑</th><th class="action">Действие</th><th class="comment">Комментарий</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td class="box"><span class="cb"></span></td><td class="action">Вход под учёткой warehouse. Открывается «Панель Склад/Бух» с 8 плитками</td><td class="comment"></td></tr>
+      <tr><td class="num">2</td><td class="box"><span class="cb"></span></td><td class="action">Все 8 плиток на дашборде кликаются и ведут в свой раздел (Оприходования, Списания, Перемещения, Инвентаризации, ВЗ, Остатки, Обороты, Склады)</td><td class="comment"></td></tr>
+      <tr><td class="num">3</td><td class="box"><span class="cb"></span></td><td class="action">Раздел «Оприходования»: список, фильтр «Когда изменён», склад, поставщик; кнопка «Создать» открывает форму</td><td class="comment"></td></tr>
+      <tr><td class="num">4</td><td class="box"><span class="cb"></span></td><td class="action">Создать приёмку: добавить товары, указать количество и цены, провести — документ создаётся</td><td class="comment"></td></tr>
+      <tr><td class="num">5</td><td class="box"><span class="cb"></span></td><td class="action">Раздел «Списания»: список, фильтры; создать списание по товару</td><td class="comment"></td></tr>
+      <tr><td class="num">6</td><td class="box"><span class="cb"></span></td><td class="action">Раздел «Перемещения»: список, фильтры; выбрать склад-источник и склад-получатель, создать перемещение</td><td class="comment"></td></tr>
+      <tr><td class="num">7</td><td class="box"><span class="cb"></span></td><td class="action">Раздел «Инвентаризации»: список, создать инвентаризацию, открыть её карточку</td><td class="comment"></td></tr>
+      <tr><td class="num">8</td><td class="box"><span class="cb"></span></td><td class="action">В карточке инвентаризации: вкладка «Связанные документы»; создать корректировку (недостача/избыток) — документ появился в связях</td><td class="comment"></td></tr>
+      <tr><td class="num">9</td><td class="box"><span class="cb"></span></td><td class="action">Раздел «Остатки»: «Остатки на дату»; в поле «Товар или группа» начните вводить «Видео» — таблица фильтруется</td><td class="comment"></td></tr>
+      <tr><td class="num">10</td><td class="box"><span class="cb"></span></td><td class="action">Раздел «Обороты»: список открывается, пагинация внизу работает, фильтры (склад, период) применяются</td><td class="comment"></td></tr>
+      <tr><td class="num">11</td><td class="box"><span class="cb"></span></td><td class="action">Раздел «Склады»: список открывается, редактирование склада сохраняется</td><td class="comment"></td></tr>
+      <tr><td class="num">12</td><td class="box"><span class="cb"></span></td><td class="action">Раздел «Заказы»: список, создание заказа, фильтры по статусу/периоду</td><td class="comment"></td></tr>
+      <tr><td class="num">13</td><td class="box"><span class="cb"></span></td><td class="action">Раздел «Покупатели» и «Контрагенты»: создание, редактирование, поиск</td><td class="comment"></td></tr>
+      <tr><td class="num">14</td><td class="box"><span class="cb"></span></td><td class="action">Раздел «Договоры»: список, карточка договора, привязка к контрагенту</td><td class="comment"></td></tr>
+      <tr><td class="num">15</td><td class="box"><span class="cb"></span></td><td class="action">Раздел «Закупки»: заказы поставщикам, приёмки, возвраты — открываются, фильтры работают</td><td class="comment"></td></tr>
+    </tbody>
+  </table>
+  <div class="footer">
+    <div>Подпись проверяющего: <span class="sign"></span></div>
+    <div>Дата: <span class="sign" style="min-width: 120px;"></span></div>
+  </div>
+</div>
+
+<!-- ЧЕК-ЛИСТ 3: PTS -->
+<div class="sheet page-break">
+  <h2>Чек-лист 3 — ПТС</h2>
+  <div class="who"><b>Кто проверяет:</b> Дувалина Т.А., Изюмская Е.А., Кавалерова И.Н., Крепоченко Е.К., Крючкова М.А., Машковцева Е.Ю., Никитина О.А. &middot; <b>Учётка:</b> любая pts (duvalina@, dmitrieva@, kavalerova@, krepochenko@, kruchkova@, mashkoveeva@, nikitinaoao@ r1a.su)</div>
+  <div class="meta">
+    <div>Дата проверки: <span class="line"></span></div>
+    <div>Подпись: <span class="line"></span></div>
+  </div>
+  <table>
+    <thead><tr><th class="num">№</th><th class="box">☑</th><th class="action">Действие</th><th class="comment">Комментарий</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td class="box"><span class="cb"></span></td><td class="action">Вход под pts-учёткой. Открывается «Панель ПТС»: две квадратные плитки + широкая «Проекты в работе»</td><td class="comment"></td></tr>
+      <tr><td class="num">2</td><td class="box"><span class="cb"></span></td><td class="action">Клик по плитке «Создать Внутренний Заказ» — открывается форма нового ВЗ</td><td class="comment"></td></tr>
+      <tr><td class="num">3</td><td class="box"><span class="cb"></span></td><td class="action">Клик по широкой карточке «Проекты в работе» — открывается /projects</td><td class="comment"></td></tr>
+      <tr><td class="num">4</td><td class="box"><span class="cb"></span></td><td class="action">/projects: список проектов слева, поиск по названию, чекбокс «Архив»</td><td class="comment"></td></tr>
+      <tr><td class="num">5</td><td class="box"><span class="cb"></span></td><td class="action">Выбрать проект: вкладки «Заказы» (таблица с номерами, датами, статусами, суммой) и «По системам» (СОТС/АПС/СОУЭ/СКУД/СОТ/СКС, группы раскрываются)</td><td class="comment"></td></tr>
+      <tr><td class="num">6</td><td class="box"><span class="cb"></span></td><td class="action">Раздел «Внутренние заказы»: список открывается, кнопка «Создать» работает</td><td class="comment"></td></tr>
+      <tr><td class="num">7</td><td class="box"><span class="cb"></span></td><td class="action">В новом ВЗ: поиск товара «Видео» и по артикулу — находит совпадения, добавить в документ</td><td class="comment"></td></tr>
+      <tr><td class="num">8</td><td class="box"><span class="cb"></span></td><td class="action">В ВЗ: изменить количество и цену, выбрать систему (СОТС/АПС/…), сохранить</td><td class="comment"></td></tr>
+      <tr><td class="num">9</td><td class="box"><span class="cb"></span></td><td class="action">Кнопка «Печать» на сохранённом ВЗ — открывается предпросмотр</td><td class="comment"></td></tr>
+      <tr><td class="num">10</td><td class="box"><span class="cb"></span></td><td class="action">Раздел «Остатки»: открывается, поиск товара фильтрует таблицу</td><td class="comment"></td></tr>
+    </tbody>
+  </table>
+  <div class="footer">
+    <div>Подпись проверяющего: <span class="sign"></span></div>
+    <div>Дата: <span class="sign" style="min-width: 120px;"></span></div>
+  </div>
+</div>
+
+</body>
+</html>

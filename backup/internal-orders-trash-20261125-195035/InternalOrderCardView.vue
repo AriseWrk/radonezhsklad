@@ -1,0 +1,1487 @@
+<template>
+  <div class="card-page">
+    <!-- Заголовок -->
+    <div class="ms-doc-head">
+      <div class="ms-title">
+        <button class="ms-help" title="Справка"><MsIcon name="help" :size="14" /></button>
+        <span>Внутренний заказ</span>
+        <button class="ms-refresh" @click="close" title="Обновить"><MsIcon name="refresh" :size="14" /></button>
+        <span v-if="externalId" class="ext-badge" title="Импортирован из МойСклад">МойСклад</span>
+      </div>
+      <div class="ms-status">
+        <span class="st" :class="'st-' + form.status">{{ statusLabel(form.status) }}</span>
+        <label v-if="canPost" class="posted-check">
+          <input type="checkbox" :checked="form.status === 'posted' || form.status === 'shipped' || form.status === 'closed'" :disabled="!canEdit || form.status === 'cancelled' || form.status === 'shipped' || form.status === 'closed'" @change="onTogglePosted" />
+          Проведено
+        </label>
+      </div>
+    </div>
+
+    <!-- Тулбар -->
+    <div class="ms-toolbar">
+      <MsButton v-if="!isNew" icon="plus" @click="close">Новый заказ</MsButton>
+      <MsButton variant="primary" icon="save" @click="save" :disabled="saving || !canEditQty">{{ saving ? 'Сохранение...' : 'Сохранить' }}</MsButton>
+      <MsButton v-if="canPost" icon="post" @click="onTogglePosted" :disabled="!canEdit || form.status === 'cancelled'">Провести</MsButton>
+      <MsButton icon="print" @click="print">Печать</MsButton>
+      <MsButton v-if="canPost" icon="send" @click="onSend" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отправить</MsButton>
+      <MsButton v-if="canPost" icon="close" @click="onCancel" :disabled="!currentId || (form.status !== 'posted' && form.status !== 'shipped') || !canEdit">Отменить</MsButton>
+      <MsButton variant="icon" icon="trash" title="Удалить" @click="onDelete" :disabled="(!currentId && !isNew) || (currentId !== null && form.status !== 'draft' && auth.role !== 'admin')" />
+      <div class="toolbar-spacer"></div>
+      <MsButton variant="icon" icon="close" @click="close" title="Закрыть" />
+    </div>
+
+    <div v-if="error" class="error-box">{{ error }}</div>
+
+    <!-- Реквизиты -->
+    <div class="ms-doc-fields">
+      <div class="doc-left">
+        <div class="row">
+          <label>Номер</label>
+          <input v-model="form.number" class="num-input" :disabled="!canEdit" placeholder="авто" />
+        </div>
+        <div class="row">
+          <label>Дата</label>
+          <input v-model="form.doc_date" type="datetime-local" class="date-input" :disabled="!canEdit" />
+        </div>
+        <div class="row">
+          <label>Организация</label>
+          <div class="ac-wrap">
+            <input
+              v-model="organizationSearch"
+              :disabled="!canEdit"
+              placeholder="Начните вводить название..."
+              @focus="showOrganizationSuggest = true"
+              @blur="hideOrganizationSuggestSoon"
+            />
+            <div v-if="showOrganizationSuggest && organizationSuggestions.length" class="ac-dropdown">
+              <div v-for="o in organizationSuggestions" :key="o.id" class="ac-item" @mousedown.prevent="selectOrganization(o)">{{ o.name }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <label>Склад</label>
+          <div class="ac-wrap">
+            <input
+              v-model="warehouseSearch"
+              :disabled="!canEdit"
+              placeholder="Начните вводить название..."
+              @focus="showWarehouseSuggest = true"
+              @blur="hideWarehouseSuggestSoon"
+            />
+            <div v-if="showWarehouseSuggest && warehouseSuggestions.length" class="ac-dropdown">
+              <div v-for="w in warehouseSuggestions" :key="w.id" class="ac-item" @mousedown.prevent="selectWarehouse(w)">{{ w.name }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="doc-right">
+        <div class="row">
+          <label>План. дата приёмки</label>
+          <input v-model="form.plan_date" type="date" :disabled="!canEdit" />
+        </div>
+        <div class="row">
+          <label>Проект</label>
+          <div class="ac-wrap">
+            <input
+              v-model="projectSearch"
+              :disabled="!canEdit"
+              placeholder="Начните вводить название..."
+              @focus="showProjectSuggest = true"
+              @blur="hideProjectSuggestSoon"
+            />
+            <button v-if="canEdit" type="button" class="ac-add" title="Создать проект" @mousedown.prevent="openCreateProject">+</button>
+            <button v-if="canEdit && form.project" type="button" class="ac-clear" title="Очистить" @mousedown.prevent="clearProject">×</button>
+            <div v-if="showProjectSuggest && projectSuggestions.length" class="ac-dropdown">
+              <div v-for="p in projectSuggestions" :key="p.id" class="ac-item" @mousedown.prevent="selectProject(p)">{{ p.name }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <label>Владелец</label>
+          <span class="muted">{{ userLabel }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Вкладки -->
+    <div class="ms-tabs">
+      <button class="tab" :class="{ active: tab === 'main' }" @click="tab = 'main'">Главная</button>
+      <button class="tab" :class="{ active: tab === 'issues' }" @click="tab = 'issues'">Выдачи</button>
+      <button class="tab" :class="{ active: tab === 'related' }" @click="tab = 'related'">Связанные документы</button>
+    </div>
+
+    <template v-if="tab === 'main'">
+      <!-- Строка добавления -->
+      <div class="add-row" v-if="canEdit">
+        <input
+          v-model="newItemSearch"
+          placeholder="Добавьте позицию — введите наименование, код, штрихкод или артикул"
+          class="add-input"
+          @input="onSearchInput"
+          @focus="showSuggest = true"
+          @blur="hideSuggestSoon"
+          @keydown="onSuggestKeydown"
+        />
+        <MsButton @click="focusCatalog">Из справочника</MsButton>
+        <div v-if="showSuggest && suggestions.length" class="suggest">
+          <div
+            v-for="(p, idx) in suggestions"
+            :key="p.id"
+            class="suggest-item"
+            :class="{ 'already-in': p._already, 'is-active': idx === activeSuggestIndex }"
+            @mousedown.prevent="addItem(p)"
+            @mouseenter="activeSuggestIndex = idx"
+          >
+            <div class="suggest-row">
+              <div class="suggest-name" v-html="highlight(p.name, p._hits, 'name')"></div>
+              <div class="suggest-stock" :class="{ 'out': availableFor(p.id) <= 0 }">
+                {{ availableFor(p.id) > 0 ? 'Остаток: ' + formatQty(availableFor(p.id)) : 'Нет в наличии' }}
+              </div>
+            </div>
+            <div class="suggest-meta">
+              <span v-if="p.sku" class="suggest-sku">SKU: <span v-html="highlight(p.sku, p._hits, 'sku')"></span></span>
+              <span v-if="p.barcode" class="suggest-barcode">Ш/К: <span v-html="highlight(p.barcode, p._hits, 'barcode')"></span></span>
+              <span v-if="p._already" class="suggest-already">уже добавлен</span>
+            </div>
+            <div class="suggest-meta muted">
+              <span v-if="p.sku">Арт. {{ p.sku }}</span>
+              <span v-if="unitShort(p.unit_id)" style="margin-left:12px">{{ unitShort(p.unit_id) }}</span>
+              <span style="margin-left:12px">{{ p.price.toFixed(2) }} ₽</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Таблица позиций -->
+      <table class="ms-items">
+        <thead>
+          <tr>
+            <th class="col-num">#</th>
+            <th class="col-sku">Артикул</th>
+            <th>Наименование</th>
+            <th class="col-sys">Система</th>
+            <th class="col-num-right">Кол-во</th>
+            <th class="col-num-right">Выдано</th>
+            <th class="col-num-right">Резерв</th>
+            <th class="col-num-right">Доступно</th>
+            <th class="col-act"></th>
+            <th class="col-num-right">Цена</th>
+            <th class="col-num-right">НДС</th>
+            <th class="col-num-right">Сумма</th>
+            <th class="col-x"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="form.items.length === 0">
+            <td colspan="13" class="empty">Добавьте позиции</td>
+          </tr>
+          <tr v-else v-for="(it, idx) in form.items" :key="it.product_id">
+            <td class="col-num">{{ idx + 1 }}</td>
+            <td class="col-sku muted">{{ productSku(it.product_id) }}</td>
+            <td>{{ productName(it.product_id) }}</td>
+            <td class="col-sys">
+              <select v-model="it.system_code" :disabled="!canEdit" class="cell-select">
+                <option :value="null">—</option>
+                <option v-for="s in SYSTEMS" :key="s.code" :value="s.code">{{ s.name }}</option>
+              </select>
+            </td>
+            <td class="col-num-right">
+              <input
+                class="qty-input"
+                type="text"
+                inputmode="decimal"
+                :value="it.quantity"
+                :disabled="!canEditQty"
+                @focus="onQtyFocus(it, $event)"
+                @input="onQtyInput(it, $event)"
+                @blur="onQtyBlur(it, $event)"
+                @keydown="onQtyKeydown(it, $event)"
+              />
+            </td>
+            <td class="col-num-right muted">
+              <span v-if="form.status === 'posted' || form.status === 'shipped' || form.status === 'closed'">{{ formatQty(it.issued_qty ?? 0) }}</span>
+              <span v-else>—</span>
+            </td>
+            <td class="col-num-right muted">{{ formatQty(reservesMap.get(it.product_id) ?? 0) }}</td>
+            <td class="col-act">
+              <button v-if="canPost && (form.status === 'posted' || form.status === 'shipped') && remainingFor(it) > 0" class="issue-btn" @click="openIssue(it.id || '', remainingFor(it))" title="Выдать">Выдать</button>
+            </td>
+            <td class="col-num-right muted">{{ formatQty(availableFor(it.product_id)) }}</td>
+            <td class="col-num-right">
+              <input v-model.number="it.price" type="number" min="0" step="0.01" class="cell-input" :disabled="!canEdit" />
+            </td>
+            <td class="col-num-right">
+              <input v-model.number="it.vat_rate" type="number" min="0" max="100" step="1" class="cell-input" :disabled="!canEdit" />
+            </td>
+            <td class="col-num-right">{{ formatMoney(it.quantity * it.price) }}</td>
+            <td class="col-x"><button v-if="canEdit" class="x-btn" @click="removeItem(idx)">×</button></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Комментарий + итоги -->
+      <div class="bottom-row">
+        <div class="comment-box">
+          <label class="lbl">Комментарий</label>
+          <textarea v-model="form.comment" rows="6" :disabled="!canEdit"></textarea>
+        </div>
+        <div class="totals-box">
+          <div class="total-row">
+            <span>Промежуточный итог:</span>
+            <span class="total-num">{{ formatMoney(subtotal) }}</span>
+          </div>
+          <div class="total-row small">
+            <label>
+              <input type="checkbox" v-model="form.vat_enabled" :disabled="!canEdit" />
+              НДС:
+            </label>
+            <span class="total-num">{{ formatMoney(vatAmount) }}</span>
+          </div>
+          <div class="total-row small">
+            <label>
+              <input type="checkbox" v-model="form.vat_included" :disabled="!canEdit" />
+              Цена включает НДС
+            </label>
+          </div>
+          <div class="total-row big">
+            <span>Итого:</span>
+            <span class="total-num">{{ formatMoney(subtotal) }}</span>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <template v-else-if="tab === 'issues'">
+      <div class="sys-summary">
+        <h3>Сводка по системам</h3>
+        <table class="ms-items">
+          <thead><tr><th>Система</th><th class="col-num-right">Заказано</th><th class="col-num-right">Выдано</th></tr></thead>
+          <tbody>
+            <tr v-for="s in SYSTEMS" :key="s.code">
+              <td>{{ s.name }}</td>
+              <td class="col-num-right">{{ formatQty(issueQtyBySystem(s.code).ordered) }}</td>
+              <td class="col-num-right">{{ formatQty(issueQtyBySystem(s.code).issued) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <table class="ms-items">
+        <thead><tr><th>Дата</th><th>Позиция</th><th class="col-num-right">Кол-во</th><th>Комментарий</th></tr></thead>
+        <tbody>
+          <tr v-if="issues.length === 0"><td colspan="4" class="empty">Выдач пока нет</td></tr>
+          <tr v-else v-for="iss in issues" :key="iss.id">
+            <td>{{ iss.issue_date.slice(0, 10) }}</td>
+            <td>{{ itemName(iss.item_id) }}</td>
+            <td class="col-num-right">{{ formatQty(iss.qty) }}</td>
+            <td class="muted">{{ iss.comment || '' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </template>
+
+    <template v-else>
+      <div class="empty-block">Связанных документов пока нет</div>
+    </template>
+
+    <!-- Модалка: выдача -->
+    <div v-if="showIssueModal" class="modal-backdrop" @click.self="showIssueModal = false">
+      <form class="card modal" @submit.prevent="submitIssue">
+        <h2>Выдача по позиции</h2>
+        <div v-if="error" class="error-box">{{ error }}</div>
+        <label>Количество</label>
+        <input v-model.number="issueQty" type="number" min="0.001" step="0.001" autofocus />
+        <label>Дата выдачи</label>
+        <input v-model="issueDate" type="date" />
+        <label>Комментарий</label>
+        <input v-model="issueComment" placeholder="Необязательно" />
+        <div class="modal-actions">
+          <button type="button" @click="showIssueModal = false">Отмена</button>
+          <button class="primary" type="submit" :disabled="issuing">
+            {{ issuing ? 'Сохранение...' : 'Выдать' }}
+          </button>
+        </div>
+      </form>
+    </div>
+    <!-- Модалка: новый проект -->
+    <div v-if="showCreateProject" class="modal-backdrop" @click.self="showCreateProject = false">
+      <form class="card modal" @submit.prevent="submitCreateProject">
+        <h2>Новый проект</h2>
+        <div v-if="projectError" class="error-box">{{ projectError }}</div>
+        <label>Название</label>
+        <input v-model="newProjectName" placeholder="Название проекта" autofocus />
+        <div class="modal-actions">
+          <button type="button" @click="showCreateProject = false">Отмена</button>
+          <button class="primary" type="submit" :disabled="creatingProject">
+            {{ creatingProject ? 'Сохранение...' : 'Создать' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import QtyStepper from '../components/QtyStepper.vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  cancelInternalOrder,
+  deleteInternalOrder,
+  sendInternalOrder,
+  getInternalOrder, createInternalOrder, updateInternalOrder,
+  postInternalOrder, nextInternalOrderNumber,
+  type IntOrderInput,
+  exportInternalOrder,
+  listInternalOrderIssues,
+  getInternalOrderReserves,
+  issueInternalOrderItem,
+  SYSTEMS,
+  type IntOrderIssue,
+} from '../api/internalOrders'
+import { listProducts, type Product } from '../api/products'
+import { listUnits, type Unit } from '../api/units'
+import { smartSearch, smartFilter, type Hit, type FieldName } from '../utils/smartSearch'
+import { listWarehouses, type Warehouse } from '../api/warehouses'
+import { listOrganizations, type Organization } from '../api/suppliers'
+import { listProjects, createProject, type Project } from '../api/projects'
+import { listStockExtended } from '../api/stock'
+import { apiErrorMessage } from '../api/client'
+import { useAuthStore } from '../stores/auth'
+import MsButton from '../components/MsButton.vue'
+import MsIcon from '../components/MsIcon.vue'
+
+interface FormItem {
+  id?: string
+  product_id: string
+  quantity: number
+  price: number
+  vat_rate: number
+  system_code?: string | null
+  issued_qty?: number
+}
+
+const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
+
+const products = ref<Product[]>([])
+const units = ref<Unit[]>([])
+const warehouses = ref<Warehouse[]>([])
+const organizations = ref<Organization[]>([])
+const projects = ref<Project[]>([])
+const stockMap = ref<Map<string, number>>(new Map())
+
+const loading = ref(false)
+const saving = ref(false)
+const error = ref<string | null>(null)
+const tab = ref<'main' | 'issues' | 'related'>('main')
+const isNew = computed(() => route.params.id === 'new' || route.path.endsWith('/new'))
+
+const form = reactive({
+  number: '',
+  doc_date: new Date().toISOString().slice(0, 16),
+  status: 'draft' as string,
+  organization_id: '',
+  warehouse_id: '',
+  plan_date: '',
+  project: '',
+  project_name: '',
+  sent_at: undefined as string | undefined,
+  comment: '',
+  vat_enabled: true,
+  vat_included: true,
+  items: [] as FormItem[],
+})
+
+const currentId = ref<string | null>(null)
+const issues = ref<IntOrderIssue[]>([])
+const reservesMap = ref<Map<string, number>>(new Map())
+const showIssueModal = ref(false)
+const issueItemId = ref<string>('')
+const issueQty = ref<number>(0)
+const issueDate = ref<string>('')
+const issueComment = ref<string>('')
+const issuing = ref(false)
+
+function openIssue(itemId: string, remaining: number) {
+  issueItemId.value = itemId
+  issueQty.value = remaining > 0 ? remaining : 0
+  issueDate.value = new Date().toISOString().slice(0, 10)
+  issueComment.value = ''
+  showIssueModal.value = true
+}
+
+function remainingFor(it: FormItem) {
+  return Math.max(0, (it.quantity ?? 0) - (it.issued_qty ?? 0))
+}
+
+async function submitIssue() {
+  if (!currentId.value) return
+  if (issueQty.value <= 0) { error.value = 'Количество должно быть больше нуля'; return }
+  issuing.value = true; error.value = null
+  try {
+    await issueInternalOrderItem(currentId.value, {
+      item_id: issueItemId.value,
+      qty: issueQty.value,
+      issue_date: issueDate.value || undefined,
+      comment: issueComment.value || undefined,
+    })
+    showIssueModal.value = false
+    await reload()
+  } catch (e) {
+    error.value = apiErrorMessage(e)
+  } finally {
+    issuing.value = false
+  }
+}
+
+async function reload() {
+  if (!currentId.value) return
+  const o = await getInternalOrder(currentId.value)
+  form.status = o.status
+  form.items = (o.items ?? []).map((it) => ({
+    id: it.id, product_id: it.product_id, quantity: it.quantity, price: it.price, vat_rate: it.vat_rate,
+    system_code: it.system_code ?? null, issued_qty: it.issued_qty ?? 0,
+  }))
+  try { issues.value = await listInternalOrderIssues(currentId.value) } catch { issues.value = [] }
+  refreshReserves()
+}
+
+function itemName(itemId: string) {
+  const it = form.items.find((i) => i.id === itemId)
+  if (!it) return itemId.slice(0, 8)
+  return productName(it.product_id)
+}
+
+function issueQtyBySystem(code: string) {
+  const t = form.items.filter((i) => i.system_code === code).reduce((s, i) => s + (i.quantity ?? 0), 0)
+  const f = form.items.filter((i) => i.system_code === code).reduce((s, i) => s + (i.issued_qty ?? 0), 0)
+  return { ordered: t, issued: f }
+}
+const externalId = ref<string | null>(null)
+const canPost = computed(() => auth.can('warehouse'))
+const canEdit = computed(() => isNew.value || (form.status === 'draft' && !externalId.value))
+const canEditQty = computed(() => isNew.value || form.status === 'draft')
+
+const newItemSearch = ref('')
+const showSuggest = ref(false)
+const activeSuggestIndex = ref(0)
+const suggestions = computed(() => {
+  return smartSearch(products.value, newItemSearch.value, {
+    getFields: (p) => [p.name, p.sku, p.barcode, p.external_id],
+    fieldOrder: ['sku', 'barcode', 'external_id', 'name'],
+    limit: 10,
+    extraScore: (p) => (form.items.some((i) => i.product_id === p.id) ? -50 : 0),
+  }).map((sc) => Object.assign({}, sc.item, {
+    _hits: sc.hits as Hit[],
+    _already: form.items.some((i) => i.product_id === sc.item.id),
+  }))
+})
+watch(newItemSearch, () => { activeSuggestIndex.value = 0 })
+function hideSuggestSoon() { setTimeout(() => { showSuggest.value = false }, 150) }
+function onSearchInput() { showSuggest.value = true }
+function onSuggestKeydown(e: KeyboardEvent) {
+  if (!showSuggest.value || !suggestions.value.length) return
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    activeSuggestIndex.value = Math.min(activeSuggestIndex.value + 1, suggestions.value.length - 1)
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    activeSuggestIndex.value = Math.max(activeSuggestIndex.value - 1, 0)
+  } else if (e.key === 'Enter') {
+    const it = suggestions.value[activeSuggestIndex.value]
+    if (it) { e.preventDefault(); addItem(it as Product) }
+  } else if (e.key === 'Escape') {
+    showSuggest.value = false
+  }
+}
+function focusCatalog() { showSuggest.value = true }
+function addItem(p: Product) {
+  const existing = form.items.find((i) => i.product_id === p.id)
+  if (existing) { existing.quantity += 1 }
+  else { form.items.push({ product_id: p.id, quantity: 0, price: p.price, vat_rate: 22 }) }
+  newItemSearch.value = ''
+  showSuggest.value = false
+}
+function removeItem(idx: number) { form.items.splice(idx, 1) }
+
+function productName(id: string) { return products.value.find((p) => p.id === id)?.name ?? '—' }
+function productSku(id: string) { return products.value.find((p) => p.id === id)?.sku || '—' }
+function availableFor(id: string) { return stockMap.value.get(id) ?? 0 }
+function formatQty(n: number) { return n === 0 ? '0' : n.toLocaleString('ru-RU', { maximumFractionDigits: 3 }) }
+// Ввод количества: обычный ввод + режим "+" (прибавление).
+// Клик → выделено. Ввод числа → замена. Нажали "+" → режим прибавления:
+//   ввод цифр прибавляется к текущему. "+"/Enter/Tab → фиксация. Esc → отмена.
+// Ввод количества: клик → выделено, ввод → base + delta (прибавление).
+// Если стёрли всё → режим замены (base = 0). Enter/Tab → фиксация, Esc → откат.
+const qtyBase = reactive(new Map<string, number>())
+
+function onQtyFocus(it: FormItem, e: Event) {
+  const inp = e.target as HTMLInputElement
+  qtyBase.set(it.product_id, it.quantity ?? 0)
+  nextTick(() => { try { inp.select() } catch { } })
+}
+
+function onQtyInput(it: FormItem, e: Event) {
+  const inp = e.target as HTMLInputElement
+  if (inp.value === '') {
+    qtyBase.set(it.product_id, 0)
+  }
+}
+
+function onQtyBlur(it: FormItem, e: Event) {
+  const inp = e.target as HTMLInputElement
+  const raw = inp.value.trim().replace(',', '.')
+  const base = qtyBase.get(it.product_id) ?? 0
+  qtyBase.delete(it.product_id)
+
+  let next: number
+  if (raw === '' || raw === '-' || raw === '.') {
+    next = 0
+  } else {
+    const delta = Number(raw)
+    if (!isFinite(delta)) {
+      next = base
+    } else if (base === 0) {
+      next = delta
+    } else if (delta === base) {
+      next = base
+    } else {
+      next = base + delta
+    }
+  }
+  it.quantity = next
+  inp.value = String(next)
+}
+
+function onQtyKeydown(it: FormItem, e: KeyboardEvent) {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    ;(e.target as HTMLInputElement).blur()
+    return
+  }
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    const inp = e.target as HTMLInputElement
+    const base = qtyBase.get(it.product_id) ?? 0
+    qtyBase.delete(it.product_id)
+    inp.value = String(base)
+    inp.blur()
+    return
+  }
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    e.preventDefault()
+    return
+  }
+}
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => (({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[c] || c))
+}
+function highlight(text: string | null | undefined, hits: Hit[], field: FieldName): string {
+  const t = text ?? ''
+  if (!t) return ''
+  const ranges = (hits || []).filter((h) => h.field === field).sort((a, b) => a.start - b.start)
+  if (!ranges.length) return escapeHtml(t)
+  let out = ''
+  let pos = 0
+  for (const r of ranges) {
+    if (r.start < pos) continue
+    out += escapeHtml(t.slice(pos, r.start))
+    out += '<mark>' + escapeHtml(t.slice(r.start, r.end)) + '</mark>'
+    pos = r.end
+  }
+  out += escapeHtml(t.slice(pos))
+  return out
+}
+function formatMoney(n: number) { return n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
+function unitShort(id?: string | null) { return units.value.find((u) => u.id === id)?.short_name ?? '' }
+
+const subtotal = computed(() => form.items.reduce((s, i) => s + i.quantity * i.price, 0))
+const vatAmount = computed(() => {
+  if (!form.vat_enabled) return 0
+  if (form.vat_included) return subtotal.value * 22 / 122
+  return subtotal.value * 0.22
+})
+
+const userLabel = computed(() => auth.userId ? auth.userId.slice(0, 8) : '')
+
+let stockReloadTimer: ReturnType<typeof setTimeout> | null = null
+async function reloadStockMap() {
+  const whId = form.warehouse_id || undefined
+  try {
+    const st = await listStockExtended(whId ? { warehouse_id: whId } : {})
+    const m = new Map<string, number>()
+    for (const r of st.items ?? []) m.set(r.product_id, r.quantity)
+    stockMap.value = m
+  } catch {
+    stockMap.value = new Map()
+  }
+}
+
+async function refreshReserves() {
+  if (!currentId.value) { reservesMap.value = new Map(); return }
+  try {
+    const list = await getInternalOrderReserves(currentId.value)
+    const m = new Map<string, number>()
+    for (const it of list) m.set(it.product_id, it.reserved)
+    reservesMap.value = m
+  } catch {
+    reservesMap.value = new Map()
+  }
+}
+async function load() {
+  loading.value = true; error.value = null
+  try {
+    const [prods, w, orgs, projs, us] = await Promise.all([
+      listProducts(true),
+      listWarehouses(),
+      listOrganizations(),
+      listProjects().catch(() => [] as Project[]),
+      listUnits().catch(() => [] as Unit[]),
+    ])
+    products.value = prods
+    warehouses.value = w
+    organizations.value = orgs
+    projects.value = projs
+    units.value = us
+
+    if (!isNew.value && route.params.id) {
+      currentId.value = route.params.id as string
+      const o = await getInternalOrder(currentId.value)
+      form.number = o.number
+      form.doc_date = o.doc_date.slice(0, 16)
+      form.status = o.status
+      form.organization_id = o.organization_id ?? organizations.value.find((x) => x.is_default)?.id ?? ''
+      form.warehouse_id = o.warehouse_id ?? ''
+      syncWarehouseSearch()
+      syncOrganizationSearch()
+      form.plan_date = o.plan_date ? o.plan_date.slice(0, 10) : ''
+      form.project = o.project ?? ''
+      form.project_name = o.project_name ?? ''
+      syncProjectSearch()
+      form.comment = o.comment ?? ''
+      form.vat_enabled = o.vat_enabled
+      form.vat_included = o.vat_included
+      externalId.value = o.external_id ?? null
+      form.items = (o.items ?? []).map((it) => ({
+        id: it.id, product_id: it.product_id, quantity: it.quantity, price: it.price, vat_rate: it.vat_rate, system_code: it.system_code ?? null, issued_qty: it.issued_qty ?? 0,
+      }))
+      try { issues.value = await listInternalOrderIssues(currentId.value) } catch { issues.value = [] }
+  refreshReserves()
+    } else {
+      // новосоздаваемый — получаем следующий номер и дефолтные значения
+      try { form.number = await nextInternalOrderNumber() } catch { /* ignore */ }
+      // Дефолт организации: "ООО ЧОО АБ РАДОНЕЖ" (из МойСклад, external_id != null).
+      form.organization_id =
+        (organizations.value.find((x: any) => (x.name || '').includes('РАДОНЕЖ'))?.id)
+        ?? (organizations.value.find((x: any) => x.external_id)?.id)
+        ?? (organizations.value.find((x: any) => x.is_default)?.id)
+        ?? ''
+      // Дефолт склада: реальный "основной склад" из МойСклад (external_id != null),
+      // а не тестовый "Основной склад" (source=manual).
+      form.warehouse_id =
+        (warehouses.value.find(
+          (w: any) => w.name.trim().toLowerCase() === 'основной склад' && w.external_id
+        )?.id)
+        ?? (warehouses.value.find((w: any) => w.external_id)?.id)
+        ?? warehouses.value[0]?.id
+        ?? ''
+      syncWarehouseSearch()
+      syncOrganizationSearch()
+      syncProjectSearch()
+    }
+    await reloadStockMap()
+  } catch (e) {
+    error.value = apiErrorMessage(e)
+  } finally {
+    loading.value = false
+  }
+}
+
+function buildInput(): IntOrderInput {
+  return {
+    number: form.number || undefined,
+    organization_id: form.organization_id || undefined,
+    warehouse_id: form.warehouse_id || undefined,
+    plan_date: form.plan_date || undefined,
+    project: form.project || undefined,
+    comment: form.comment || undefined,
+    vat_enabled: form.vat_enabled,
+    vat_included: form.vat_included,
+    items: form.items.map((i) => ({
+      product_id: i.product_id, quantity: i.quantity, price: i.price, vat_rate: i.vat_rate, system_code: i.system_code ?? null,
+    })),
+  }
+}
+
+async function save() {
+  error.value = null
+  saving.value = true
+  try {
+    // Если введено имя проекта, но из подсказки не выбрано — найдём по имени или создадим.
+    const typedProject = projectSearch.value.trim()
+    if (typedProject && !form.project) {
+      const existing = projects.value.find((p) => p.name.toLowerCase() === typedProject.toLowerCase())
+      let proj: Project | null = existing ?? null
+      if (!proj) {
+        try {
+          proj = await createProject(typedProject)
+        } catch (projErr) {
+          // ПТС не может создать проект через API — оставляем заказ без привязки, предупреждаем
+          console.warn('createProject failed, saving order without project', projErr)
+        }
+      }
+      if (proj) {
+        if (!existing) {
+          projects.value = [...projects.value, proj].sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+        }
+        selectProject(proj)
+      }
+    }
+    if (form.items.length === 0) throw new Error('Добавьте хотя бы одну позицию')
+    if (!form.warehouse_id) throw new Error('Выберите склад из списка')
+    const wh = warehouses.value.find((x) => x.id === form.warehouse_id)
+    if (!wh) throw new Error('Склад не найден — выберите из списка')
+    if (!wh.external_id) throw new Error('Склад не привязан к МойСклад — выберите другой')
+    if (!form.organization_id) throw new Error('Выберите организацию из списка')
+    const org = organizations.value.find((x) => x.id === form.organization_id)
+    if (!org) throw new Error('Организация не найдена — выберите из списка')
+    if (!org.external_id) throw new Error('Организация не привязана к МойСклад')
+    for (const it of form.items) {
+      const prod = products.value.find((x) => x.id === it.product_id)
+      if (!prod) throw new Error('Товар не найден — удалите позицию и выберите из списка')
+      if (!prod.external_id) throw new Error(`Товар «${prod.name}» не привязан к МойСклад`)
+    }
+    if (isNew.value) {
+      const created = await createInternalOrder(buildInput())
+      currentId.value = created.id
+      form.number = created.number
+      form.status = created.status
+      router.replace(`/internal-orders/${created.id}`)
+      await reload()
+    } else if (currentId.value) {
+      await updateInternalOrder(currentId.value, buildInput())
+      await reload()
+    }
+  } catch (e) {
+    error.value = apiErrorMessage(e)
+  } finally {
+    saving.value = false
+  }
+}
+
+async function onTogglePosted(e: Event) {
+  if (!currentId.value) { await save(); if (!currentId.value) return }
+  const checked = (e.target as HTMLInputElement).checked
+  try {
+    if (checked && form.status === 'draft') {
+      await save()
+      await postInternalOrder(currentId.value)
+      await reload()
+    }
+  } catch (err) {
+    error.value = apiErrorMessage(err)
+  }
+}
+
+function statusLabel(s: string) {
+  return { draft: 'Черновик', posted: 'Проведён', shipped: 'Отгружен', closed: 'Закрыт', cancelled: 'Отменён' }[s] || s
+}
+
+function close() { router.push('/internal-orders') }
+
+async function onDelete() {
+  if (!currentId.value) { router.push('/internal-orders'); return }
+  if (!confirm('Удалить заказ? Действие необратимо.')) return
+  try {
+    await deleteInternalOrder(currentId.value)
+    router.push('/internal-orders')
+  } catch (e) {
+    error.value = apiErrorMessage(e)
+  }
+}
+
+async function onCancel() {
+  if (!currentId.value) return
+  if (!confirm('Отменить заказ?')) return
+  try {
+    const updated = await cancelInternalOrder(currentId.value)
+    form.status = updated.status
+  } catch (e) {
+    error.value = apiErrorMessage(e)
+  }
+}
+
+async function onSend() {
+  if (!currentId.value) return
+  try {
+    const updated = await sendInternalOrder(currentId.value)
+    form.sent_at = updated.sent_at
+  } catch (e) {
+    error.value = apiErrorMessage(e)
+  }
+}
+async function print() {
+  if (!currentId.value) {
+    error.value = 'Сначала сохраните заказ'
+    return
+  }
+  try {
+    const { blob, filename } = await exportInternalOrder(currentId.value)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1500)
+
+    // подтянем обновлённый статус (printed_at)
+    const o = await getInternalOrder(currentId.value)
+    form.status = o.status
+  } catch (e) {
+    error.value = apiErrorMessage(e)
+  }
+}
+
+// === Autocomplete sklad/organizatsiya ===
+const warehouseSearch = ref('')
+const organizationSearch = ref('')
+const showWarehouseSuggest = ref(false)
+const showOrganizationSuggest = ref(false)
+
+const warehouseSuggestions = computed(() => {
+  const q = warehouseSearch.value.trim()
+  const list = warehouses.value.filter((w) => !!w.external_id)
+  if (!q) return list.slice(0, 8)
+  return smartFilter(list, q, {
+    getFields: (w) => [w.name, null, null, null],
+    limit: 10,
+  })
+})
+
+const organizationSuggestions = computed(() => {
+  const q = organizationSearch.value.trim()
+  const list = organizations.value.filter((o) => !!o.external_id)
+  if (!q) return list.slice(0, 8)
+  return smartFilter(list, q, {
+    getFields: (o) => [o.name, null, null, null],
+    limit: 10,
+  })
+})
+
+function hideWarehouseSuggestSoon() { setTimeout(() => { showWarehouseSuggest.value = false }, 150) }
+function hideOrganizationSuggestSoon() { setTimeout(() => { showOrganizationSuggest.value = false }, 150) }
+
+function selectWarehouse(w: Warehouse) {
+  form.warehouse_id = w.id
+  warehouseSearch.value = w.name
+  showWarehouseSuggest.value = false
+}
+function selectOrganization(o: Organization) {
+  form.organization_id = o.id
+  organizationSearch.value = o.name
+  showOrganizationSuggest.value = false
+}
+
+function syncWarehouseSearch() {
+  const w = warehouses.value.find((x) => x.id === form.warehouse_id)
+  warehouseSearch.value = w?.name ?? ''
+}
+function syncOrganizationSearch() {
+  const o = organizations.value.find((x) => x.id === form.organization_id)
+  organizationSearch.value = o?.name ?? ''
+}
+
+watch(warehouseSearch, (val) => {
+  const w = warehouses.value.find((x) => x.name === val)
+  form.warehouse_id = w?.id ?? ''
+})
+
+watch(() => form.warehouse_id, () => {
+  if (stockReloadTimer) clearTimeout(stockReloadTimer)
+  stockReloadTimer = setTimeout(() => { reloadStockMap() }, 300)
+})
+watch(organizationSearch, (val) => {
+  const o = organizations.value.find((x) => x.name === val)
+  form.organization_id = o?.id ?? ''
+})
+
+// === Проект ===
+const projectSearch = ref('')
+const showProjectSuggest = ref(false)
+const showCreateProject = ref(false)
+const newProjectName = ref('')
+const creatingProject = ref(false)
+const projectError = ref<string | null>(null)
+
+const projectSuggestions = computed(() => {
+  const q = projectSearch.value.trim()
+  const list = projects.value.slice().sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+  if (!q) return list.slice(0, 8)
+  return smartFilter(list, q, {
+    getFields: (p) => [p.name, null, null, null],
+    limit: 10,
+  })
+})
+
+function hideProjectSuggestSoon() { setTimeout(() => { showProjectSuggest.value = false }, 150) }
+
+function selectProject(p: Project) {
+  form.project = p.id
+  form.project_name = p.name
+  projectSearch.value = p.name
+  showProjectSuggest.value = false
+}
+function clearProject() {
+  form.project = ''
+  form.project_name = ''
+  projectSearch.value = ''
+}
+function syncProjectSearch() {
+  if (form.project_name) {
+    projectSearch.value = form.project_name
+    return
+  }
+  const p = form.project ? projects.value.find((x) => x.id === form.project) : undefined
+  projectSearch.value = p?.name ?? ''
+  if (p) form.project_name = p.name
+}
+watch(projectSearch, (val) => {
+  const p = projects.value.find((x) => x.name === val)
+  form.project = p?.id ?? ''
+  form.project_name = p?.name ?? ''
+})
+
+function openCreateProject() {
+  newProjectName.value = projectSearch.value.trim()
+  projectError.value = null
+  showCreateProject.value = true
+}
+async function submitCreateProject() {
+  const name = newProjectName.value.trim()
+  if (!name) { projectError.value = 'Введите название'; return }
+  creatingProject.value = true
+  projectError.value = null
+  try {
+    const created = await createProject(name)
+    projects.value = [...projects.value, created].sort((a,b) => a.name.localeCompare(b.name))
+    selectProject(created)
+    showCreateProject.value = false
+  } catch (e) {
+    projectError.value = apiErrorMessage(e)
+  } finally {
+    creatingProject.value = false
+  }
+}onMounted(load)
+</script>
+
+<style scoped>
+.card-page { padding: 0; }
+
+.toolbar {
+  display: flex; gap: 8px; align-items: center;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid #e1e4e8;
+  margin-bottom: 12px;
+}
+.toolbar-info { margin-left: auto; font-size: 13px; color: #8c959f; }
+
+.doc-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 14px;
+}
+.doc-title { display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.doc-number { font-weight: 600; }
+.num-input {
+  width: 100px; padding: 4px 8px;
+  border: 1px solid transparent; border-radius: 4px;
+  font-size: 15px; font-weight: 600; background: transparent;
+}
+.num-input:hover { border-color: #d0d7de; background: #fff; }
+.num-input:focus { border-color: #2c5d9c; background: #fff; outline: none; }
+.date-input {
+  width: 180px; padding: 4px 8px;
+  border: 1px solid transparent; border-radius: 4px;
+  font-size: 13px; background: transparent;
+}
+.date-input:hover { border-color: #d0d7de; background: #fff; }
+.status-label { margin-left: 12px; color: #57606a; font-size: 13px; }
+.status-select {
+  padding: 4px 8px; font-size: 13px;
+  border: 1px solid #d0d7de; border-radius: 4px;
+  background: #fff;
+}
+.posted-check { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #1f2328; }
+.posted-check input { width: auto; }
+.ext-badge {
+  padding: 2px 6px; font-size: 11px; font-weight: 500;
+  background: #eaeef2; color: #57606a; border-radius: 3px;
+  text-transform: uppercase; letter-spacing: 0.3px;
+}
+
+.fields-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 12px 20px;
+  margin-bottom: 16px;
+}
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #57606a; }
+.field label { font-weight: 500; }
+.field input, .field select {
+  padding: 5px 8px; font-size: 13px;
+  border: 1px solid #d0d7de; border-radius: 3px;
+  background: #fff; color: #1f2328;
+}
+
+.doc-tabs {
+  display: flex; gap: 4px;
+  border-bottom: 1px solid #d8dee4;
+  margin-bottom: 12px;
+}
+.doc-tab {
+  background: transparent; border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 14px; font-size: 13px;
+  color: #57606a; cursor: pointer;
+}
+.doc-tab.active { color: #2c5d9c; border-bottom-color: #2c5d9c; font-weight: 600; }
+
+.add-row {
+  position: relative;
+  display: flex; gap: 8px;
+  margin-bottom: 12px;
+}
+.add-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #d0d7de;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.suggest {
+  position: absolute;
+  top: 100%; left: 0; right: 0;
+  background: #fff;
+  border: 1px solid #d0d7de;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  z-index: 20;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 2px;
+}
+.suggest-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f2f5;
+}
+.suggest-item:hover { background: #f6f8fa; }
+.suggest-item:last-child { border-bottom: none; }
+.suggest-row { display: block; }
+.suggest-name { font-size: 13px; color: #1f2328; display: inline; }
+.suggest-stock { font-size: 12px; color: #15803d; white-space: nowrap; display: inline; margin-left: 12px; }
+.suggest-stock.out { color: #b91c1c; }
+
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+.items-table thead th {
+  background: #fff;
+  border-bottom: 2px solid #d8dee4;
+  padding: 6px 8px;
+  text-align: left;
+  font-weight: 500;
+  color: #2c5d9c;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.items-table tbody td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #eaeef2;
+  vertical-align: middle;
+}
+.items-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.items-table .muted { color: #8c959f; }
+.cell-input {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  text-align: right;
+  font-size: 13px;
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+}
+.cell-input:hover { border-color: #d0d7de; background: #fff; }
+.cell-input:focus { border-color: #2c5d9c; background: #fff; outline: none; }
+.btn.danger {
+  background: #fff;
+  color: #cf222e;
+  border-color: #cf222e;
+}
+.btn.danger:hover:not(:disabled) {
+  background: #cf222e;
+  color: #fff;
+}
+
+.x-btn {
+  background: transparent; border: none;
+  color: #8c959f; font-size: 18px; cursor: pointer;
+  padding: 0 6px;
+}
+.x-btn:hover { color: #cf222e; }
+
+.bottom-row {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+.comment-box { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.comment-box .lbl { font-size: 12px; color: #57606a; }
+.comment-box textarea {
+  padding: 8px 12px; font-size: 13px;
+  border: 1px solid #d0d7de; border-radius: 4px;
+  resize: vertical; font-family: inherit;
+}
+.totals-box { width: 360px; padding: 12px; }
+.total-row {
+  display: flex; justify-content: space-between;
+  padding: 6px 0;
+  align-items: baseline;
+  font-size: 14px;
+}
+.total-row.small { font-size: 12px; color: #57606a; }
+.total-row.small label { display: flex; align-items: center; gap: 6px; }
+.total-row.big {
+  border-top: 1px solid #eaeef2;
+  margin-top: 6px;
+  padding-top: 10px;
+  font-size: 18px;
+  font-weight: 700;
+}
+.total-num { font-variant-numeric: tabular-nums; }
+
+.section-block {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #eaeef2;
+}
+.section-head {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #cf222e;
+}
+.section-head .btn-link {
+  color: #2c5d9c; border: 1px solid #d0d7de;
+  background: #fff; padding: 3px 10px;
+  border-radius: 4px; font-size: 12px; cursor: pointer;
+}
+.section-head .btn-link:hover { background: #f6f8fa; }
+
+.field { position: relative; }
+.ac-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 20;
+  background: #fff; border: 1px solid #d0d7de; border-top: none;
+  border-radius: 0 0 3px 3px; max-height: 220px; overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.ac-item {
+  padding: 6px 10px; font-size: 13px; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ac-item:hover { background: #eaeef2; }
+
+/* Проект: автокомплит + кнопка + */
+.ac-wrap { position: relative; display: flex; align-items: center; gap: 4px; }
+.ac-wrap > input { flex: 1; }
+.ac-add, .ac-clear {
+  flex: 0 0 auto;
+  width: 26px; height: 26px;
+  border: 1px solid #d0d7de; background: #fff;
+  border-radius: 4px; cursor: pointer;
+  font-size: 16px; line-height: 1;
+  color: #2c5d9c;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0;
+}
+.ac-add:hover { background: #eaf3ff; }
+.ac-clear { color: #cf222e; }
+.ac-clear:hover { background: #ffecec; }
+
+/* Модалка (для создания проекта) */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; z-index: 100;
+}
+.modal {
+  width: 420px; max-width: 100%;
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 16px;
+}
+.modal h2 { margin: 0 0 4px; font-size: 18px; }
+.modal label { font-size: 13px; color: #444; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+.error-box {
+  background: #ffecec; color: #cf222e;
+  border: 1px solid #ffb3b3; border-radius: 4px;
+  padding: 6px 10px; font-size: 13px;
+}
+
+/* === Карточка внутреннего заказа (МойСклад-стиль) === */
+.card-page { font-size: 13px; }
+
+.ms-doc-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.ms-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 20px; font-weight: 600; color: #1f2328;
+}
+.ms-help {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1px solid #b8c0c8; background: transparent;
+  color: #57606a; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
+}
+.ms-help:hover { background: #f0f2f5; }
+.ms-refresh {
+  width: 24px; height: 24px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; background: transparent; color: #57606a; cursor: pointer;
+}
+.ms-refresh:hover { color: #2c5d9c; }
+.ext-badge {
+  background: #eaf3ff; color: #2c5d9c; border: 1px solid #c8dcf0;
+  font-size: 11px; padding: 1px 8px; border-radius: 3px;
+  font-weight: 500;
+}
+.ms-status { display: flex; align-items: center; gap: 12px; }
+.st {
+  display: inline-block; padding: 3px 12px;
+  border-radius: 3px; font-size: 12px; font-weight: 500;
+}
+.st-draft     { background: #eef1f5; color: #57606a; }
+.st-posted    { background: #d8e8c8; color: #2d6a1e; }
+.st-cancelled { background: #f5d5d5; color: #a01c1c; }
+.posted-check {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; color: #57606a; cursor: pointer;
+}
+.posted-check input { width: 14px; height: 14px; }
+
+.ms-toolbar {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 12px; flex-wrap: wrap;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eaeef2;
+}
+.toolbar-spacer { flex: 1; }
+
+/* Реквизиты документа */
+.ms-doc-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 40px;
+  margin-bottom: 14px;
+  max-width: 1100px;
+}
+.doc-left, .doc-right { display: flex; flex-direction: column; gap: 6px; }
+.row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+.row > label { font-size: 13px; color: #57606a; }
+.row > input,
+.row > .ac-wrap > input,
+.row > select {
+  height: 28px; padding: 0 8px; font-size: 13px;
+  border: 1px solid #d0d7de; border-radius: 3px;
+  background: #fff; color: #1f2328; width: 100%;
+}
+.row > input:disabled,
+.row > .ac-wrap > input:disabled { background: #f6f8fa; color: #57606a; cursor: not-allowed; }
+.num-input { max-width: 140px; }
+.date-input { max-width: 200px; }
+
+/* Вкладки */
+.ms-tabs {
+  display: flex; gap: 2px;
+  border-bottom: 1px solid #d8dee4;
+  margin-bottom: 12px;
+}
+.tab {
+  border: none; background: transparent;
+  padding: 10px 16px;
+  font-size: 13px; color: #57606a;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.tab:hover { color: #2c5d9c; }
+.tab.active { color: #2c5d9c; border-bottom-color: #2c5d9c; font-weight: 600; }
+
+/* Добавление позиции */
+.add-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px; position: relative;
+}
+.add-input {
+  flex: 1; height: 30px; padding: 0 10px;
+  font-size: 13px;
+  border: 1px solid #d0d7de; border-radius: 4px;
+  background: #fff; color: #1f2328;
+}
+.add-input::placeholder { color: #8c959f; }
+.add-input:focus { outline: 2px solid rgba(44,93,156,0.3); border-color: #2c5d9c; }
+.suggest {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 20;
+  background: #fff; border: 1px solid #d0d7de;
+  border-radius: 0 0 4px 4px;
+  max-height: 260px; overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.suggest-item {
+  padding: 8px 12px; cursor: pointer;
+  border-bottom: 1px solid #f0f2f5;
+}
+.suggest-item:hover { background: #f6f8fa; }
+.suggest-row { display: block; }
+.suggest-name { font-size: 13px; color: #1f2328; display: inline; }
+.suggest-stock { font-size: 12px; color: #15803d; white-space: nowrap; display: inline; margin-left: 12px; }
+.suggest-stock.out { color: #b91c1c; }
+
+/* Таблица позиций */
+.col-sku { white-space: nowrap; width: 1%; }
+
+.ms-items {
+  width: 100%; border-collapse: collapse;
+  background: #fff; font-size: 13px;
+  margin-bottom: 14px;
+}
+.ms-items thead th {
+  background: #fff; color: #2c5d9c;
+  font-weight: 500; padding: 8px 10px;
+  text-align: left; border-bottom: 1px solid #d8dee4;
+  white-space: nowrap; font-size: 12px;
+}
+.ms-items tbody tr:hover > td {
+  background: #ffe97a;
+}
+.ms-items tbody tr:hover .cell-input:not(:focus) {
+  background: transparent;
+}
+.ms-items tbody td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #eaeef2;
+  vertical-align: middle;
+}
+.ms-items .col-num { width: 40px; color: #57606a; text-align: center; }
+.ms-items .col-num-right { text-align: right; font-variant-numeric: tabular-nums; }
+.ms-items .col-x { width: 32px; text-align: center; }
+.ms-items .cell-input {
+  width: 90px; height: 26px; padding: 0 6px;
+  font-size: 13px; text-align: right;
+  border: 1px solid #d0d7de; border-radius: 3px;
+  background: #fff;
+}
+.ms-items .cell-input:disabled { background: #f6f8fa; color: #8c959f; }
+.ms-items .empty { text-align: center; padding: 24px; color: #8c959f; }
+.x-btn {
+  width: 22px; height: 22px; padding: 0;
+  border: none; background: transparent;
+  color: #8c959f; cursor: pointer;
+  font-size: 16px; line-height: 1;
+  border-radius: 3px;
+}
+.x-btn:hover { background: #ffecec; color: #cf222e; }
+
+/* Комментарий + итоги */
+.bottom-row {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 24px;
+  align-items: start;
+  margin-top: 12px;
+}
+.comment-box { display: flex; flex-direction: column; gap: 4px; }
+.comment-box .lbl { font-size: 12px; color: #57606a; }
+.comment-box textarea {
+  font-family: inherit; font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid #d0d7de; border-radius: 3px;
+  background: #fff; color: #1f2328;
+  resize: vertical;
+}
+.totals-box {
+  background: #f6f8fa; border: 1px solid #eaeef2;
+  border-radius: 4px; padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.total-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; color: #1f2328;
+}
+.total-row.small { font-size: 12px; color: #57606a; }
+.total-row.small label { display: inline-flex; align-items: center; gap: 6px; }
+.total-row.big {
+  font-size: 15px; font-weight: 600;
+  border-top: 1px solid #d8dee4;
+  padding-top: 8px; margin-top: 4px;
+}
+.total-num { font-variant-numeric: tabular-nums; }
+.empty-block {
+  padding: 40px; text-align: center;
+  color: #8c959f; font-size: 13px;
+  background: #fff; border: 1px solid #eaeef2; border-radius: 4px;
+}
+.suggest-item { cursor: pointer; padding: 4px 8px; border-radius: 4px; }
+.suggest-item.is-active { background: #eef5ff; }
+.suggest-item.already-in { opacity: 0.55; }
+.suggest-meta { display: flex; gap: 10px; font-size: 12px; color: #777; margin-top: 2px; }
+.suggest-already { color: #b26a00; }
+.suggest mark { background: #ffe9a8; color: inherit; padding: 0 1px; border-radius: 2px; }
+
+
+.col-sys { width: 110px; }
+.col-act { width: 70px; }
+.cell-select {
+  width: 100%; height: 24px; padding: 0 4px;
+  font-size: 12px; border: 1px solid #d0d7de; border-radius: 3px; background: #fff;
+}
+.issue-btn {
+  padding: 2px 8px; font-size: 12px;
+  border: 1px solid #2c5d9c; border-radius: 3px;
+  background: #fff; color: #2c5d9c; cursor: pointer;
+}
+.issue-btn:hover { background: #eaf1fb; }
+.sys-summary { margin: 10px 0 16px; }
+.sys-summary h3 { font-size: 14px; margin: 0 0 6px; color: #1f2328; }
+.qty-input {
+  width: 90px;
+  height: 26px;
+  padding: 0 6px;
+  font-size: 13px;
+  text-align: right;
+  border: 1px solid #d0d7de;
+  border-radius: 3px;
+  background: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.qty-input:focus {
+  outline: 2px solid rgba(44,93,156,0.3);
+  border-color: #2c5d9c;
+}
+.qty-input:disabled { background: #f6f8fa; color: #57606a; }
+</style>

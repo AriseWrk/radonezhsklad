@@ -84,18 +84,19 @@ func (h *InternalOrderHandler) Export(c *gin.Context) {
 		WarehouseName:    warehouseName,
 		OrganizationName: orgName,
 		ProjectName:      project,
+		TemplatePath:     h.templatePath,
 	})
 	if err != nil {
 		c.Error(apperr.Internal("export xlsx", err))
 		return
 	}
 
-	filename := fmt.Sprintf("intorder1-%s.xls", extractNumericTail(o.Number))
+	filename := fmt.Sprintf("intorder1-%s.xlsx", extractNumericTail(o.Number))
 
-	c.Header("Content-Type", "application/vnd.ms-excel")
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	c.Header("Content-Disposition", `attachment; filename="`+filename+`"`)
 	c.Header("X-Filename", filename)
-	c.Data(200, "application/vnd.ms-excel", data)
+	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", data)
 }
 
 // extractNumericTail: "ВЗ-1" → "1", "02036" → "02036", "ORD-12-A" → "12"

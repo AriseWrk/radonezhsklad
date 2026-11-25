@@ -137,13 +137,36 @@ func main() {
 	templatesDir := cfg.UploadsDir
 	if _, err := os.Stat(templatesDir); err != nil {
 		exe, _ := os.Executable()
-		templatesDir = filepath.Join(filepath.Dir(exe), "internal", "uploads", "templates")
+		templatesDir = filepath.Join(filepath.Dir(exe), "..", "internal", "uploads", "templates")
+	}
+	templateName := "intorder1.xlsx"
+	templateCandidates := []string{
+		filepath.Join(cfg.UploadsDir, templateName),
+		filepath.Join("internal", "uploads", "templates", templateName),
+	}
+	if exe, err := os.Executable(); err == nil {
+		templateCandidates = append(templateCandidates,
+			filepath.Join(filepath.Dir(exe), "..", "internal", "uploads", "templates", templateName),
+		)
+	}
+
+	templatePath := ""
+	for _, candidate := range templateCandidates {
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			templatePath, _ = filepath.Abs(candidate)
+			break
+		}
+	}
+	if templatePath == "" {
+		slog.Error("internal order XLSX template not found", "candidates", templateCandidates)
+	} else {
+		slog.Info("internal order XLSX template found", "path", templatePath)
 	}
 	slog.Info("templates dir", "dir", templatesDir)
 	printer := printing.New(templatesDir)
 	h := handler.New(svc, pc, pusher, printer)
 	supH := handler.NewSupplierHandler(supSvc)
-	intOrderH := handler.NewInternalOrderHandler(intOrderSvc, svc, supSvc, pc, pusher)
+	intOrderH := handler.NewInternalOrderHandler(intOrderSvc, svc, supSvc, pc, pusher, templatePath)
 	projectH := handler.NewProjectHandler(projectSvc)
 	projectStatsRepo := repository.NewProjectStatsRepo(pool)
 	projectStatsH := handler.NewProjectStatsHandler(projectStatsRepo, pc)

@@ -24,7 +24,6 @@ type InternalOrderHandler struct {
 	supplierSvc  *service.SupplierService
 	productCli   *product.Client
 	pusher       *mspush.Pusher
-	templatePath string
 }
 
 func NewInternalOrderHandler(
@@ -33,7 +32,6 @@ func NewInternalOrderHandler(
 	supplierSvc *service.SupplierService,
 	productCli *product.Client,
 	pusher *mspush.Pusher,
-	templatePath string,
 ) *InternalOrderHandler {
 	return &InternalOrderHandler{
 		svc:          svc,
@@ -41,7 +39,6 @@ func NewInternalOrderHandler(
 		supplierSvc:  supplierSvc,
 		productCli:   productCli,
 		pusher:       pusher,
-		templatePath: templatePath,
 	}
 }
 
@@ -440,49 +437,49 @@ func (h *InternalOrderHandler) ListIssues(c *gin.Context) {
 // ---------- trash (internal orders) ----------
 
 func (h *InternalOrderHandler) SoftDelete(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.Error(apperr.BadRequest("invalid id"))
-		return
-	}
-	if err := h.svc.SoftDelete(c.Request.Context(), id); err != nil {
-		c.Error(err)
-		return
-	}
-	c.Status(http.StatusNoContent)
+id, err := uuid.Parse(c.Param("id"))
+if err != nil {
+c.Error(apperr.BadRequest("invalid id"))
+return
+}
+if err := h.svc.SoftDelete(c.Request.Context(), id); err != nil {
+c.Error(err)
+return
+}
+c.Status(http.StatusNoContent)
 }
 
 func (h *InternalOrderHandler) Restore(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.Error(apperr.BadRequest("invalid id"))
-		return
-	}
-	if err := h.svc.Restore(c.Request.Context(), id); err != nil {
-		c.Error(err)
-		return
-	}
-	c.Status(http.StatusNoContent)
+id, err := uuid.Parse(c.Param("id"))
+if err != nil {
+c.Error(apperr.BadRequest("invalid id"))
+return
+}
+if err := h.svc.Restore(c.Request.Context(), id); err != nil {
+c.Error(err)
+return
+}
+c.Status(http.StatusNoContent)
 }
 
 func (h *InternalOrderHandler) HardDelete(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.Error(apperr.BadRequest("invalid id"))
-		return
-	}
-	if err := h.svc.HardDelete(c.Request.Context(), id); err != nil {
-		c.Error(err)
-		return
-	}
-	c.Status(http.StatusNoContent)
+id, err := uuid.Parse(c.Param("id"))
+if err != nil {
+c.Error(apperr.BadRequest("invalid id"))
+return
+}
+if err := h.svc.HardDelete(c.Request.Context(), id); err != nil {
+c.Error(err)
+return
+}
+c.Status(http.StatusNoContent)
 }
 
 func (h *InternalOrderHandler) ClearTrash(c *gin.Context) {
-	n, err := h.svc.ClearTrash(c.Request.Context())
-	if err != nil {
-		c.Error(err)
-		return
-	}
-	httpx.OK(c, gin.H{"deleted": n})
+n, err := h.svc.ClearTrash(c.Request.Context())
+if err != nil {
+c.Error(err)
+return
+}
+httpx.OK(c, gin.H{"deleted": n})
 }

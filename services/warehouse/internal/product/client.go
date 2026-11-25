@@ -49,13 +49,13 @@ func (c *Client) ListByIDs(ctx context.Context, token string, ids []uuid.UUID) (
 	for i, id := range ids {
 		parts[i] = "id=" + id.String()
 	}
-	url := c.baseURL + "/api/v1/internal/products/list?" + strings.Join(parts, "&")
+	url := c.baseURL + "/api/v1/products/list?" + strings.Join(parts, "&")
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("X-Internal-Token", token)
+	req.Header.Set("Authorization", "Bearer "+token)
 
 	resp, err := c.http.Do(req)
 	if err != nil {
@@ -145,7 +145,7 @@ func (c *Client) ListUnits(ctx context.Context, token string) ([]Unit, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("X-Internal-Token", token)
+	req.Header.Set("Authorization", "Bearer "+token)
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, err

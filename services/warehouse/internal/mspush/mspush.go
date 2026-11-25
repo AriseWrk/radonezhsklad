@@ -12,7 +12,6 @@
 package mspush
 
 import (
-"os"
 	"context"
 	"fmt"
 	"log/slog"
@@ -48,11 +47,10 @@ type Pusher struct {
 	orders  *repository.InternalOrderRepo
 	errs    *repository.MsSyncErrorRepo
 	enabled bool
-    internalToken string
 }
 
 func New(ms *msapi.Client, pc *product.Client, repo *repository.Repo, orders *repository.InternalOrderRepo, errs *repository.MsSyncErrorRepo, enabled bool) *Pusher {
-	return &Pusher{ms: ms, product: pc, repo: repo, orders: orders, errs: errs, enabled: enabled, internalToken: os.Getenv("INTERNAL_TOKEN")}
+	return &Pusher{ms: ms, product: pc, repo: repo, orders: orders, errs: errs, enabled: enabled}
 }
 
 func (p *Pusher) Enabled() bool { return p.enabled && p.ms != nil }
@@ -116,7 +114,7 @@ type msOrderPayload struct {
 	Organization msapi.Meta   `json:"organization"`
         VatEnabled   bool         `json:"vatEnabled"`
         VatIncluded  bool         `json:"vatIncluded"`
-	Store        *msapi.Meta   `json:"store,omitempty"`
+	Store        msapi.Meta   `json:"store,omitempty"`
 	Project      *msapi.Meta  `json:"project,omitempty"`
 	Positions    []msPosition `json:"positions"`
 }
@@ -125,12 +123,12 @@ type msOrderPayload struct {
 
 // productExternalMap возвращает карту наш_product_id → ms_uuid.
 // Если у какого-то продукта нет external_id — он в карте отсутствует.
-func (p *Pusher) productExternalMap(ctx context.Context, productIDs []uuid.UUID) (map[uuid.UUID]*uuid.UUID, error) {
+func (p *Pusher) productExternalMap(ctx context.Context, productIDs []uuid.UUID, token string) (map[uuid.UUID]*uuid.UUID, error) {
 	out := make(map[uuid.UUID]*uuid.UUID, len(productIDs))
 	if len(productIDs) == 0 {
 		return out, nil
 	}
-	prods, err := p.product.ListByIDs(ctx, p.internalToken, productIDs)
+	prods, err := p.product.ListByIDs(ctx, token, productIDs)
 	if err != nil {
 		return nil, fmt.Errorf("product list: %w", err)
 	}
@@ -183,7 +181,7 @@ func (p *Pusher) buildDocumentPayload(ctx context.Context, doc *models.Document,
 	for _, it := range doc.Items {
 		ids = append(ids, it.ProductID)
 	}
-	extMap, err := p.productExternalMap(ctx, ids)
+	extMap, err := p.productExternalMap(ctx, ids, token)
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +333,7 @@ func (p *Pusher) buildOrderPayload(ctx context.Context, order *models.InternalOr
 	for _, it := range order.Items {
 		ids = append(ids, it.ProductID)
 	}
-	extMap, err := p.productExternalMap(ctx, ids)
+	extMap, err := p.productExternalMap(ctx, ids, token)
 	if err != nil {
 		return nil, err
 	}
@@ -367,10 +365,6 @@ func (p *Pusher) buildOrderPayload(ctx context.Context, order *models.InternalOr
 	}
         payload.VatEnabled = order.VatEnabled
         payload.VatIncluded = order.VatIncluded
-    if refs.Warehouse != nil && refs.Warehouse.ExternalID != nil {
-        storeMeta := p.ms.EntityMeta("store", *refs.Warehouse.ExternalID)
-        payload.Store = &storeMeta
-    }
 	if order.Comment != nil {
 		payload.Description = *order.Comment
 	}

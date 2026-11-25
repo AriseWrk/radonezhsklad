@@ -25,7 +25,7 @@
       <MsButton icon="print" @click="print">Печать</MsButton>
       <MsButton v-if="canPost" icon="send" @click="onSend" :disabled="!currentId || form.status !== 'posted' || !canEdit">Отправить</MsButton>
       <MsButton v-if="canPost" icon="close" @click="onCancel" :disabled="!currentId || (form.status !== 'posted' && form.status !== 'shipped') || !canEdit">Отменить</MsButton>
-      <MsButton variant="icon" icon="trash" title="Удалить" @click="onDelete" :disabled="(!currentId && !isNew) || (currentId !== null && form.status !== 'draft' && auth.role !== 'admin')" />
+      <MsButton v-if="auth.role === 'admin' || auth.role === 'warehouse' || auth.role === 'pts'" variant="icon" icon="trash" title="В корзину" @click="onDelete" :disabled="!currentId || (form.status !== 'draft' && auth.role !== 'admin')" />
       <div class="toolbar-spacer"></div>
       <MsButton variant="icon" icon="close" @click="close" title="Закрыть" />
     </div>
@@ -322,12 +322,11 @@
 </template>
 
 <script setup lang="ts">
-import QtyStepper from '../components/QtyStepper.vue'
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   cancelInternalOrder,
-  deleteInternalOrder,
+  softDeleteInternalOrder,
   sendInternalOrder,
   getInternalOrder, createInternalOrder, updateInternalOrder,
   postInternalOrder, nextInternalOrderNumber,
@@ -792,10 +791,10 @@ function statusLabel(s: string) {
 function close() { router.push('/internal-orders') }
 
 async function onDelete() {
-  if (!currentId.value) { router.push('/internal-orders'); return }
-  if (!confirm('Удалить заказ? Действие необратимо.')) return
+  if (!currentId.value) return
+  if (!confirm('Переместить заказ в корзину?')) return
   try {
-    await deleteInternalOrder(currentId.value)
+    await softDeleteInternalOrder(currentId.value)
     router.push('/internal-orders')
   } catch (e) {
     error.value = apiErrorMessage(e)

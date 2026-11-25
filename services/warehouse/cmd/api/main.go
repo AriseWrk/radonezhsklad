@@ -249,11 +249,15 @@ func main() {
 			intOrderPost.POST("/internal-orders/:id/cancel", intOrderH.Cancel)
 			intOrderPost.POST("/internal-orders/:id/send", intOrderH.Send)
 			intOrderPost.POST("/internal-orders/:id/issues", intOrderH.Issue)
-			intOrderPost.DELETE("/internal-orders/:id", intOrderH.SoftDelete)
 			intOrderPost.POST("/internal-orders/:id/restore", intOrderH.Restore)
 			intOrderPost.DELETE("/internal-orders/:id/hard", intOrderH.HardDelete)
 		}
 
+		intOrderTrash := api.Group("")
+		intOrderTrash.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "warehouse", "pts"))
+		{
+			intOrderTrash.DELETE("/internal-orders/:id", intOrderH.SoftDelete)
+		}
 		supWrite := api.Group("")
 		supWrite.Use(mw.RequireJWT(cfg.JWTSecret), mw.RequireRole("admin", "warehouse"))
 		{

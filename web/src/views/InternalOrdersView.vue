@@ -163,8 +163,7 @@
           </td>
           <td v-if="cols.isVisible('comment')" class="comment">{{ o.comment || '' }}</td>
           <td v-if="cols.isVisible('actions')" class="col-actions" @click.stop>
-            <button v-if="auth.role === 'admin' || auth.role === 'warehouse' || auth.role === 'pts'" class="row-menu" @click.stop="onSoftDelete(o)" title="В корзину"><MsIcon name="trash" :size="14" /></button>
-            <button class="row-menu" @click.stop="open(o)" title="Открыть"><MsIcon name="dots" :size="14" /></button>
+            <button class="row-menu" @click="open(o)"><MsIcon name="dots" :size="14" /></button>
           </td>
         </tr>
       </tbody>
@@ -201,7 +200,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { listInternalOrders, softDeleteInternalOrder, type InternalOrder } from '../api/internalOrders'
+import { listInternalOrders, deleteInternalOrder, type InternalOrder } from '../api/internalOrders'
 import { useAuthStore } from '../stores/auth'
 import { listWarehouses, type Warehouse } from '../api/warehouses'
 import { listOrganizations, type Organization } from '../api/suppliers'
@@ -368,17 +367,6 @@ async function load() {
   finally { loading.value = false }
 }
 
-async function onSoftDelete(o: InternalOrder) {
-  if (!confirm(`Переместить заказ ${o.number} в корзину?`)) return
-  try {
-    await softDeleteInternalOrder(o.id)
-    selected.value.delete(o.id)
-    await load()
-  } catch (e) {
-    error.value = apiErrorMessage(e)
-  }
-}
-
 function open(o: InternalOrder) { router.push(`/internal-orders/${o.id}`) }
 function create() { router.push('/internal-orders/new') }
 function printSelected() { window.print() }
@@ -392,10 +380,10 @@ async function onBulkAction(e: Event) {
 async function deleteSelected() {
   const ids = Array.from(selected.value)
   if (ids.length === 0) { error.value = 'Не выбрано ни одного заказа'; return }
-  if (!confirm(`Переместить выбранные заказы (${ids.length}) в корзину?`)) return
+  if (!confirm(`Удалить выбранные заказы (${ids.length})? Действие необратимо.`)) return
   const failed: string[] = []
   for (const id of ids) {
-    try { await softDeleteInternalOrder(id) }
+    try { await deleteInternalOrder(id) }
     catch (e) { failed.push(`${id}: ${apiErrorMessage(e)}`) }
   }
   selected.value = new Set()
